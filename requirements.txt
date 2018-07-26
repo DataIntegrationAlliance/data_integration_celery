@@ -1,3 +1,9 @@
 celery
 librabbitmq
 eventlet
+numpy
+pandas
+RestIFindPy
+sqlalchemy
+mysqlclient
+xlrd

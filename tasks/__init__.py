@@ -8,14 +8,22 @@
 @desc    : 
 """
 from celery import Celery
+from tasks.config import celery_config
 
 app = Celery('tasks',
-             broker='amqp://mg:Abcd1234@localhost:5672/celery_tasks',
-             backend='amqp://mg:Abcd1234@localhost:5672/backend',
+             config_source=celery_config,
+             # broker='amqp://mg:***@localhost:5672/celery_tasks',
+             # backend='amqp://mg:***@localhost:5672/backend',
              # backend='rpc://',
              )
+app.config_from_object(celery_config)
 
 
 @app.task
 def add(x, y):
+    """only for test use"""
     return x + y
+
+
+from tasks.wind import *
+from tasks.ifind import *
