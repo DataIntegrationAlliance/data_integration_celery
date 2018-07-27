@@ -1,5 +1,6 @@
+echo off
 :Begin
-choice /C:WBC /M:"run：Worker[W] Beat[B] Cancel[C]."
+choice /C:WBC /M:"run: Worker[W] Beat[B] Cancel[C]."
 echo "input is :" %errorlevel%
 if errorlevel 3 goto End
 if errorlevel 2 goto Beat
@@ -15,4 +16,5 @@ ehco beat
 goto End
 
 :End
+echo on
 echo good bye
