@@ -14,7 +14,7 @@ import json
 from datetime import date, datetime, timedelta
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.expression import Insert
-from .fh_utils import date_2_str
+from tasks.utils.fh_utils import date_2_str
 
 
 class SessionWrapper:
