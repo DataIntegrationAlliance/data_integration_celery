@@ -20,6 +20,10 @@ def print_indicator_param_dic(*args):
         print(str(item) + ',')
     print(']')
 
+# 着两条语句不能够提前，将会导致循环引用异常
+# from .stock import *
+from .trade_date import *
+
 
 if __name__ == '__main__':
     print_indicator_param_dic(

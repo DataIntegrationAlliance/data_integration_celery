@@ -31,15 +31,14 @@ def import_trade_date():
             logger.exception("交易日获取异常")
 
     exchange_code_dict = {
-        # "HKEX": "香港",
-        # "NYSE": "纽约",
+        "HKEX": "香港",
+        "NYMEX": "纽约证券交易所",
         "SZSE": "深圳",
-        # "TWSE": "台湾",
-        # "NASDAQ": "纳斯达克",
-        # "AMEX": "美国证券交易所",
-        # "TSE": "东京",
-        # "LSE": "伦敦",
-        # "SGX": "新加坡"
+        "CBOT": "芝加哥商品交易所",
+        "NASDAQ": "纳斯达克",
+        "AMEX": "美国证券交易所",
+        "ICE": "洲际交易所",
+        "BMD": "马来西亚衍生品交易所"
     }
     exchange_code_list = list(exchange_code_dict.keys())
     for exchange_code in exchange_code_list:
@@ -52,10 +51,12 @@ def import_trade_date():
         end_date_str = (date.today() + timedelta(days=310)).strftime(STR_FORMAT_DATE)
         trade_date_df = invoker.THS_DateQuery(exchange_code, 'dateType:0,period:D,dateFormat:0', start_date_str, end_date_str)
         if trade_date_df is None or trade_date_df.shape[0] == 0:
-            logger.warning("%s [%s - %s] 没有查询到交易日期", exchange_code, start_date_str, end_date_str)
+            logger.warning('%s[%s] [%s - %s] 没有查询到交易日期',
+                           exchange_code_dict[exchange_code], exchange_code, start_date_str, end_date_str)
             continue
         date_count = trade_date_df.shape[0]
-        logger.info("%d 条交易日数据将被导入", date_count)
+        logger.info("%s[%s] %d 条交易日数据将被导入 %s",
+                    exchange_code_dict[exchange_code], exchange_code, date_count, 'ifind_trade_date')
         # with with_db_session(engine_md) as session:
         #     session.execute("INSERT INTO ifind_trade_date (trade_date,exch_code) VALUE (:trade_date,:exch_code)",
         #                     params=[{'trade_date': trade_date, 'exch_code': exchange_code} for trade_date in
@@ -66,7 +67,8 @@ def import_trade_date():
             'exch_code': String(10),
             'trade_date': Date,
         })
-        logger.info('%d 条交易日数据导入 %s 完成', date_count, 'ifind_trade_date')
+        logger.info('%s[%s] %d 条交易日数据导入 %s 完成',
+                    exchange_code_dict[exchange_code], exchange_code, date_count, 'ifind_trade_date')
 
 
 if __name__ == "__main__":
