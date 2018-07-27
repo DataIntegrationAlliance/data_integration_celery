@@ -25,5 +25,5 @@ def add(x, y):
     return x + y
 
 
-from tasks.wind import *
+from tasks.task2 import *
 from tasks.ifind import *
