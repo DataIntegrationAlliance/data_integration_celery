@@ -9,7 +9,7 @@
 """
 from tasks.utils.fh_utils import zip_split
 from tasks.config import config
-from ifind_rest.invoke import IFinDInvoker
+from direstinvoker.ifind import IFinDInvoker
 invoker = IFinDInvoker(config.IFIND_REST_URL)
 
 
