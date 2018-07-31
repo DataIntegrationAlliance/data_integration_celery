@@ -8,6 +8,8 @@ import logging
 import math
 from datetime import date, datetime, timedelta
 import pandas as pd
+from sqlalchemy.exc import ProgrammingError
+
 from tasks.ifind import invoker
 from direstinvoker.ifind import APIError
 from tasks.utils.fh_utils import get_last, get_first, date_2_str, STR_FORMAT_DATE
@@ -102,7 +104,7 @@ def import_stock_info(ths_code=None, refresh=False):
 @app.task
 def import_stock_daily_ds(ths_code_set: set = None, begin_time=None):
     """
-
+    通过date_serise接口将历史数据保存到 ifind_stock_daily_ds，该数据作为 History数据的补充数据 例如：复权因子af、涨跌停标识、停牌状态、原因等
     :param ths_code_set:
     :param begin_time:
     :return:
@@ -110,18 +112,6 @@ def import_stock_daily_ds(ths_code_set: set = None, begin_time=None):
     if ths_code_set is None:
         pass
     indicator_param_list = [
-        ('ths_pre_close_stock', '100', DOUBLE),
-        ('ths_open_price_stock', '100', DOUBLE),
-        ('ths_high_price_stock', '100', DOUBLE),
-        ('ths_low_stock', '100', DOUBLE),
-        ('ths_close_price_stock', '100', DOUBLE),
-        ('ths_chg_ratio_stock', '', DOUBLE),
-        ('ths_chg_stock', '100', DOUBLE),
-        ('ths_vol_stock', '100', DOUBLE),
-        ('ths_trans_num_stock', '', Integer),
-        ('ths_amt_stock', '', DOUBLE),
-        ('ths_turnover_ratio_stock', '', DOUBLE),
-        ('ths_vaild_turnover_stock', '', DOUBLE),
         ('ths_af_stock', '', DOUBLE),
         ('ths_up_and_down_status_stock', '', String(10)),
         ('ths_trading_status_stock', '', String(50)),
@@ -132,22 +122,37 @@ def import_stock_daily_ds(ths_code_set: set = None, begin_time=None):
     # jsonparam='100;100;100;100;100;;100;100;;;;;;;;;'
     json_indicator, json_param = unzip_join([(key, val) for key, val, _ in indicator_param_list], sep=';')
     sql_str = """select ths_code, date_frm, if(ths_delist_date_stock<end_date, ths_delist_date_stock, end_date) date_to
-FROM
-(
-    select info.ths_code, ifnull(trade_date_max_1, ths_ipo_date_stock) date_frm, ths_delist_date_stock,
-    if(hour(now())<16, subdate(curdate(),1), curdate()) end_date
-    from 
-        ifind_stock_info info 
-    left outer join
-        (select ths_code, adddate(max(time),1) trade_date_max_1 from ifind_stock_daily group by ths_code) daily
-    on info.ths_code = daily.ths_code
-) tt
-where date_frm <= if(ths_delist_date_stock<end_date, ths_delist_date_stock, end_date) 
-order by ths_code"""
+        FROM
+        (
+            select info.ths_code, ifnull(trade_date_max_1, ths_ipo_date_stock) date_frm, ths_delist_date_stock,
+            if(hour(now())<16, subdate(curdate(),1), curdate()) end_date
+            from 
+                ifind_stock_info info 
+            left outer join
+                (select ths_code, adddate(max(time),1) trade_date_max_1 from ifind_stock_daily_ds group by ths_code) daily
+            on info.ths_code = daily.ths_code
+        ) tt
+        where date_frm <= if(ths_delist_date_stock<end_date, ths_delist_date_stock, end_date) 
+        order by ths_code"""
     if begin_time is None:
         with with_db_session(engine_md) as session:
             # 获取每只股票需要获取日线数据的日期区间
-            table = session.execute(sql_str)
+            try:
+                table = session.execute(sql_str)
+            except ProgrammingError:
+                logger.exception('获取历史数据最新交易日期失败，尝试仅适用 ifind_stock_info 表进行计算')
+                sql_str = """select ths_code, date_frm, if(ths_delist_date_stock<end_date, ths_delist_date_stock, end_date) date_to
+                    FROM
+                    (
+                        select info.ths_code, ths_ipo_date_stock date_frm, ths_delist_date_stock,
+                        if(hour(now())<16, subdate(curdate(),1), curdate()) end_date
+                        from ifind_stock_info info 
+                    ) tt
+                    where date_frm <= if(ths_delist_date_stock<end_date, ths_delist_date_stock, end_date) 
+                    order by ths_code"""
+                table = session.execute(sql_str)
+
+            # 获取每只股票需要获取日线数据的日期区间
             code_date_range_dic = {ths_code: (date_from, date_to)
                                    for ths_code, date_from, date_to in table.fetchall() if
                                    ths_code_set is None or ths_code in ths_code_set}
@@ -173,13 +178,13 @@ order by ths_code"""
             # 大于阀值有开始插入
             if data_count >= 10000:
                 tot_data_df = pd.concat(data_df_list)
-                tot_data_df.to_sql('ifind_stock_daily', engine_md, if_exists='append', index=False, dtype=dtype)
+                tot_data_df.to_sql('ifind_stock_daily_ds', engine_md, if_exists='append', index=False, dtype=dtype)
                 tot_data_count += data_count
                 data_df_list, data_count = [], 0
     finally:
         if data_count > 0:
             tot_data_df = pd.concat(data_df_list)
-            tot_data_df.to_sql('ifind_stock_daily', engine_md, if_exists='append', index=False, dtype=dtype)
+            tot_data_df.to_sql('ifind_stock_daily_ds', engine_md, if_exists='append', index=False, dtype=dtype)
             tot_data_count += data_count
 
         logging.info("更新 ifind_stock_daily 完成 新增数据 %d 条", tot_data_count)
