@@ -132,11 +132,11 @@ def import_future_info():
         {'subject_name': '铁矿石', 'regex': r"I\d{4}\.SHF",
          'sectorid': '091001011', 'date_establish': '2013-10-18'},
         {'subject_name': '天然橡胶', 'regex': r"RU\d{4}\.SHF",
-         'sectorid': '091002007', 'date_establish': '1995-06-01'},
+         'sectorid': '091002007', 'date_establish': '1997-02-01'},
         {'subject_name': '铜', 'regex': r"CU\d{4}\.SHF",
-         'sectorid': '091002003', 'date_establish': '1995-05-01'},
+         'sectorid': '091002003', 'date_establish': '1997-02-01'},
         {'subject_name': '铝', 'regex': r"AL\d{4}\.SHF",
-         'sectorid': '091002001', 'date_establish': '1995-05-01'},
+         'sectorid': '091002001', 'date_establish': '1997-02-01'},
         {'subject_name': '锌', 'regex': r"ZN\d{4}\.SHF",
          'sectorid': '091002009', 'date_establish': '2007-03-26'},
         {'subject_name': '铅', 'regex': r"PB\d{4}\.SHF",
@@ -279,18 +279,18 @@ def import_future_daily():
     # 如：AL0202.SHF AL9902.SHF CU0202.SHF
     # TODO: ths_ksjyr_future 字段需要替换为 ths_contract_listed_date_future 更加合理
     sql_str = """select ths_code, date_frm, if(lasttrade_date<end_date, lasttrade_date, end_date) date_to
-FROM
-(
-select fi.ths_code, ifnull(trade_date_max_1, ths_start_trade_date_future) date_frm, 
-    ths_last_td_date_future lasttrade_date,
-		if(hour(now())<16, subdate(curdate(),1), curdate()) end_date
-    from ifind_future_info fi left outer join
-    (select ths_code, adddate(max(time),1) trade_date_max_1 from ifind_future_daily group by ths_code) wfd
-    on fi.ths_code = wfd.ths_code
-) tt
-where date_frm <= if(lasttrade_date<end_date, lasttrade_date, end_date) 
-and subdate(curdate(), 360) < if(lasttrade_date<end_date, lasttrade_date, end_date) 
-order by ths_code"""
+        FROM
+        (
+        select fi.ths_code, ifnull(trade_date_max_1, ths_start_trade_date_future) date_frm, 
+            ths_last_td_date_future lasttrade_date,
+                if(hour(now())<16, subdate(curdate(),1), curdate()) end_date
+            from ifind_future_info fi left outer join
+            (select ths_code, adddate(max(time),1) trade_date_max_1 from ifind_future_daily group by ths_code) wfd
+            on fi.ths_code = wfd.ths_code
+        ) tt
+        where date_frm <= if(lasttrade_date<end_date, lasttrade_date, end_date) 
+        and subdate(curdate(), 360) < if(lasttrade_date<end_date, lasttrade_date, end_date) 
+        order by ths_code"""
     future_date_dic = {}
     with with_db_session(engine_md) as session:
         try:
@@ -298,13 +298,13 @@ order by ths_code"""
         except ProgrammingError:
             logger.exception('获取历史数据最新交易日期失败，尝试仅适用 ifind_future_info 表进行计算')
             sql_str = """select ths_code, date_frm, if(lasttrade_date<end_date, lasttrade_date, end_date) date_to
-    from 
-    (
-    select fi.ths_code, ths_start_trade_date_future date_frm, 
-        ths_last_td_date_future lasttrade_date,
-            if(hour(now())<16, subdate(curdate(),1), curdate()) end_date
-        from ifind_future_info fi
-    ) tt"""
+                from 
+                (
+                select fi.ths_code, ths_start_trade_date_future date_frm, 
+                    ths_last_td_date_future lasttrade_date,
+                        if(hour(now())<16, subdate(curdate(),1), curdate()) end_date
+                    from ifind_future_info fi
+                ) tt"""
             table = session.execute(sql_str)
         # 整理 日期范围数据
         for ths_code, date_frm, lasttrade_date in table.fetchall():
