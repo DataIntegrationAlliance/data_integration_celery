@@ -38,6 +38,13 @@ def with_db_session(engine, expire_on_commit=True):
     return SessionWrapper(session)
 
 
+def get_db_session(engine, expire_on_commit=True):
+    """返回 session 对象"""
+    db_session = sessionmaker(bind=engine, expire_on_commit=expire_on_commit)
+    session = db_session()
+    return session
+
+
 class AlchemyEncoder(json.JSONEncoder):
     def default(self, obj):
         # print("obj.__class__", obj.__class__, "isinstance(obj.__class__, DeclarativeMeta)", isinstance(obj.__class__, DeclarativeMeta))
