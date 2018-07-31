@@ -282,4 +282,4 @@ if __name__ == "__main__":
     # 股票基本信息数据加载
     # import_stock_info(ths_code)
     # 股票日K数据行情加载
-    import_stock_daily(ths_code)
+    import_stock_daily_his(ths_code)
