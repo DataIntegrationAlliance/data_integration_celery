@@ -10,7 +10,7 @@ from tasks.utils.db_utils import with_db_session
 from tasks.backend import engine_md
 from tasks.ifind import invoker, unzip_join
 from tasks import app
-from ifind_rest.invoke import APIError
+from direstinvoker.ifind import APIError
 from sqlalchemy.dialects.mysql import DOUBLE
 from sqlalchemy.types import String, Date, Float, Integer
 import re
@@ -202,7 +202,14 @@ def import_future_info():
             # 获取合约列表
             # w.wset("sectorconstituent","date=2017-05-02;sectorid=a599010205000000")
             # future_info_df = rest.wset("sectorconstituent", "date=%s;sectorid=%s" % (date_since_str, sector_id))
-            future_info_df = invoker.THS_DataPool('block', '%s;%s' % (date_since_str, sector_id), 'date:Y,thscode:Y,security_name:Y')
+            try:
+                future_info_df = invoker.THS_DataPool('block', '%s;%s' % (date_since_str, sector_id), 'date:Y,thscode:Y,security_name:Y')
+            except APIError:
+                logger.exception('THS_DataPool %s 获取失败', '%s;%s' % (date_since_str, sector_id))
+                break
+            if future_info_df is None or future_info_df.shape[0] == 0:
+                break
+
             code_set |= set(future_info_df['THSCODE'])
             if date_since >= date_yestoday:
                 break

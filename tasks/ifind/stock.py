@@ -9,7 +9,7 @@ import math
 from datetime import date, datetime, timedelta
 import pandas as pd
 from tasks.ifind import invoker
-from ifind_rest.invoke import APIError
+from direstinvoker.ifind import APIError
 from tasks.utils.fh_utils import get_last, get_first, date_2_str, STR_FORMAT_DATE
 from sqlalchemy.types import String, Date, Integer
 from sqlalchemy.dialects.mysql import DOUBLE
@@ -100,7 +100,7 @@ def import_stock_info(ths_code=None, refresh=False):
 
 
 @app.task
-def import_stock_daily(ths_code_set: set = None, begin_time=None):
+def import_stock_daily_ds(ths_code_set: set = None, begin_time=None):
     """
 
     :param ths_code_set:
@@ -183,6 +183,98 @@ order by ths_code"""
             tot_data_count += data_count
 
         logging.info("更新 ifind_stock_daily 完成 新增数据 %d 条", tot_data_count)
+
+
+@app.task
+def import_stock_daily_his(ths_code_set: set = None, begin_time=None):
+    """
+    通过history接口将历史数据保存到 ifind_stock_daily_his
+    :param ths_code_set:
+    :param begin_time:
+    :return:
+    """
+    if ths_code_set is None:
+        pass
+    indicator_param_list = [
+        ('preClose', '', DOUBLE),
+        ('open', '', DOUBLE),
+        ('high', '', DOUBLE),
+        ('low', '', DOUBLE),
+        ('close', '', DOUBLE),
+        ('avgPrice', '', DOUBLE),
+        ('changeRatio', '', DOUBLE),
+        ('volume', '', DOUBLE),
+        ('amount', '', Integer),
+        ('turnoverRatio', '', DOUBLE),
+        ('transactionAmount', '', DOUBLE),
+        ('totalShares', '', DOUBLE),
+        ('totalCapital', '', DOUBLE),
+        ('floatSharesOfAShares', '', DOUBLE),
+        ('floatSharesOfBShares', '', DOUBLE),
+        ('floatCapitalOfAShares', '', DOUBLE),
+        ('floatCapitalOfBShares', '', DOUBLE),
+        ('pe_ttm', '', DOUBLE),
+        ('pe', '', DOUBLE),
+        ('pb', '', DOUBLE),
+        ('ps', '', DOUBLE),
+        ('pcf', '', DOUBLE),
+    ]
+    # THS_HistoryQuotes('600006.SH,600010.SH',
+    # 'preClose,open,high,low,close,avgPrice,changeRatio,volume,amount,turnoverRatio,transactionAmount,totalShares,totalCapital,floatSharesOfAShares,floatSharesOfBShares,floatCapitalOfAShares,floatCapitalOfBShares,pe_ttm,pe,pb,ps,pcf',
+    # 'Interval:D,CPS:1,baseDate:1900-01-01,Currency:YSHB,fill:Previous',
+    # '2018-06-30','2018-07-30')
+    json_indicator, _ = unzip_join([(key, val) for key, val, _ in indicator_param_list], sep=';')
+    sql_str = """select ths_code, date_frm, if(ths_delist_date_stock<end_date, ths_delist_date_stock, end_date) date_to
+        FROM
+        (
+            select info.ths_code, ifnull(trade_date_max_1, ths_ipo_date_stock) date_frm, ths_delist_date_stock,
+            if(hour(now())<16, subdate(curdate(),1), curdate()) end_date
+            from 
+                ifind_stock_info info 
+            left outer join
+                (select ths_code, adddate(max(time),1) trade_date_max_1 from ifind_stock_daily_his group by ths_code) daily
+            on info.ths_code = daily.ths_code
+        ) tt
+        where date_frm <= if(ths_delist_date_stock<end_date, ths_delist_date_stock, end_date) 
+        order by ths_code"""
+    if begin_time is None:
+        with with_db_session(engine_md) as session:
+            # 获取每只股票需要获取日线数据的日期区间
+            table = session.execute(sql_str)
+            code_date_range_dic = {ths_code: (date_from, date_to)
+                                   for ths_code, date_from, date_to in table.fetchall() if
+                                   ths_code_set is None or ths_code in ths_code_set}
+    # 设置 dtype
+    dtype = {key: val for key, _, val in indicator_param_list}
+    dtype['ths_code'] = String(20)
+    dtype['time'] = Date
+
+    data_df_list, data_count, tot_data_count, code_count = [], 0, 0, len(code_date_range_dic)
+    try:
+        for num, (ths_code, (begin_time, end_time)) in enumerate(code_date_range_dic.items(), start=1):
+            logger.debug('%d/%d) %s [%s - %s]', num, code_count, ths_code, begin_time, end_time)
+            data_df = invoker.THS_HistoryQuotes(
+                ths_code,
+                json_indicator,
+                'Interval:D,CPS:1,baseDate:1900-01-01,Currency:YSHB,fill:Previous',
+                begin_time, end_time
+            )
+            if data_df is not None or data_df.shape[0] > 0:
+                data_count += data_df.shape[0]
+                data_df_list.append(data_df)
+            # 大于阀值有开始插入
+            if data_count >= 10000:
+                tot_data_df = pd.concat(data_df_list)
+                tot_data_df.to_sql('ifind_stock_daily_his', engine_md, if_exists='append', index=False, dtype=dtype)
+                tot_data_count += data_count
+                data_df_list, data_count = [], 0
+    finally:
+        if data_count > 0:
+            tot_data_df = pd.concat(data_df_list)
+            tot_data_df.to_sql('ifind_stock_daily_his', engine_md, if_exists='append', index=False, dtype=dtype)
+            tot_data_count += data_count
+
+        logging.info("更新 ifind_stock_daily_his 完成 新增数据 %d 条", tot_data_count)
 
 
 if __name__ == "__main__":
