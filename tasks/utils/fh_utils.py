@@ -26,6 +26,11 @@ PATTERN_DATE_FORMAT_RESTRICT = re.compile(r"\d{4}(\D)*\d{2}(\D)*\d{2}")
 PATTERN_DATE_FORMAT = re.compile(r"\d{4}(\D)*\d{1,2}(\D)*\d{1,2}")
 
 
+def split_chunk(l: list, n: int):
+    for i in range(0, len(l), n):
+        yield l[i:i + n]
+
+
 def zip_split(*args, sep=','):
     """
     将多个字符串，按照 sep 分割对齐，形成元祖数组
@@ -984,3 +989,14 @@ if __name__ == "__main__":
     #     stat_df.to_excel(writer, sheet_name="绩效统计")
     #     writer.save()
     # logging.info("输出文件：\n%s", file_path)
+
+    # 测试 chuck 函数
+    a_list = list(range(1, 17))
+    for b_list in split_chunk(a_list, 4):
+        print(b_list)
+    for b_list in split_chunk(a_list, 5):
+        print(b_list)
+    for b_list in split_chunk(a_list, 16):
+        print(b_list)
+    for b_list in split_chunk(a_list, 17):
+        print(b_list)
