@@ -12,7 +12,7 @@ from sqlalchemy.exc import ProgrammingError
 
 from tasks.ifind import invoker
 from direstinvoker.ifind import APIError
-from tasks.utils.fh_utils import get_last, get_first, date_2_str, STR_FORMAT_DATE
+from tasks.utils.fh_utils import get_last, get_first, date_2_str, STR_FORMAT_DATE, str_2_date
 from sqlalchemy.types import String, Date, Integer
 from sqlalchemy.dialects.mysql import DOUBLE
 from tasks.utils.fh_utils import unzip_join
@@ -109,8 +109,6 @@ def import_stock_daily_ds(ths_code_set: set = None, begin_time=None):
     :param begin_time:
     :return:
     """
-    if ths_code_set is None:
-        pass
     indicator_param_list = [
         ('ths_af_stock', '', DOUBLE),
         ('ths_up_and_down_status_stock', '', String(10)),
@@ -195,11 +193,12 @@ def import_stock_daily_his(ths_code_set: set = None, begin_time=None):
     """
     通过history接口将历史数据保存到 ifind_stock_daily_his
     :param ths_code_set:
-    :param begin_time:
+    :param begin_time: 默认为None，如果非None则代表所有数据更新日期不得晚于该日期
     :return:
     """
-    if ths_code_set is None:
-        pass
+    if begin_time is not None and type(begin_time) == date:
+        begin_time = str_2_date(begin_time)
+
     indicator_param_list = [
         ('preClose', '', DOUBLE),
         ('open', '', DOUBLE),
@@ -209,7 +208,7 @@ def import_stock_daily_his(ths_code_set: set = None, begin_time=None):
         ('avgPrice', '', DOUBLE),
         ('changeRatio', '', DOUBLE),
         ('volume', '', DOUBLE),
-        ('amount', '', Integer),
+        ('amount', '', DOUBLE),
         ('turnoverRatio', '', DOUBLE),
         ('transactionAmount', '', DOUBLE),
         ('totalShares', '', DOUBLE),
@@ -242,13 +241,29 @@ def import_stock_daily_his(ths_code_set: set = None, begin_time=None):
         ) tt
         where date_frm <= if(ths_delist_date_stock<end_date, ths_delist_date_stock, end_date) 
         order by ths_code"""
-    if begin_time is None:
-        with with_db_session(engine_md) as session:
-            # 获取每只股票需要获取日线数据的日期区间
+
+    # 计算每只股票需要获取日线数据的日期区间
+    with with_db_session(engine_md) as session:
+        # 获取每只股票需要获取日线数据的日期区间
+        try:
             table = session.execute(sql_str)
-            code_date_range_dic = {ths_code: (date_from, date_to)
-                                   for ths_code, date_from, date_to in table.fetchall() if
-                                   ths_code_set is None or ths_code in ths_code_set}
+        except ProgrammingError:
+            logger.exception('获取历史数据最新交易日期失败，尝试仅适用 ifind_stock_info 表进行计算')
+            sql_str = """select ths_code, date_frm, if(ths_delist_date_stock<end_date, ths_delist_date_stock, end_date) date_to
+                FROM
+                (
+                    select info.ths_code, ths_ipo_date_stock date_frm, ths_delist_date_stock,
+                    if(hour(now())<16, subdate(curdate(),1), curdate()) end_date
+                    from ifind_stock_info info 
+                ) tt
+                where date_frm <= if(ths_delist_date_stock<end_date, ths_delist_date_stock, end_date) 
+                order by ths_code"""
+            table = session.execute(sql_str)
+
+        # 计算每只股票需要获取日线数据的日期区间
+        code_date_range_dic = {ths_code: (date_from if begin_time is None else min([date_from, begin_time]), date_to)
+                               for ths_code, date_from, date_to in table.fetchall() if
+                               ths_code_set is None or ths_code in ths_code_set}
     # 设置 dtype
     dtype = {key: val for key, _, val in indicator_param_list}
     dtype['ths_code'] = String(20)
@@ -269,17 +284,28 @@ def import_stock_daily_his(ths_code_set: set = None, begin_time=None):
                 data_df_list.append(data_df)
             # 大于阀值有开始插入
             if data_count >= 10000:
-                tot_data_df = pd.concat(data_df_list)
-                tot_data_df.to_sql('ifind_stock_daily_his', engine_md, if_exists='append', index=False, dtype=dtype)
+                data_count = save_ifind_stock_daily_his(data_df_list, dtype)
                 tot_data_count += data_count
                 data_df_list, data_count = [], 0
     finally:
         if data_count > 0:
-            tot_data_df = pd.concat(data_df_list)
-            tot_data_df.to_sql('ifind_stock_daily_his', engine_md, if_exists='append', index=False, dtype=dtype)
+            data_count = save_ifind_stock_daily_his(data_df_list, dtype)
             tot_data_count += data_count
 
         logging.info("更新 ifind_stock_daily_his 完成 新增数据 %d 条", tot_data_count)
+
+
+def save_ifind_stock_daily_his(data_df_list, dtype):
+    """保存数据到 ifind_stock_daily_his"""
+    if len(data_df_list) > 0:
+        tot_data_df = pd.concat(data_df_list)
+        # TODO: 需要解决重复数据插入问题，日后改为sql语句插入模式
+        tot_data_df.to_sql('ifind_stock_daily_his', engine_md, if_exists='append', index=False, dtype=dtype)
+        data_count = tot_data_df.shape[0]
+        logger.info('保存数据到 ifind_stock_daily_his 成功，包含 %d 条记录', data_count)
+        return data_count
+    else:
+        return 0
 
 
 if __name__ == "__main__":
