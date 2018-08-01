@@ -9,7 +9,7 @@
 """
 from tasks.utils.fh_utils import zip_split
 from tasks.config import config
-from ifind_rest.invoke import IFinDInvoker
+from direstinvoker.ifind import IFinDInvoker
 invoker = IFinDInvoker(config.IFIND_REST_URL)
 
 
@@ -21,11 +21,11 @@ def print_indicator_param_dic(*args):
     print(']')
 
 # 着两条语句不能够提前，将会导致循环引用异常
-from .stock import *
-from .trade_date import *
-
+from tasks.ifind.stock import *
+from tasks.ifind.trade_date import *
+from tasks.ifind.future import *
 
 if __name__ == '__main__':
     print_indicator_param_dic(
-        'ths_stock_short_name_stock;ths_stock_code_stock;ths_thscode_stock;ths_stock_varieties_stock;ths_ipo_date_stock;ths_listing_exchange_stock;ths_delist_date_stock;ths_corp_cn_name_stock;ths_corp_name_en_stock;ths_established_date_stock',';;;;;;;;;'
+        'ths_qhjc_future;ths_qhdm_future;ths_zqlx_future;ths_jypz_future;ths_jydw_future;ths_contract_multiplier_future;ths_bjdw_future;ths_zxbdjw_future;ths_zdfxz_future;ths_jybzj_future;ths_contract_listed_date_future;ths_ksjyr_future;ths_zhjyr_future;ths_zhjgr_future;ths_jgyf_future;ths_gpjzj_future;ths_zcjybzj_future;ths_hyyfsm_future;ths_jysjsm_future;ths_zhjyrsm_future;ths_jgrqsm_future;ths_jysjc_future;ths_hyywjc_future;ths_hyywmc_future',';;;;;;;;;;;;;;;;;;;;;;;'
     )
