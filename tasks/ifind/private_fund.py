@@ -45,7 +45,7 @@ def import_fund_info(ths_code=None, refresh=False):
     :param refresh:
     :return:
     """
-    logging.info("更新 iFind_stock_info 开始")
+    logging.info("更新 iFind_fund_info 开始")
     if ths_code is None:
         # 获取全市场私募基金代码及名称
         if refresh:
@@ -55,17 +55,18 @@ def import_fund_info(ths_code=None, refresh=False):
 
         date_end = date.today()
         private_fund_set = set()
-        while date_fetch < date_end:
-            private_fund_set_sub = get_private_fund_set(date_fetch)
-            if private_fund_set_sub is not None:
-                private_fund_set |= private_fund_set_sub
-            date_fetch += timedelta(days=90)
+        # while date_fetch < date_end:
+        #     private_fund_set_sub = get_private_fund_set(date_fetch)
+        #     if private_fund_set_sub is not None:
+        #         private_fund_set |= private_fund_set_sub
+        #     date_fetch += timedelta(days=90)
 
         private_fund_set_sub = get_private_fund_set(date_end)
         if private_fund_set_sub is not None:
             private_fund_set |= private_fund_set_sub
 
-        ths_code = ','.join(private_fund_set)
+        ths_code = list(private_fund_set)
+        ths_code = ths_code[:5]
 
     indicator_param_list = [
         ('ths_product_short_name_sp', '', String(10)),
@@ -97,7 +98,7 @@ def import_fund_info(ths_code=None, refresh=False):
     # jsonIndicator='THS_BasicData('SM000008.XT','ths_product_short_name_sp;ths_product_full_name_sp;ths_trust_category_sp;ths_is_structured_product_sp;ths_threshold_amt_sp;ths_low_add_amt_sp;ths_fore_max_issue_scale_sp;ths_actual_issue_scale_sp;ths_invest_manager_current_sp;ths_invest_advisor_sp;ths_mendator_sp;ths_recommend_sd_sp;ths_introduction_ed_sp;ths_established_date_sp;ths_maturity_date_sp;ths_found_years_sp;ths_duration_y_sp;ths_remain_duration_d_sp;ths_float_manage_rate_sp;ths_mandate_fee_rate_sp;ths_subscription_rate_explain_sp;ths_redemp_rate_explain_sp;ths_opening_period_explain_sp;ths_close_period_explain_sp;ths_trustee_sp;ths_secbroker_sp'
     # jsonparam=';;;;;;;;;'
     indicator, param = unzip_join([(key, val) for key, val, _ in indicator_param_list], sep=';')
-    data_df = invoker.THS_BasicData(ths_code, indicator, param)
+    data_df = invoker.THS_BasicData(ths_code, indicator, param, max_code_num=8000)
     if data_df is None or data_df.shape[0] == 0:
         logging.info("没有可用的 stock info 可以更新")
         return
@@ -209,6 +210,6 @@ order by ths_code"""
 if __name__ == "__main__":
     ths_code = None  # '600006.SH,600009.SH'
     # 基金基本信息数据加载
-    # import_stock_info(ths_code)
+    import_fund_info(ths_code)
     # 基金日K数据行情加载
-    import_private_fund_daily(ths_code)
+    # import_private_fund_daily(ths_code)
