@@ -371,6 +371,25 @@ def get_df_between_date(data_df, date_frm, date_to):
     return new_data_df
 
 
+def _get_df_between_date_by_index(data_df, date_frm, date_to):
+    """
+    该函数仅用于 return_risk_analysis 中计算使用
+    :param data_df:
+    :param date_frm:
+    :param date_to:
+    :return:
+    """
+    if date_frm is not None and date_to is not None:
+        new_data_df = data_df[(data_df.index >= date_frm) & (data_df.index <= date_to)]
+    elif date_frm is not None:
+        new_data_df = data_df[data_df.index >= date_frm]
+    elif date_to is not None:
+        new_data_df = data_df[data_df.index <= date_to]
+    else:
+        new_data_df = data_df
+    return new_data_df
+
+
 def return_risk_analysis_old(nav_df: pd.DataFrame, date_frm=None, date_to=None, freq='weekly', rf=0.02):
     """
     按列统计 rr_df 收益率绩效
@@ -511,6 +530,175 @@ def return_risk_analysis_old(nav_df: pd.DataFrame, date_frm=None, date_to=None, 
     stat_df = pd.DataFrame(stat_dic_dic)
     stat_df = stat_df.ix[list(stat_dic.keys())]
     return stat_df
+
+
+def calc_performance(nav_df: pd.DataFrame, date_frm=None, date_to=None, freq='weekly', rf=0.02, suffix_name=None):
+    """
+    按列统计 rr_df 收益率绩效
+    :param nav_df: 收益率DataFrame，index为日期，每一列为一个产品的净值走势
+    :param date_frm: 统计日期区间，可以为空
+    :param date_to: 统计日期区间，可以为空
+    :param freq: None 自动识别, 'daily' 'weekly' 'monthly'
+    :param rf: 无风险收益率，默认 0.02
+    :return:
+    """
+    nav_sorted_df = nav_df.copy()
+    nav_sorted_df.index = [try_2_date(idx) for idx in nav_sorted_df.index]
+    nav_sorted_df.sort_index(inplace=True)
+    # 计算数据实际频率是日频、周频、月頻
+    data_count = nav_sorted_df.shape[0]
+    day_per_data = (nav_sorted_df.index[data_count - 1] - nav_sorted_df.index[0]).days / data_count
+    if day_per_data <= 0.008:
+        freq_real = 'minute'
+    elif day_per_data <= 0.2:
+        freq_real = 'hour'
+    elif day_per_data <= 2:
+        freq_real = 'daily'
+    elif day_per_data <= 10:
+        freq_real = 'weekly'
+    else:
+        freq_real = 'monthly'
+    if freq is None:
+        freq = freq_real
+    elif freq != freq_real:
+        warnings_msg = "data freq wrong, expect %s, but %s was detected" % (freq, freq_real)
+        # warnings.warn(warnings_msg)
+        # logging.warning(warnings_msg)
+        raise ValueError(warnings_msg)
+
+    freq_str = ''
+    if freq == 'weekly':
+        data_count_per_year = 50
+        freq_str = '周'
+    elif freq == 'monthly':
+        data_count_per_year = 12
+        freq_str = '月'
+    elif freq == 'daily':
+        data_count_per_year = 250
+        freq_str = '日'
+    elif freq == 'hour':
+        data_count_per_year = 1250
+        freq_str = '时'
+    elif freq == 'minute':
+        data_count_per_year = 75000
+        freq_str = '分'
+    else:
+        raise ValueError('freq=%s 只接受 daily weekly monthly 三种之一', freq)
+    stat_dic_dic = OrderedDict()
+    if type(date_frm) is str:
+        date_frm = datetime.strptime(date_frm, '%Y-%m-%d').date()
+    if type(date_to) is str:
+        date_to = datetime.strptime(date_to, '%Y-%m-%d').date()
+
+    col_name_list = list(nav_sorted_df.columns)
+    # date_col_name = col_name_list[0]
+    # col_name_list = col_name_list[1:]
+    for col_name in col_name_list:
+        data_sub_df = nav_sorted_df[[col_name]].dropna()
+        if data_sub_df.shape[0] == 0:
+            continue
+        # rr_df = (1 + data_sub_df.pct_change().fillna(0)).cumprod()
+        # rr_df.index = [try_2_date(d) for d in rr_df.index]
+        # data_df = rr_df.reset_index()
+        # data_df.columns = ['Date', 'Value']
+        # 2018-07-01 不再重置索引，index为日期字段
+        data_df = _get_df_between_date_by_index(data_sub_df, date_frm, date_to)
+        data_df.columns = ['Value']
+        rr_df = data_df.Value.pct_change().fillna(0)
+        data_df.Value = (1 + rr_df).cumprod()
+        data_df['ret'] = rr_df
+        date_list = list(data_df.index)
+        date_latest = date_list[-1]
+        nav_latest = data_df.Value.loc[date_latest]
+        # 计算 近7天，近30天，近365天收益率
+        date_week_ago = date_latest - timedelta(days=7)
+        date_month_ago = date_latest - timedelta(days=30)
+        date_year_ago = date_latest - timedelta(days=365)
+        date_week_ago = get_last(date_list, lambda x: x <= date_week_ago)
+        date_month_ago = get_last(date_list, lambda x: x <= date_month_ago)
+        date_year_ago = get_last(date_list, lambda x: x <= date_year_ago)
+        rr_week = (nav_latest / data_df.Value.loc[date_week_ago] - 1) if date_week_ago is not None else None
+        rr_month = (nav_latest / data_df.Value.loc[date_month_ago] - 1) if date_month_ago is not None else None
+        rr_year = (nav_latest / data_df.Value.loc[date_year_ago] - 1) if date_year_ago is not None else None
+
+        # 计算时间跨度
+        date_span = date_list[-1] - date_list[0]
+        date_span_fraction = 365 / date_span.days if date_span.days > 0 else 1
+        # basic indicators
+        CAGR = data_df.Value[date_latest] ** date_span_fraction - 1
+        # 相当于余额宝倍数
+        times_yeb = (CAGR - 1) / 0.03
+        rr_tot = data_df.Value[date_latest] - 1
+        ann_vol = np.std(data_df.ret, ddof=1) * np.sqrt(data_count_per_year)
+        down_side_vol = np.std(data_df.ret[data_df.ret < 0], ddof=1) * np.sqrt(data_count_per_year)
+        # WeeksNum = data.shape[0]
+        profit_loss_ratio = -np.mean(data_df.ret[data_df.ret > 0]) / np.mean(data_df.ret[data_df.ret < 0])
+        win_ratio = len(data_df.ret[data_df.ret >= 0]) / len(data_df.ret)
+        min_value = min(data_df.Value)
+        final_value = data_df.Value[data_df.index[-1]]
+        max_ret = max(data_df.ret)
+        min_ret = min(data_df.ret)
+        # End of basic indicators
+        # max dropdown related
+        data_df['mdd'] = data_df.Value / data_df.Value.cummax() - 1
+        mdd_size = min(data_df.mdd)
+        droparray = pd.Series(data_df.index[data_df.mdd == 0])
+        if len(droparray) == 1:
+            mdd_max_period = len(data_df.mdd)
+        else:
+            if float(data_df.Value[droparray.tail(1)]) > float(data_df.Value.tail(1)):
+                droparray = droparray.append(pd.Series(data_df.index[-1]))  # , ignore_index=True
+            mdd_max_period = max(droparray.diff().dropna()).days - 1
+        # End of max dropdown related
+        # High level indicators
+        sharpe_ratio = (CAGR - rf) / ann_vol
+        sortino_ratio = (CAGR - rf) / down_side_vol
+        calmar_ratio = CAGR / (-mdd_size)
+        #  Natural month return
+        j = 1
+        for i, (date_4_df_idx, item) in enumerate(data_df.T.items()):
+            if i == 0:
+                month_ret = pd.DataFrame([[date_4_df_idx, item.Value]], columns=('Date', 'Value'))
+            else:
+                date_last_4_last = data_df.index[i - 1]
+                if date_4_df_idx.month != date_last_4_last.month:
+                    month_ret.loc[j] = [date_last_4_last, data_df.Value[date_last_4_last]]
+                    j += 1
+
+        month_ret.loc[j] = [date_latest, nav_latest]
+        month_ret['ret'] = month_ret.Value.pct_change().fillna(0)
+        max_rr_month = max(month_ret.ret)
+        min_rr_month = min(month_ret.ret)
+        # End of Natural month return
+        date_begin = date_list[0]  # .date()
+        date_end = date_list[-1]
+        stat_dic = OrderedDict([('date_begen', date_begin),
+                                ('date_end', date_end),
+                                ('rr_tot', rr_tot),
+                                ('rr_week', rr_week),
+                                ('rr_month', rr_month),
+                                ('rr_year', rr_year),
+                                ('final_value', final_value),
+                                ('min_value', min_value),
+                                ('CAGR', CAGR),
+                                ('ann_vol', ann_vol),
+                                ('down_side_vol', down_side_vol),
+                                ('mdd', mdd_size),
+                                ('sharpe_ratio', sharpe_ratio),
+                                ('sortino_ratio', sortino_ratio),
+                                ('calmar_ratio', calmar_ratio),
+                                ('profit_loss_ratio', profit_loss_ratio),  # 盈亏比
+                                ('win_ratio', '%.2f' % win_ratio),  # 胜率
+                                ('mdd_max_period', mdd_max_period),  # 最长不创新高周期数
+                                ('freq', freq_str),  # 周期类型
+                                ('max_ret', max_ret),  # 统计周期最大收益
+                                ('min_ret', min_ret),  # 统计周期最大亏损
+                                ('max_rr_month', max_rr_month),  # 最大月收益
+                                ('min_rr_month', min_rr_month),  # 最大月亏损
+                                ])
+        stat_dic_dic[col_name if suffix_name is None else col_name + "_" + suffix_name] = stat_dic
+
+    return stat_dic_dic
 
 
 def return_risk_analysis(nav_df: pd.DataFrame, date_frm=None, date_to=None, freq='weekly', rf=0.02, suffix_name=None):
@@ -701,11 +889,13 @@ class DataFrame(pd.DataFrame):
 
 def reduce_list(funx, data_list, initial=None):
     result_list = []
+
     def reduce_func(x, y):
         # print(x,y)
         result = funx(x, y)
         result_list.append(result)
         return result
+
     if initial is None:
         reduce(reduce_func, data_list)
     else:
@@ -742,7 +932,8 @@ def drawback_analysis(data_df, keep_max=False):
     if data_df is None or data_df.shape[0] <= 1:
         mdd_df = None
     else:
-        mdd_df = data_df.apply(lambda xx: [rr[1] for rr in reduce_list(_calc_mdd_4_drawback_analysis, xx, (xx.iloc[0], 0, keep_max))])
+        mdd_df = data_df.apply(
+            lambda xx: [rr[1] for rr in reduce_list(_calc_mdd_4_drawback_analysis, xx, (xx.iloc[0], 0, keep_max))])
     return mdd_df
 
 
