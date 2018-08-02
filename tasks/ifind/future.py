@@ -188,7 +188,8 @@ def import_future_info():
     code_set = set()
     ndays_per_update = 60
     # 获取历史期货合约列表信息
-    for future_sectorid_dic in future_sectorid_dic_list:
+    sector_count = len(future_sectorid_dic_list)
+    for num, future_sectorid_dic in enumerate(future_sectorid_dic_list, start=1):
         subject_name = future_sectorid_dic['subject_name']
         sector_id = future_sectorid_dic['sectorid']
         regex_str = future_sectorid_dic['regex']
@@ -196,7 +197,8 @@ def import_future_info():
         # 计算获取合约列表的起始日期
         date_since = get_date_since(code_ipo_date_dic, regex_str, date_establish)
         date_yestoday = date.today() - timedelta(days=1)
-        logger.debug('获取 %s %s [%s - %s] 合约列表', subject_name, sector_id, date_since, date_yestoday)
+        logger.debug('%d/%d) 获取 %s %s [%s - %s] 合约列表',
+                     num, sector_count, subject_name, sector_id, date_since, date_yestoday)
         while date_since <= date_yestoday:
             date_since_str = date_since.strftime(STR_FORMAT_DATE)
             # 获取合约列表

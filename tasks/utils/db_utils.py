@@ -14,7 +14,13 @@ import json
 from datetime import date, datetime, timedelta
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.expression import Insert
+<<<<<<< HEAD
 from tasks.utils.fh_utils import date_2_str
+=======
+from .fh_utils import date_2_str
+import logging
+logger = logging.getLogger()
+>>>>>>> 14ba2471f68f21869152250792b1f1926b414e7a
 
 
 class SessionWrapper:
@@ -90,3 +96,27 @@ def append_string(insert, compiler, **kw):
         generated_directive = ["{0}=VALUES({0})".format(field) for field in fields]
         return s + " ON DUPLICATE KEY UPDATE " + ",".join(generated_directive)
     return s
+
+
+def alter_table_2_myisam(engine_md, table_name_list=None):
+    """
+    修改表默认 engine 为 myisam
+    :param engine_md:
+    :param table_name_list:
+    :return:
+    """
+    if table_name_list is None:
+        table_name_list = engine_md.table_names()
+    with with_db_session(engine=engine_md) as session:
+        data_count = len(table_name_list)
+        for num, table_name in enumerate(table_name_list):
+            # sql_str = "show table status from {Config.DB_SCHEMA_MD} where name=:table_name"
+            row_data = session.execute('show table status like :table_name', params={'table_name': table_name}).first()
+            if row_data is None:
+                continue
+            if row_data[1].lower() == 'myisam':
+                continue
+
+            logger.info('%d/%d)修改 %s 表引擎为 MyISAM', num, data_count, table_name)
+            sql_str = "ALTER TABLE %s ENGINE = MyISAM" % table_name
+            session.execute(sql_str)
