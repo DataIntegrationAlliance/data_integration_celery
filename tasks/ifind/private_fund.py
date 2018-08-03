@@ -28,7 +28,8 @@ BASE_LINE_HOUR = 20
 
 def get_private_fund_set(date_fetch):
     date_fetch_str = date_fetch.strftime(STR_FORMAT_DATE)
-    fund_df = invoker.THS_DataPool('block', date_fetch_str + ';051010001', 'date:Y,thscode:Y,security_name:Y')
+    # 051010001
+    fund_df = invoker.THS_DataPool('block', date_fetch_str + ';051010020005002', 'date:Y,thscode:Y,security_name:Y')
     if fund_df is None:
         logging.warning('%s 获取基金代码失败', date_fetch_str)
         return None
@@ -69,16 +70,16 @@ def import_fund_info(ths_code=None, refresh=False):
         ths_code = ths_code[:5]
 
     indicator_param_list = [
-        ('ths_product_short_name_sp', '', String(10)),
-        ('ths_product_full_name_sp', '', String(10)),
-        ('ths_trust_category_sp', '', String(10)),
-        ('ths_is_structured_product_sp', '', Boolean),
+        ('ths_product_short_name_sp', '', String(40)),
+        ('ths_product_full_name_sp', '', String(40)),
+        ('ths_trust_category_sp', '', String(40)),
+        ('ths_is_structured_product_sp', '', String(10)),
         ('ths_threshold_amt_sp', '', Integer),
         ('ths_low_add_amt_sp', '', Integer),
         ('ths_fore_max_issue_scale_sp', '', String(40)),
         ('ths_actual_issue_scale_sp', '', String(40)),
         ('ths_invest_manager_current_sp', '', String(10)),
-        ('ths_mendator_sp', '', String(10)),
+        ('ths_mendator_sp', '', String(20)),
         ('ths_recommend_sd_sp', '', Date),
         ('ths_introduction_ed_sp', '', Date),
         ('ths_established_date_sp', '', Date),
@@ -90,10 +91,10 @@ def import_fund_info(ths_code=None, refresh=False):
         ('ths_mandate_fee_rate_sp', '', DOUBLE),
         ('ths_subscription_rate_explain_sp', '', String(60)),
         ('ths_redemp_rate_explain_sp', '', String(60)),
-        ('ths_opening_period_explain_sp', '', String(60)),
+        ('ths_opening_period_explain_sp', '', String(80)),
         ('ths_close_period_explain_sp', '', String(60)),
-        ('ths_trustee_sp', '', String(10)),
-        ('ths_secbroker_sp', '', String(10))
+        ('ths_trustee_sp', '', String(100)),
+        ('ths_secbroker_sp', '', String(40))
     ]
     # jsonIndicator='THS_BasicData('SM000008.XT','ths_product_short_name_sp;ths_product_full_name_sp;ths_trust_category_sp;ths_is_structured_product_sp;ths_threshold_amt_sp;ths_low_add_amt_sp;ths_fore_max_issue_scale_sp;ths_actual_issue_scale_sp;ths_invest_manager_current_sp;ths_invest_advisor_sp;ths_mendator_sp;ths_recommend_sd_sp;ths_introduction_ed_sp;ths_established_date_sp;ths_maturity_date_sp;ths_found_years_sp;ths_duration_y_sp;ths_remain_duration_d_sp;ths_float_manage_rate_sp;ths_mandate_fee_rate_sp;ths_subscription_rate_explain_sp;ths_redemp_rate_explain_sp;ths_opening_period_explain_sp;ths_close_period_explain_sp;ths_trustee_sp;ths_secbroker_sp'
     # jsonparam=';;;;;;;;;'
@@ -103,13 +104,15 @@ def import_fund_info(ths_code=None, refresh=False):
         logging.info("没有可用的 stock info 可以更新")
         return
     # 删除历史数据，更新数据
-    with with_db_session(engine_md) as session:
-        session.execute(
-            "DELETE FROM ifind_private_fund_info WHERE ths_code IN (" + ','.join(
-                [':code%d' % n for n in range(len(private_fund_set))]
-            ) + ")",
-            params={'code%d' % n: val for n, val in enumerate(private_fund_set)})
-        session.commit()
+    table_name_list = engine_md.table_names()
+    if 'ifind_private_fund_info' in table_name_list:
+        with with_db_session(engine_md) as session:
+            session.execute(
+                "DELETE FROM ifind_private_fund_info WHERE ths_code IN (" + ','.join(
+                    [':code%d' % n for n in range(len(private_fund_set))]
+                ) + ")",
+                params={'code%d' % n: val for n, val in enumerate(private_fund_set)})
+            session.commit()
     dtype = {key: val for key, _, val in indicator_param_list}
     dtype['ths_code'] = String(20)
     data_count = data_df.shape[0]
@@ -136,12 +139,12 @@ def import_private_fund_daily(ths_code_set: set = None, begin_time=None):
         ('estimatedPosition', '', DOUBLE)
     ]
     # jsonIndicator='netAssetValue，adjustedNAV，accumulatedNAV，premium，premiumRatio，estimatedPosition'
-    # jsonparam=';;;;;;;;;'
+    # jsonparam=';;;;'
     json_indicator, json_param = unzip_join([(key, val) for key, val, _ in indicator_param_list], sep=';')
-    sql_str = """select ths_code, date_frm, if(ths_maturaity_date_sp<end_date, ths_maturaity_date_sp, end_date) date_to
+    sql_str = """select ths_code, date_frm, if(ths_maturity_date_sp<end_date, ths_maturity_date_sp, end_date) date_to
 FROM
 (
-    select info.ths_code, ifnull(trade_date_max_1, ths_ipo_date_stock) date_frm, ths_maturaity_date_sp,
+    select info.ths_code, ifnull(trade_date_max_1, ths_established_date_sp) date_frm, ths_maturity_date_sp,
     if(hour(now())<16, subdate(curdate(),1), curdate()) end_date
     from 
         ifind_private_fund_info info 
@@ -149,7 +152,7 @@ FROM
         (select ths_code, adddate(max(time),1) trade_date_max_1 from ifind_private_fund_daily group by ths_code) daily
     on info.ths_code = daily.ths_code
 ) tt
-where date_frm <= if(ths_maturaity_date_sp<end_date, ths_maturaity_date_sp, end_date) 
+where date_frm <= if(ths_maturity_date_sp<end_date, ths_maturity_date_sp, end_date) 
 order by ths_code"""
     if begin_time is None:
         with with_db_session(engine_md) as session:
@@ -157,15 +160,15 @@ order by ths_code"""
             try:
                 table = session.execute(sql_str)
             except ProgrammingError:
-                logger.exception('获取历史数据最新交易日期失败，尝试仅适用 ifind_stock_info 表进行计算')
-                sql_str = """select ths_code, date_frm, if(ths_maturaity_date_sp<end_date, ths_maturaity_date_sp, end_date) date_to
+                logger.exception('获取历史数据最新交易日期失败，尝试仅适用 ifind_private_fund_info 表进行计算')
+                sql_str = """select ths_code, date_frm, if(ths_maturity_date_sp<end_date, ths_maturity_date_sp, end_date) date_to
                                     FROM
                                     (
-                                        select info.ths_code, ths_ipo_date_stock date_frm, ths_maturaity_date_sp,
+                                        select info.ths_code, ths_established_date_sp date_frm, ths_maturity_date_sp,
                                         if(hour(now())<16, subdate(curdate(),1), curdate()) end_date
-                                        from ifind_stock_info info 
+                                        from ifind_private_fund_info info 
                                     ) tt
-                                    where date_frm <= if(ths_maturaity_date_sp<end_date, ths_maturaity_date_sp, end_date) 
+                                    where date_frm <= if(ths_maturity_date_sp<end_date, ths_maturity_date_sp, end_date) 
                                     order by ths_code"""
                 table = session.execute(sql_str)
 
@@ -182,11 +185,10 @@ order by ths_code"""
     try:
         for num, (ths_code, (begin_time, end_time)) in enumerate(code_date_range_dic.items(), start=1):
             logger.debug('%d/%d) %s [%s - %s]', num, code_count, ths_code, begin_time, end_time)
-            data_df = invoker.THS_DateSerial(
+            data_df = invoker.THS_HistoryQuotes(
                 ths_code,
                 json_indicator,
                 json_param,
-                'Days:Tradedays,Fill:Previous,Interval:D',
                 begin_time, end_time
             )
             if data_df is not None or data_df.shape[0] > 0:
@@ -212,4 +214,4 @@ if __name__ == "__main__":
     # 基金基本信息数据加载
     import_fund_info(ths_code)
     # 基金日K数据行情加载
-    # import_private_fund_daily(ths_code)
+    import_private_fund_daily(ths_code)
