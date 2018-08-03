@@ -308,6 +308,27 @@ def save_ifind_stock_daily_his(data_df_list, dtype):
         return 0
 
 
+@app.task
+def add_column(col_name, param, dtype, db_col_name=None):
+    """
+    1）修改 daily 表，增加字段
+    2）ckpv表增加数据
+    3）第二部不见得1天能够完成，当第二部完成后，将ckvp数据更新daily表中
+    :param col_name:增加字段名称
+    :param param: 参数
+    :param dtype: 数据库字段类型
+    :param db_col_name: 默认为 None，此时与col_name相同
+    :return:
+    """
+    if db_col_name is None:
+        # 默认为 None，此时与col_name相同
+        db_col_name = col_name
+
+    # 检查当前数据库是否存在 db_col_name 列，如果不存在则添加该列
+
+
+
+
 if __name__ == "__main__":
     ths_code = None  # '600006.SH,600009.SH'
     # 股票基本信息数据加载
