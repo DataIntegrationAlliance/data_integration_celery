@@ -141,3 +141,4 @@ def add_col_2_table(engine, table_name, col_name, col_type_str):
         )
         with with_db_session(engine) as session:
             session.execute(add_col_sql_str)
+        logger.info('%s 添加 %s [%s] 列成功', table_name, col_name, col_type_str)
