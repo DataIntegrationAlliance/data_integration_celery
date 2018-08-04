@@ -24,7 +24,7 @@ def init(alter_table=False):
 
     # 将info、daily表自动增加主键
     query_pk_str = """SELECT column_name FROM INFORMATION_SCHEMA.`KEY_COLUMN_USAGE` 
-      WHERE table_name='sys_user' AND CONSTRAINT_SCHEMA=:DB_NAME_MD AND constraint_name='PRIMARY'"""
+      WHERE table_name=:table_name AND CONSTRAINT_SCHEMA=:schema AND constraint_name='PRIMARY'"""
     create_daily_pk_str = """ALTER TABLE %s
         CHANGE COLUMN `ths_code` `ths_code` VARCHAR(20) NOT NULL ,
         CHANGE COLUMN `time` `time` DATE NOT NULL ,
