@@ -111,48 +111,49 @@ def import_stock_daily_ds(ths_code_set: set = None, begin_time=None):
     indicator_param_list = [
         ('ths_af_stock', '', DOUBLE),
         ('ths_up_and_down_status_stock', '', String(10)),
-        ('ths_trading_status_stock', '', String(50)),
-        ('ths_suspen_reason_stock', '', String(50)),
+        ('ths_trading_status_stock', '', String(80)),
+        ('ths_suspen_reason_stock', '', String(80)),
         ('ths_last_td_date_stock', '', Date),
     ]
     # jsonIndicator='ths_pre_close_stock;ths_open_price_stock;ths_high_price_stock;ths_low_stock;ths_close_price_stock;ths_chg_ratio_stock;ths_chg_stock;ths_vol_stock;ths_trans_num_stock;ths_amt_stock;ths_turnover_ratio_stock;ths_vaild_turnover_stock;ths_af_stock;ths_up_and_down_status_stock;ths_trading_status_stock;ths_suspen_reason_stock;ths_last_td_date_stock'
     # jsonparam='100;100;100;100;100;;100;100;;;;;;;;;'
     json_indicator, json_param = unzip_join([(key, val) for key, val, _ in indicator_param_list], sep=';')
-    sql_str = """SELECT ths_code, date_frm, if(ths_delist_date_stock<end_date, ths_delist_date_stock, end_date) date_to
-        FROM
-        (
-            SELECT info.ths_code, ifnull(trade_date_max_1, ths_ipo_date_stock) date_frm, ths_delist_date_stock,
-            if(hour(now())<16, subdate(curdate(),1), curdate()) end_date
-            FROM 
-                ifind_stock_info info 
-            LEFT OUTER JOIN
-                (SELECT ths_code, adddate(max(time),1) trade_date_max_1 FROM ifind_stock_daily_ds GROUP BY ths_code) daily
-            ON info.ths_code = daily.ths_code
-        ) tt
-        WHERE date_frm <= if(ths_delist_date_stock<end_date, ths_delist_date_stock, end_date) 
-        ORDER BY ths_code"""
-    if begin_time is None:
-        with with_db_session(engine_md) as session:
-            # 获取每只股票需要获取日线数据的日期区间
-            try:
-                table = session.execute(sql_str)
-            except ProgrammingError:
-                logger.exception('获取历史数据最新交易日期失败，尝试仅适用 ifind_stock_info 表进行计算')
-                sql_str = """SELECT ths_code, date_frm, if(ths_delist_date_stock<end_date, ths_delist_date_stock, end_date) date_to
-                    FROM
-                    (
-                        SELECT info.ths_code, ths_ipo_date_stock date_frm, ths_delist_date_stock,
-                        if(hour(now())<16, subdate(curdate(),1), curdate()) end_date
-                        FROM ifind_stock_info info 
-                    ) tt
-                    WHERE date_frm <= if(ths_delist_date_stock<end_date, ths_delist_date_stock, end_date) 
-                    ORDER BY ths_code"""
-                table = session.execute(sql_str)
+    if engine_md.has_table('ifind_stock_daily_ds'):
+        sql_str = """SELECT ths_code, date_frm, if(ths_delist_date_stock<end_date, ths_delist_date_stock, end_date) date_to
+            FROM
+            (
+                SELECT info.ths_code, ifnull(trade_date_max_1, ths_ipo_date_stock) date_frm, ths_delist_date_stock,
+                if(hour(now())<16, subdate(curdate(),1), curdate()) end_date
+                FROM 
+                    ifind_stock_info info 
+                LEFT OUTER JOIN
+                    (SELECT ths_code, adddate(max(time),1) trade_date_max_1 FROM ifind_stock_daily_ds GROUP BY ths_code) daily
+                ON info.ths_code = daily.ths_code
+            ) tt
+            WHERE date_frm <= if(ths_delist_date_stock<end_date, ths_delist_date_stock, end_date) 
+            ORDER BY ths_code"""
+    else:
+        sql_str = """SELECT ths_code, date_frm, if(ths_delist_date_stock<end_date, ths_delist_date_stock, end_date) date_to
+            FROM
+            (
+                SELECT info.ths_code, ths_ipo_date_stock date_frm, ths_delist_date_stock,
+                if(hour(now())<16, subdate(curdate(),1), curdate()) end_date
+                FROM ifind_stock_info info 
+            ) tt
+            WHERE date_frm <= if(ths_delist_date_stock<end_date, ths_delist_date_stock, end_date) 
+            ORDER BY ths_code"""
+        logger.warning('ifind_stock_daily_ds 不存在，仅使用 ifind_stock_info 表进行计算日期范围')
+    with with_db_session(engine_md) as session:
+        # 获取每只股票需要获取日线数据的日期区间
+        table = session.execute(sql_str)
 
-            # 获取每只股票需要获取日线数据的日期区间
-            code_date_range_dic = {ths_code: (date_from, date_to)
-                                   for ths_code, date_from, date_to in table.fetchall() if
-                                   ths_code_set is None or ths_code in ths_code_set}
+        table = session.execute(sql_str)
+
+        # 获取每只股票需要获取日线数据的日期区间
+        code_date_range_dic = {
+            ths_code: (date_from if begin_time is None else min([date_from, begin_time]), date_to)
+            for ths_code, date_from, date_to in table.fetchall() if
+            ths_code_set is None or ths_code in ths_code_set}
     # 设置 dtype
     dtype = {key: val for key, _, val in indicator_param_list}
     dtype['ths_code'] = String(20)
@@ -233,20 +234,20 @@ def import_stock_daily_his(ths_code_set: set = None, begin_time=None):
     json_indicator, _ = unzip_join([(key, val) for key, val, _ in indicator_param_list], sep=';')
     if engine_md.has_table('ifind_stock_daily_his'):
         sql_str = """SELECT ths_code, date_frm, if(ths_delist_date_stock<end_date, ths_delist_date_stock, end_date) date_to
-        FROM
-        (
-            SELECT info.ths_code, ifnull(trade_date_max_1, ths_ipo_date_stock) date_frm, ths_delist_date_stock,
-            if(hour(now())<16, subdate(curdate(),1), curdate()) end_date
-            FROM 
-                ifind_stock_info info 
-            LEFT OUTER JOIN
-                (SELECT ths_code, adddate(max(time),1) trade_date_max_1 FROM ifind_stock_daily_his GROUP BY ths_code) daily
-            ON info.ths_code = daily.ths_code
-        ) tt
-        WHERE date_frm <= if(ths_delist_date_stock<end_date, ths_delist_date_stock, end_date) 
-        ORDER BY ths_code"""
+            FROM
+            (
+                SELECT info.ths_code, ifnull(trade_date_max_1, ths_ipo_date_stock) date_frm, ths_delist_date_stock,
+                if(hour(now())<16, subdate(curdate(),1), curdate()) end_date
+                FROM 
+                    ifind_stock_info info 
+                LEFT OUTER JOIN
+                    (SELECT ths_code, adddate(max(time),1) trade_date_max_1 FROM ifind_stock_daily_his GROUP BY ths_code) daily
+                ON info.ths_code = daily.ths_code
+            ) tt
+            WHERE date_frm <= if(ths_delist_date_stock<end_date, ths_delist_date_stock, end_date) 
+            ORDER BY ths_code"""
     else:
-        logger.warning('获取历史数据最新交易日期失败，尝试仅适用 ifind_stock_info 表进行计算')
+        logger.warning('ifind_stock_daily_his 不存在，仅使用 ifind_stock_info 表进行计算日期范围')
         sql_str = """SELECT ths_code, date_frm, if(ths_delist_date_stock<end_date, ths_delist_date_stock, end_date) date_to
             FROM
             (
@@ -262,9 +263,10 @@ def import_stock_daily_his(ths_code_set: set = None, begin_time=None):
         # 获取每只股票需要获取日线数据的日期区间
         table = session.execute(sql_str)
         # 计算每只股票需要获取日线数据的日期区间
-        code_date_range_dic = {ths_code: (date_from if begin_time is None else min([date_from, begin_time]), date_to)
-                               for ths_code, date_from, date_to in table.fetchall() if
-                               ths_code_set is None or ths_code in ths_code_set}
+        code_date_range_dic = {
+            ths_code: (date_from if begin_time is None else min([date_from, begin_time]), date_to)
+            for ths_code, date_from, date_to in table.fetchall() if
+            ths_code_set is None or ths_code in ths_code_set}
     # 设置 dtype
     dtype = {key: val for key, _, val in indicator_param_list}
     dtype['ths_code'] = String(20)
@@ -361,21 +363,21 @@ def add_data_2_ckdvp(json_indicator, json_param, ths_code_set: set = None, begin
     has_table = engine_md.has_table('ifind_ckdvp_stock')
     if has_table:
         sql_str = """
-        select ths_code, date_frm, if(ths_delist_date_stock<end_date, ths_delist_date_stock, end_date) date_to
-        FROM
-        (
-            select info.ths_code, ifnull(trade_date_max_1, ths_ipo_date_stock) date_frm, ths_delist_date_stock,
-                if(hour(now())<16, subdate(curdate(),1), curdate()) end_date
-            from 
-                ifind_stock_info info 
-            left outer join
-                (select ths_code, adddate(max(time),1) trade_date_max_1 from ifind_ckdvp_stock 
-                    where ifind_ckdvp_stock.key='{0}' and param='{1}' group by ths_code
-                ) daily
-            on info.ths_code = daily.ths_code
-        ) tt
-        where date_frm <= if(ths_delist_date_stock<end_date, ths_delist_date_stock, end_date) 
-        order by ths_code""".format(json_indicator, json_param)
+            select ths_code, date_frm, if(ths_delist_date_stock<end_date, ths_delist_date_stock, end_date) date_to
+            FROM
+            (
+                select info.ths_code, ifnull(trade_date_max_1, ths_ipo_date_stock) date_frm, ths_delist_date_stock,
+                    if(hour(now())<16, subdate(curdate(),1), curdate()) end_date
+                from 
+                    ifind_stock_info info 
+                left outer join
+                    (select ths_code, adddate(max(time),1) trade_date_max_1 from ifind_ckdvp_stock 
+                        where ifind_ckdvp_stock.key='{0}' and param='{1}' group by ths_code
+                    ) daily
+                on info.ths_code = daily.ths_code
+            ) tt
+            where date_frm <= if(ths_delist_date_stock<end_date, ths_delist_date_stock, end_date) 
+            order by ths_code""".format(json_indicator, json_param)
     else:
         logger.warning('ifind_ckdvp_stock 不存在，仅使用 ifind_stock_info 表进行计算日期范围')
         sql_str = """
@@ -460,14 +462,14 @@ def add_data_2_ckdvp(json_indicator, json_param, ths_code_set: set = None, begin
 
 
 if __name__ == "__main__":
-    DEBUG = True
-    ths_code = None  # '600006.SH,600009.SH'
+    # DEBUG = True
+    # ths_code = None  # '600006.SH,600009.SH'
     # 股票基本信息数据加载
     # import_stock_info(ths_code)
     # 股票日K数据加载
-    ths_code_set = {'600006.SH', '600009.SH'}
+    ths_code_set = None  # {'600006.SH', '600009.SH'}
     import_stock_daily_ds(ths_code_set)
     # 股票日K历史数据加载
-    # import_stock_daily_his(ths_code)
+    import_stock_daily_his(ths_code_set)
     # 添加新字段
-    add_new_col_data('ths_pe_ttm_stock', '101', ths_code_set=ths_code_set)
+    # add_new_col_data('ths_pe_ttm_stock', '101', ths_code_set=ths_code_set)
