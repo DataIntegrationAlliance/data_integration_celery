@@ -19,6 +19,7 @@ from tasks.utils.db_utils import with_db_session, add_col_2_table
 from tasks.backend import engine_md
 from tasks.merge.code_mapping import update_from_info_table
 from tasks import app
+
 DEBUG = False
 logger = logging.getLogger()
 DATE_BASE = datetime.strptime('1990-01-01', STR_FORMAT_DATE).date()
