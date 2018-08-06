@@ -56,11 +56,11 @@ def import_fund_info(ths_code=None, refresh=False):
 
         date_end = date.today()
         private_fund_set = set()
-        # while date_fetch < date_end:
-        #     private_fund_set_sub = get_private_fund_set(date_fetch)
-        #     if private_fund_set_sub is not None:
-        #         private_fund_set |= private_fund_set_sub
-        #     date_fetch += timedelta(days=90)
+        while date_fetch < date_end:
+            private_fund_set_sub = get_private_fund_set(date_fetch)
+            if private_fund_set_sub is not None:
+                private_fund_set |= private_fund_set_sub
+            date_fetch += timedelta(days=90)
 
         private_fund_set_sub = get_private_fund_set(date_end)
         if private_fund_set_sub is not None:
@@ -141,41 +141,41 @@ def import_private_fund_daily(ths_code_set: set = None, begin_time=None):
     # jsonIndicator='netAssetValue，adjustedNAV，accumulatedNAV，premium，premiumRatio，estimatedPosition'
     # jsonparam=';;;;'
     json_indicator, json_param = unzip_join([(key, val) for key, val, _ in indicator_param_list], sep=';')
-    sql_str = """select ths_code, date_frm, if(ths_maturity_date_sp<end_date, ths_maturity_date_sp, end_date) date_to
-FROM
-(
-    select info.ths_code, ifnull(trade_date_max_1, ths_established_date_sp) date_frm, ths_maturity_date_sp,
-    if(hour(now())<16, subdate(curdate(),1), curdate()) end_date
-    from 
-        ifind_private_fund_info info 
-    left outer join
-        (select ths_code, adddate(max(time),1) trade_date_max_1 from ifind_private_fund_daily group by ths_code) daily
-    on info.ths_code = daily.ths_code
-) tt
-where date_frm <= if(ths_maturity_date_sp<end_date, ths_maturity_date_sp, end_date) 
-order by ths_code"""
-    if begin_time is None:
-        with with_db_session(engine_md) as session:
-            # 获取需要获取日线数据的日期区间
-            try:
-                table = session.execute(sql_str)
-            except ProgrammingError:
-                logger.exception('获取历史数据最新交易日期失败，尝试仅适用 ifind_private_fund_info 表进行计算')
-                sql_str = """select ths_code, date_frm, if(ths_maturity_date_sp<end_date, ths_maturity_date_sp, end_date) date_to
-                                    FROM
-                                    (
-                                        select info.ths_code, ths_established_date_sp date_frm, ths_maturity_date_sp,
-                                        if(hour(now())<16, subdate(curdate(),1), curdate()) end_date
-                                        from ifind_private_fund_info info 
-                                    ) tt
-                                    where date_frm <= if(ths_maturity_date_sp<end_date, ths_maturity_date_sp, end_date) 
-                                    order by ths_code"""
-                table = session.execute(sql_str)
+    has_table = engine_md.has_table('ifind_private_fund_daily')
+    if has_table:
+        sql_str = """SELECT ths_code, date_frm, if(ths_maturity_date_sp<end_date, ths_maturity_date_sp, end_date) date_to
+            FROM
+            (
+                SELECT info.ths_code, ifnull(trade_date_max_1, ths_established_date_sp) date_frm, ths_maturity_date_sp,
+                if(hour(now())<16, subdate(curdate(),1), curdate()) end_date
+                FROM 
+                    ifind_private_fund_info info 
+                LEFT OUTER JOIN
+                    (SELECT ths_code, adddate(max(time),1) trade_date_max_1 FROM ifind_private_fund_daily GROUP BY ths_code) daily
+                ON info.ths_code = daily.ths_code
+            ) tt
+            WHERE date_frm <= if(ths_maturity_date_sp<end_date, ths_maturity_date_sp, end_date) 
+            ORDER BY ths_code"""
+    else:
+        logger.warning('ifind_private_fund_daily 不存在，仅使用 ifind_private_fund_info 表进行计算日期范围')
+        sql_str = """SELECT ths_code, date_frm, if(ths_maturity_date_sp<end_date, ths_maturity_date_sp, end_date) date_to
+            FROM
+            (
+                SELECT info.ths_code, ths_established_date_sp date_frm, ths_maturity_date_sp,
+                if(hour(now())<16, subdate(curdate(),1), curdate()) end_date
+                FROM ifind_private_fund_info info 
+            ) tt
+            WHERE date_frm <= if(ths_maturity_date_sp<end_date, ths_maturity_date_sp, end_date) 
+            ORDER BY ths_code"""
 
-            #获取每只基金需要获取日线数据的日期区间
-            code_date_range_dic = {ths_code: (date_from, date_to)
-                                   for ths_code, date_from, date_to in table.fetchall() if
-                                   ths_code_set is None or ths_code in ths_code_set}
+    with with_db_session(engine_md) as session:
+        # 计算每只股票需要获取日线数据的日期区间
+        table = session.execute(sql_str)
+        code_date_range_dic = {
+            ths_code: (date_from if begin_time is None else min([date_from, begin_time]), date_to)
+            for ths_code, date_from, date_to in table.fetchall() if
+            ths_code_set is None or ths_code in ths_code_set}
+
     # 设置 dtype
     dtype = {key: val for key, _, val in indicator_param_list}
     dtype['ths_code'] = String(20)
