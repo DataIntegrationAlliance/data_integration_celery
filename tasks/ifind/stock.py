@@ -17,6 +17,7 @@ from sqlalchemy.dialects.mysql import DOUBLE
 from tasks.utils.fh_utils import unzip_join
 from tasks.utils.db_utils import with_db_session, add_col_2_table
 from tasks.backend import engine_md
+from tasks.merge.code_mapping import update_from_info_table
 from tasks import app
 DEBUG = False
 logger = logging.getLogger()
@@ -45,6 +46,7 @@ def import_stock_info(ths_code=None, refresh=False):
     :param refresh:
     :return:
     """
+    table_name = 'ifind_stock_info'
     logging.info("更新 wind_stock_info 开始")
     if ths_code is None:
         # 获取全市场股票代码及名称
@@ -88,7 +90,7 @@ def import_stock_info(ths_code=None, refresh=False):
     # 删除历史数据，更新数据
     with with_db_session(engine_md) as session:
         session.execute(
-            "DELETE FROM ifind_stock_info WHERE ths_code IN (" + ','.join(
+            "DELETE FROM {table_name} WHERE ths_code IN (".format(table_name=table_name) + ','.join(
                 [':code%d' % n for n in range(len(stock_code_set))]
             ) + ")",
             params={'code%d' % n: val for n, val in enumerate(stock_code_set)})
@@ -96,8 +98,9 @@ def import_stock_info(ths_code=None, refresh=False):
     dtype = {key: val for key, _, val in indicator_param_list}
     dtype['ths_code'] = String(20)
     data_count = data_df.shape[0]
-    data_df.to_sql('ifind_stock_info', engine_md, if_exists='append', index=False, dtype=dtype)
-    logging.info("更新 ifind_stock_info 完成 存量数据 %d 条", data_count)
+    data_df.to_sql(table_name, engine_md, if_exists='append', index=False, dtype=dtype)
+    logging.info("更新 %s 完成 存量数据 %d 条", table_name, data_count)
+    update_from_info_table(table_name)
 
 
 @app.task
