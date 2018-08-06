@@ -108,6 +108,7 @@ def import_fund_info(ths_code=None, refresh=False):
     if data_df is None or data_df.shape[0] == 0:
         logging.info("没有可用的 stock info 可以更新")
         return
+
     # 删除历史数据，更新数据
     if has_table:
         with with_db_session(engine_md) as session:
