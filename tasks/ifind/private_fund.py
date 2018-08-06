@@ -103,6 +103,7 @@ def import_fund_info(ths_code=None, refresh=False):
     if data_df is None or data_df.shape[0] == 0:
         logging.info("没有可用的 stock info 可以更新")
         return
+
     # 删除历史数据，更新数据
     table_name_list = engine_md.table_names()
     if 'ifind_private_fund_info' in table_name_list:
