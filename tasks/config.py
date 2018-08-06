@@ -19,8 +19,8 @@ if IS_LINUX_OS:
 
 class CeleryConfig:
     # Celery settings
-    broker_url = 'amqp://mg:***@localhost:5672/celery_tasks',
-    result_backend = 'amqp://mg:***@localhost:5672/backend'
+    broker_url = 'amqp://root:shawps3@localhost:3306/celery_tasks',
+    result_backend = 'amqp://root:shawps3@localhost:3306/backend'
     accept_content = ['json']  # , 'pickle'
     timezone = 'Asia/Shanghai'
     imports = ('tasks', )
@@ -40,7 +40,7 @@ class ConfigClass(object):
     # Sql Alchemy settings
     DB_NAME_MD = 'md'
     DB_URL_DIC = {
-        DB_NAME_MD: 'mysql://mg:***@10.0.3.66/md_integration?charset=utf8'
+        DB_NAME_MD: 'mysql://root:shawps3@localhost/md_integration?charset=utf8'
     }
 
     # ifind settings
