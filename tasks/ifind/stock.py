@@ -396,7 +396,6 @@ def add_data_2_ckdvp(json_indicator, json_param, ths_code_set: set = None, begin
     with with_db_session(engine_md) as session:
         # 获取每只股票需要获取日线数据的日期区间
         table = session.execute(sql_str)
-        # 计算每只股票需要获取日线数据的日期区间
         code_date_range_dic = {
             ths_code: (date_from if begin_time is None else min([date_from, begin_time]), date_to)
             for ths_code, date_from, date_to in table.fetchall() if
