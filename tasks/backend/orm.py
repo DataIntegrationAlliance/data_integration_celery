@@ -15,6 +15,7 @@ from tasks.backend import engine_md
 from tasks.config import config
 import logging
 from tasks.utils.db_utils import alter_table_2_myisam
+
 logger = logging.getLogger()
 Base = declarative_base()
 TABLE_MODEL_DIC = {}
@@ -53,16 +54,18 @@ def init(alter_table=False):
     with with_db_session(engine_md) as session:
         for num, table_name in enumerate(table_name_list, start=1):
             if table_name.find('_daily') != -1:
-                col_name = session.execute(query_pk_str, params={'schema': config.DB_NAME_MD,
-                                             'table_name': table_name}).scalar()
+                col_name = session.execute(query_pk_str,
+                                           params={'schema': config.DB_NAME_MD,
+                                                   'table_name': table_name}).scalar()
                 if col_name is None:
                     # 如果没有记录则 创建主键
                     session.execute(create_daily_pk_str % table_name)
                     logger.info('%d/%d) %s 建立主键 (ths_code, time)', num, table_count, table_name)
 
             elif table_name.find('_info') != -1:
-                col_name = session.execute(query_pk_str, params={'schema': config.DB_NAME_MD,
-                                             'table_name': table_name})
+                col_name = session.execute(query_pk_str,
+                                           params={'schema': config.DB_NAME_MD,
+                                                   'table_name': table_name})
                 if col_name is None:
                     # 如果没有记录则 创建主键
                     session.execute(create_info_pk_str % table_name)
