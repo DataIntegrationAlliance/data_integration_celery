@@ -5,9 +5,9 @@ Created on 2018/1/17
 """
 
 import logging
-import math
 from datetime import date, datetime, timedelta
 import pandas as pd
+from tasks.backend.orm import build_primary_key
 from tasks.ifind import invoker
 # from ifind_rest.invoke import APIError
 from tasks.utils.fh_utils import get_last, get_first, date_2_str, STR_FORMAT_DATE
@@ -15,10 +15,12 @@ from sqlalchemy.types import String, Date, Integer, Boolean
 from sqlalchemy.dialects.mysql import DOUBLE
 from sqlalchemy.exc import ProgrammingError
 from tasks.utils.fh_utils import unzip_join
-from tasks.utils.db_utils import with_db_session
+from tasks.utils.db_utils import with_db_session, alter_table_2_myisam
 from tasks.backend import engine_md
 from tasks import app
+from tasks.merge.code_mapping import update_from_info_table
 
+DEBUG = False
 logger = logging.getLogger()
 DATE_BASE = datetime.strptime('1990-01-01', STR_FORMAT_DATE).date()
 ONE_DAY = timedelta(days=1)
@@ -28,13 +30,13 @@ BASE_LINE_HOUR = 20
 
 def get_private_fund_set(date_fetch):
     date_fetch_str = date_fetch.strftime(STR_FORMAT_DATE)
-    # 051010001
-    fund_df = invoker.THS_DataPool('block', date_fetch_str + ';051010020005002', 'date:Y,thscode:Y,security_name:Y')
+    # 全部私募基金 051010001 仅用测试使用的小数据集（051010020005002）
+    fund_df = invoker.THS_DataPool('block', date_fetch_str + ';051010001', 'date:Y,thscode:Y,security_name:Y')
     if fund_df is None:
         logging.warning('%s 获取基金代码失败', date_fetch_str)
         return None
     fund_count = fund_df.shape[0]
-    logging.info('get %d stocks on %s', fund_count, date_fetch_str)
+    logging.info('get %d private fund on %s', fund_count, date_fetch_str)
     return set(fund_df['THSCODE'])
 
 
@@ -46,7 +48,9 @@ def import_fund_info(ths_code=None, refresh=False):
     :param refresh:
     :return:
     """
-    logging.info("更新 iFind_fund_info 开始")
+    table_name = 'ifind_private_fund_info'
+    has_table = engine_md.has_table(table_name)
+    logging.info("更新 %s 开始", table_name)
     if ths_code is None:
         # 获取全市场私募基金代码及名称
         if refresh:
@@ -67,11 +71,12 @@ def import_fund_info(ths_code=None, refresh=False):
             private_fund_set |= private_fund_set_sub
 
         ths_code = list(private_fund_set)
-        ths_code = ths_code[:5]
+        if DEBUG:
+            ths_code = ths_code[:10]
 
     indicator_param_list = [
         ('ths_product_short_name_sp', '', String(40)),
-        ('ths_product_full_name_sp', '', String(40)),
+        ('ths_product_full_name_sp', '', String(80)),
         ('ths_trust_category_sp', '', String(40)),
         ('ths_is_structured_product_sp', '', String(10)),
         ('ths_threshold_amt_sp', '', Integer),
@@ -89,10 +94,10 @@ def import_fund_info(ths_code=None, refresh=False):
         ('ths_remain_duration_d_sp', '', Integer),
         ('ths_float_manage_rate_sp', '', DOUBLE),
         ('ths_mandate_fee_rate_sp', '', DOUBLE),
-        ('ths_subscription_rate_explain_sp', '', String(60)),
-        ('ths_redemp_rate_explain_sp', '', String(60)),
-        ('ths_opening_period_explain_sp', '', String(80)),
-        ('ths_close_period_explain_sp', '', String(60)),
+        ('ths_subscription_rate_explain_sp', '', String(250)),
+        ('ths_redemp_rate_explain_sp', '', String(250)),
+        ('ths_opening_period_explain_sp', '', String(250)),
+        ('ths_close_period_explain_sp', '', String(250)),
         ('ths_trustee_sp', '', String(100)),
         ('ths_secbroker_sp', '', String(40))
     ]
@@ -105,11 +110,10 @@ def import_fund_info(ths_code=None, refresh=False):
         return
 
     # 删除历史数据，更新数据
-    table_name_list = engine_md.table_names()
-    if 'ifind_private_fund_info' in table_name_list:
+    if has_table:
         with with_db_session(engine_md) as session:
             session.execute(
-                "DELETE FROM ifind_private_fund_info WHERE ths_code IN (" + ','.join(
+                "DELETE FROM {table_name} WHERE ths_code IN (".format(table_name=table_name) + ','.join(
                     [':code%d' % n for n in range(len(private_fund_set))]
                 ) + ")",
                 params={'code%d' % n: val for n, val in enumerate(private_fund_set)})
@@ -117,8 +121,14 @@ def import_fund_info(ths_code=None, refresh=False):
     dtype = {key: val for key, _, val in indicator_param_list}
     dtype['ths_code'] = String(20)
     data_count = data_df.shape[0]
-    data_df.to_sql('ifind_private_fund_info', engine_md, if_exists='append', index=False, dtype=dtype)
-    logging.info("更新 ifind_private_fund_info 完成 存量数据 %d 条", data_count)
+    data_df.to_sql(table_name, engine_md, if_exists='append', index=False, dtype=dtype)
+    logging.info("更新 %s 完成 存量数据 %d 条", table_name, data_count)
+    if not has_table:
+        alter_table_2_myisam(engine_md, [table_name])
+        build_primary_key([table_name])
+
+    # 更新 code_mapping 表
+    update_from_info_table(table_name)
 
 
 @app.task
@@ -129,8 +139,7 @@ def import_private_fund_daily(ths_code_set: set = None, begin_time=None):
     :param begin_time:
     :return:
     """
-    if ths_code_set is None:
-        pass
+    table_name = 'ifind_private_fund_daily'
     indicator_param_list = [
         ('netAssetValue', '', DOUBLE),
         ('adjustedNAV', '', DOUBLE),
@@ -142,7 +151,7 @@ def import_private_fund_daily(ths_code_set: set = None, begin_time=None):
     # jsonIndicator='netAssetValue，adjustedNAV，accumulatedNAV，premium，premiumRatio，estimatedPosition'
     # jsonparam=';;;;'
     json_indicator, json_param = unzip_join([(key, val) for key, val, _ in indicator_param_list], sep=';')
-    has_table = engine_md.has_table('ifind_private_fund_daily')
+    has_table = engine_md.has_table(table_name)
     if has_table:
         sql_str = """SELECT ths_code, date_frm, if(ths_maturity_date_sp<end_date, ths_maturity_date_sp, end_date) date_to
             FROM
@@ -152,11 +161,11 @@ def import_private_fund_daily(ths_code_set: set = None, begin_time=None):
                 FROM 
                     ifind_private_fund_info info 
                 LEFT OUTER JOIN
-                    (SELECT ths_code, adddate(max(time),1) trade_date_max_1 FROM ifind_private_fund_daily GROUP BY ths_code) daily
+                    (SELECT ths_code, adddate(max(time),1) trade_date_max_1 FROM {table_name} GROUP BY ths_code) daily
                 ON info.ths_code = daily.ths_code
             ) tt
             WHERE date_frm <= if(ths_maturity_date_sp<end_date, ths_maturity_date_sp, end_date) 
-            ORDER BY ths_code"""
+            ORDER BY ths_code""".format(table_name=table_name)
     else:
         logger.warning('ifind_private_fund_daily 不存在，仅使用 ifind_private_fund_info 表进行计算日期范围')
         sql_str = """SELECT ths_code, date_frm, if(ths_maturity_date_sp<end_date, ths_maturity_date_sp, end_date) date_to
@@ -198,21 +207,28 @@ def import_private_fund_daily(ths_code_set: set = None, begin_time=None):
             # 大于阀值有开始插入
             if data_count >= 10000:
                 tot_data_df = pd.concat(data_df_list)
-                tot_data_df.to_sql('ifind_private_fund_daily', engine_md, if_exists='append', index=False, dtype=dtype)
+                tot_data_df.to_sql(table_name, engine_md, if_exists='append', index=False, dtype=dtype)
                 tot_data_count += data_count
                 data_df_list, data_count = [], 0
+
+            if DEBUG and len(data_df_list) >1:
+                break
     finally:
         if data_count > 0:
             tot_data_df = pd.concat(data_df_list)
-            tot_data_df.to_sql('ifind_private_fund_daily', engine_md, if_exists='append', index=False, dtype=dtype)
+            tot_data_df.to_sql(table_name, engine_md, if_exists='append', index=False, dtype=dtype)
             tot_data_count += data_count
 
-        logging.info("更新 ifind_private_fund_daily 完成 新增数据 %d 条", tot_data_count)
+        logging.info("更新 %s 完成 新增数据 %d 条", table_name, tot_data_count)
+        if not has_table:
+            alter_table_2_myisam(engine_md, [table_name])
+            build_primary_key([table_name])
 
 
 if __name__ == "__main__":
+    DEBUG = True
     ths_code = None  # '600006.SH,600009.SH'
     # 基金基本信息数据加载
-    import_fund_info(ths_code)
+    # import_fund_info(ths_code)
     # 基金日K数据行情加载
     import_private_fund_daily(ths_code)
