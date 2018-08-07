@@ -18,6 +18,7 @@ from tasks.utils.fh_utils import unzip_join
 from tasks.utils.db_utils import with_db_session, add_col_2_table
 from tasks.backend import engine_md
 from tasks import app
+
 DEBUG = False
 logger = logging.getLogger()
 DATE_BASE = datetime.strptime('1990-01-01', STR_FORMAT_DATE).date()
@@ -55,18 +56,19 @@ def import_stock_hk_info(ths_code=None, refresh=False):
 
         date_end = date.today()
         stock_hk_code_set = set()
-        # while date_fetch < date_end:
-        #     stock_hk_code_set_sub = get_stock_hk_code_set(date_fetch)
-        #     if stock_hk_code_set_sub is not None:
-        #         stock_hk_code_set |= stock_hk_code_set_sub
-        #     date_fetch += timedelta(days=365)
+        while date_fetch < date_end:
+            stock_hk_code_set_sub = get_stock_hk_code_set(date_fetch)
+            if stock_hk_code_set_sub is not None:
+                stock_hk_code_set |= stock_hk_code_set_sub
+            date_fetch += timedelta(days=365)
 
         stock_hk_code_set_sub = get_stock_hk_code_set(date_end)
         if stock_hk_code_set_sub is not None:
             stock_hk_code_set |= stock_hk_code_set_sub
 
         ths_code = ','.join(stock_hk_code_set)
-        ths_code = ths_code[:10]
+        if DEBUG:
+            ths_code = ths_code[:10]
 
     indicator_param_list = [
         ('ths_stock_short_name_hks', '', String(40)),
@@ -80,19 +82,19 @@ def import_stock_hk_info(ths_code=None, refresh=False):
         ('ths_listed_exchange_hks', '', String(60)),
         ('ths_stop_listing_date_hks', '', Date),
         ('ths_corp_cn_name_hks', '', String(40)),
-        ('ths_corp_name_en_hks', '', String(60)),
+        ('ths_corp_name_en_hks', '', String(80)),
         ('ths_established_date_hks', '', Date),
         ('ths_accounting_date_hks', '', String(20)),
         ('ths_general_manager_hks', '', String(40)),
         ('ths_secretary_hks', '', String(40)),
-        ('ths_operating_scope_hks', '', String(100)),
-        ('ths_mo_product_name_hks', '', String(40)),
+        ('ths_operating_scope_hks', '', Text),
+        ('ths_mo_product_name_hks', '', String(200)),
         ('ths_district_hks', '', String(40)),
-        ('ths_reg_address_hks', '', String(40)),
-        ('ths_office_address_hks', '', String(40)),
-        ('ths_corp_tel_hks', '', String(40)),
-        ('ths_corp_fax_hks', '', String(40)),
-        ('ths_corp_website_hks', '', String(40)),
+        ('ths_reg_address_hks', '', String(120)),
+        ('ths_office_address_hks', '', String(120)),
+        ('ths_corp_tel_hks', '', String(100)),
+        ('ths_corp_fax_hks', '', String(100)),
+        ('ths_corp_website_hks', '', String(60)),
         ('ths_auditor_hks', '', String(40)),
         ('ths_legal_counsel_hks', '', String(40)),
         ('ths_hs_industry_hks', '', String(40))
@@ -476,13 +478,13 @@ def add_data_2_ckdvp(json_indicator, json_param, ths_code_set: set = None, begin
 
 if __name__ == "__main__":
     # DEBUG = True
-    ths_code = None  # '600006.SH,600009.SH'
+    # ths_code = None  # '600006.SH,600009.SH'
     # 股票基本信息数据加载
-    import_stock_hk_info(ths_code)
+    # import_stock_hk_info(ths_code)
     # 股票日K数据加载
     ths_code_set = None  # {'600006.SH', '600009.SH'}
-    import_stock_hk_daily_ds(ths_code_set)
+    # import_stock_hk_daily_ds(ths_code_set)
     # 股票日K历史数据加载
     import_stock_hk_daily_his(ths_code_set)
     # 添加新字段
-    add_new_col_data('ths_pe_ttm_stock', '101', ths_code_set=ths_code_set)
+    # add_new_col_data('ths_pe_ttm_stock', '101', ths_code_set=ths_code_set)
