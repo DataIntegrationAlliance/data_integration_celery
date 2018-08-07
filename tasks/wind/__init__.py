@@ -8,3 +8,6 @@
 @desc    : 
 """
 
+from tasks.config import config
+from direstinvoker.iwind import WindRestInvoker
+invoker = WindRestInvoker(config.WIND_REST_URL)
