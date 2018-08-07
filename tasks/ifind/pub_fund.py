@@ -75,7 +75,7 @@ def import_pub_fund_info(ths_code=None, refresh=False):
         ('ths_fund_thscode_fund', '', String(40)),
         ('ths_fund_full_name_fund', '', String(80)),
         ('ths_invest_objective_fund', '', String(500)),
-        ('ths_invest_socpe_fund', '', String(500)),
+        ('ths_invest_socpe_fund', '', Text),
         ('ths_perf_comparative_benchmark_fund', '', String(40)),
         ('ths_fund_listed_exchange_fund', '', String(40)),
         ('ths_fund_td_currency_fund', '', String(60)),
