@@ -118,9 +118,6 @@ def import_stock_daily():
             logging.info("更新 wind_stock_daily 结束 %d 条信息被更新", data_df_all.shape[0])
 
 
-
-
-
 def add_new_col_data(col_name, param, db_col_name=None, col_type_str='DOUBLE', ths_code_set: set = None):
     """
     1）修改 daily 表，增加字段
