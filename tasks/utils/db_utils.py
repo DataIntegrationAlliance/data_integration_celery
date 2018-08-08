@@ -7,6 +7,7 @@
 @contact : mmmaaaggg@163.com
 @desc    : 数据库相关工具
 """
+from sqlalchemy import MetaData, Column, Table
 from sqlalchemy.orm.session import Session
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import DeclarativeMeta
@@ -98,16 +99,16 @@ def append_string(insert, compiler, **kw):
     return s
 
 
-def alter_table_2_myisam(engine_md, table_name_list=None):
+def alter_table_2_myisam(engine, table_name_list=None):
     """
     修改表默认 engine 为 myisam
-    :param engine_md:
+    :param engine:
     :param table_name_list:
     :return:
     """
     if table_name_list is None:
-        table_name_list = engine_md.table_names()
-    with with_db_session(engine=engine_md) as session:
+        table_name_list = engine.table_names()
+    with with_db_session(engine=engine) as session:
         data_count = len(table_name_list)
         for num, table_name in enumerate(table_name_list):
             # sql_str = "show table status from {Config.DB_SCHEMA_MD} where name=:table_name"
@@ -120,3 +121,28 @@ def alter_table_2_myisam(engine_md, table_name_list=None):
             logger.info('%d/%d)修改 %s 表引擎为 MyISAM', num, data_count, table_name)
             sql_str = "ALTER TABLE %s ENGINE = MyISAM" % table_name
             session.execute(sql_str)
+
+
+def add_col_2_table(engine, table_name, col_name, col_type_str):
+    """
+    检查当前数据库是否存在 db_col_name 列，如果不存在则添加该列
+    :param engine:
+    :param table_name:
+    :param col_name:
+    :param col_type_str: DOUBLE, VARCHAR(20), INTEGER, etc.
+    :return:
+    """
+    # sql_str = """SELECT * FROM INFORMATION_SCHEMA.COLUMNS
+    #     WHERE table_name=:table_name and column_name=:column_name"""
+    metadata = MetaData(bind=engine)
+    table_model = Table(table_name, metadata, autoload=True)
+    if col_name not in table_model.columns:
+        # 该语句无法自动更新数据库表结构，因此该方案放弃
+        # table_model.append_column(Column(col_name, dtype))
+        after_col_name = table_model.columns.keys()[-1]
+        add_col_sql_str = "ALTER TABLE `{0}` ADD COLUMN `{1}` {2} NULL AFTER `{3}`".format(
+            table_name, col_name, col_type_str, after_col_name
+        )
+        with with_db_session(engine) as session:
+            session.execute(add_col_sql_str)
+        logger.info('%s 添加 %s [%s] 列成功', table_name, col_name, col_type_str)
