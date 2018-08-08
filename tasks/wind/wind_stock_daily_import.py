@@ -202,6 +202,7 @@ def add_data_2_ckdvp(json_indicator, json_param, ths_code_set: set = None, begin
             WHERE date_frm <= if(delist_date<end_date, delist_date, end_date)
             ORDER BY wind_code"""
 
+
     # 计算每只股票需要获取日线数据的日期区间
     with with_db_session(engine_md) as session:
         # 获取每只股票需要获取日线数据的日期区间
