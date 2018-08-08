@@ -8,7 +8,7 @@ import logging
 import math
 from datetime import date, datetime, timedelta
 import pandas as pd
-from sqlalchemy.exc import ProgrammingError
+from tasks.backend.orm import build_primary_key
 from tasks.ifind import invoker
 from direstinvoker.ifind import APIError
 from tasks.utils.fh_utils import get_last, get_first, date_2_str, STR_FORMAT_DATE, str_2_date
@@ -465,14 +465,14 @@ def add_data_2_ckdvp(json_indicator, json_param, ths_code_set: set = None, begin
 
 
 if __name__ == "__main__":
-    # DEBUG = True
-    # ths_code = None  # '600006.SH,600009.SH'
+    DEBUG = True
+    ths_code = None  # '600006.SH,600009.SH'
     # 股票基本信息数据加载
-    # import_stock_info(ths_code)
+    import_stock_info(ths_code)
     # 股票日K数据加载
-    ths_code_set = None  # {'600006.SH', '600009.SH'}
-    import_stock_daily_ds(ths_code_set)
+    # ths_code_set = None  # {'600006.SH', '600009.SH'}
+    # import_stock_daily_ds(ths_code_set)
     # 股票日K历史数据加载
-    import_stock_daily_his(ths_code_set)
+    # import_stock_daily_his(ths_code_set)
     # 添加新字段
     # add_new_col_data('ths_pe_ttm_stock', '101', ths_code_set=ths_code_set)
