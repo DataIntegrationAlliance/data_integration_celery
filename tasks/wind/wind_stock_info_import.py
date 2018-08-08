@@ -6,17 +6,17 @@ Created on 2017/4/14
 import logging
 import math
 from sqlalchemy.types import String, Date
-from fh_tools.windy_utils_rest import WindRest
 import pandas as pd
+from tasks.wind import invoker
 from datetime import datetime, date, timedelta
-from config_fh import WIND_REST_URL, STR_FORMAT_DATE, get_db_engine, get_db_session
-
-w = WindRest(WIND_REST_URL)
+from tasks.utils.fh_utils import  STR_FORMAT_DATE
+from tasks.utils.db_utils import with_db_session
+from tasks.backend import engine_md
 
 
 def get_stock_code_set(date_fetch):
     date_fetch_str = date_fetch.strftime(STR_FORMAT_DATE)
-    stock_df = w.wset("sectorconstituent", "date=%s;sectorid=a001010100000000" % date_fetch_str)
+    stock_df = invoker.wset("sectorconstituent", "date=%s;sectorid=a001010100000000" % date_fetch_str)
     if stock_df is None:
         logging.warning('%s 获取股票代码失败', date_fetch_str)
         return None
@@ -57,18 +57,17 @@ def import_wind_stock_info(refresh=False):
         num_end = num_end if num_end <= stock_code_count else stock_code_count
         stock_code_list_sub = stock_code_list[num_start:num_end]
         # 尝试将 stock_code_list_sub 直接传递给wss，是否可行
-        stock_info_df = w.wss(stock_code_list_sub, "sec_name,trade_code,ipo_date,delist_date,mkt,exch_city,exch_eng,prename")
+        stock_info_df = invoker.wss(stock_code_list_sub, "sec_name,trade_code,ipo_date,delist_date,mkt,exch_city,exch_eng,prename")
         stock_info_df_list.append(stock_info_df)
 
     stock_info_all_df = pd.concat(stock_info_df_list)
     stock_info_all_df.index.rename('WIND_CODE', inplace=True)
     logging.info('%s stock data will be import', stock_info_all_df.shape[0])
-    engine = get_db_engine()
     stock_info_all_df.reset_index(inplace=True)
     data_list = list(stock_info_all_df.T.to_dict().values())
     sql_str = "REPLACE INTO wind_stock_info (wind_code, trade_code, sec_name, ipo_date, delist_date, mkt, exch_city, exch_eng, prename) values (:WIND_CODE, :TRADE_CODE, :SEC_NAME, :IPO_DATE, :DELIST_DATE, :MKT, :EXCH_CITY, :EXCH_ENG, :PRENAME)"
     # sql_str = "insert INTO wind_stock_info (wind_code, trade_code, sec_name, ipo_date, delist_date, mkt, exch_city, exch_eng, prename) values (:WIND_CODE, :TRADE_CODE, :SEC_NAME, :IPO_DATE, :DELIST_DATE, :MKT, :EXCH_CITY, :EXCH_ENG, :PRENAME)"
-    with get_db_session(engine) as session:
+    with with_db_session(engine_md) as session:
         session.execute(sql_str, data_list)
         stock_count = session.execute('select count(*) from wind_stock_info').first()[0]
     logging.info("更新 wind_stock_info 完成 存量数据 %d 条", stock_count)
