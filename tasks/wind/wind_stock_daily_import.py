@@ -1,7 +1,7 @@
 from datetime import date, datetime, timedelta
 import pandas as pd
 
-from tasks import add_data_2_ckdvp
+
 from tasks.wind import invoker
 from direstinvoker.ifind import APIError,UN_AVAILABLE_DATE
 from tasks.utils.fh_utils import get_last, get_first, date_2_str, STR_FORMAT_DATE, str_2_date
@@ -65,7 +65,7 @@ def import_stock_daily():
                 continue
             # 获取股票量价等行情数据
             wind_indictor_str = "open,high,low,close,adjfactor,volume,amt,pct_chg,maxupordown," + \
-                                "swing,turn,free_turn,trade_status,susp_days,total_shares,free_float_shares,ev2_to_ebitda"
+                                 "swing,turn,free_turn,trade_status,susp_days,total_shares,free_float_shares,ev2_to_ebitda"
             try:
                 data_df = invoker.wsd(wind_code, wind_indictor_str, date_from, date_to)
             except APIError as exp:
@@ -118,7 +118,7 @@ def import_stock_daily():
             logging.info("更新 wind_stock_daily 结束 %d 条信息被更新", data_df_all.shape[0])
 
 
-def add_new_col_data(col_name, param, db_col_name=None, col_type_str='DOUBLE', ths_code_set: set = None):
+def add_new_col_data(col_name, param, db_col_name=None, col_type_str='DOUBLE', wind_code_set: set = None):
     """
     1）修改 daily 表，增加字段
     2）ckpv表增加数据
@@ -138,53 +138,48 @@ def add_new_col_data(col_name, param, db_col_name=None, col_type_str='DOUBLE', t
     # 检查当前数据库是否存在 db_col_name 列，如果不存在则添加该列
     add_col_2_table(engine_md, 'wind_stock_daily', db_col_name, col_type_str)
     # 将数据增量保存到 ckdvp 表
-    all_finished = add_data_2_ckdvp(col_name, param, ths_code_set)
+    all_finished = add_data_2_ckdvp(col_name,param, wind_code_set)
     # 将数据更新到 ds 表中
+    #对表的列进行整合，daily表的列属性值ckdvp的value 根据所有条件进行判定
     if all_finished:
-        sql_str = """update wind_stock_daily daily, wind_ckdvp_stock ckdvp
-        set daily.{db_col_name} = ckdvp.value
-        where daily.wind_code = ckdvp.wind_code
-        and ckdvp.key = '{db_col_name}'
-        and ckdvp.param = '{param}'""".format(db_col_name=db_col_name, param=param)
+        sql_str = """
+            update wind_stock_daily daily, wind_ckdvp_stock ckdvp
+            set daily.{db_col_name} = ckdvp.value
+            where daily.wind_code = ckdvp.wind_code
+            and ckdvp.key = '{db_col_name}' and ckdvp.param = '{param}'
+           
+            and ckdvp.time = daily.trade_date""".format(db_col_name=db_col_name, param=param)
+        # 进行事务提交
         with with_db_session(engine_md) as session:
-            session.execute(sql_str)
+            rst = session.execute(sql_str)
+            data_count = rst.rowcount
             session.commit()
-        logger.info('更新 %s 字段 wind_stock_daily 表', db_col_name)
+        logger.info('更新 %s 字段 wind_stock_daily 表 %d 条记录', db_col_name, data_count)
 
 
-
-def add_data_2_ckdvp(json_indicator, json_param, ths_code_set: set = None, begin_time=None):
-    """
-    将数据增量保存到 wind_ckdvp_stock 表，code key date value param 五个字段组合成的表 value 为 Varchar(80)
-    该表用于存放各种新增加字段的值
-    查询语句举例：
-    THS_DateSerial('600007.SH,600009.SH','ths_pe_ttm_stock','101','Days:Tradedays,Fill:Previous,Interval:D','2018-07-31','2018-07-31')
-    :param json_indicator:
-    :param json_param:
-    :param wind_code_set:
-    :param begin_time:
-    :return: 全部数据加载完成，返回True，否则False，例如数据加载中途流量不够而中断
-    """
+def add_data_2_ckdvp(col_name, param, wind_code_set:set=None,begin_time=None):
+    #判断表格是否存在，存在则进行表格的关联查询
+    table_name = 'wind_ckdvp_stock'
     all_finished = False
     has_table = engine_md.has_table('wind_ckdvp_stock')
     if has_table:
+        # 执行语句，表格数据联立
         sql_str = """
-            select wind_code, date_frm, if(elist_date_stock<end_date, ths_delist_date_stock, end_date) date_to
+            select wind_code, date_frm, if(delist_date<end_date, delist_date, end_date) date_to
             FROM
             (
                 select info.wind_code,
-                (ipo_date) date_frm, delist_date,
+                    (ipo_date) date_frm, delist_date,
                     if(hour(now())<16, subdate(curdate(),1), curdate()) end_date
-                from
-                    wind_stock_info info
+                from wind_stock_info info
                 left outer join
                     (select wind_code, adddate(max(time),1) from wind_ckdvp_stock
-                        where wind_ckdvp_stock.key='{0}' and param='{1}' group by wind_code
+                    where wind_ckdvp_stock.key='{0}' and param='{1}' group by wind_code
                     ) daily
                 on info.wind_code = daily.wind_code
             ) tt
             where date_frm <= if(delist_date<end_date,delist_date, end_date)
-            order by wind_code""".format(json_indicator, json_param)
+            order by wind_code""".format(col_name, param)
     else:
         logger.warning('wind_ckdvp_stock 不存在，仅使用 wind_stock_info 表进行计算日期范围')
         sql_str = """
@@ -198,9 +193,6 @@ def add_data_2_ckdvp(json_indicator, json_param, ths_code_set: set = None, begin
             ) tt
             WHERE date_frm <= if(delist_date<end_date, delist_date, end_date)
             ORDER BY wind_code"""
-
-
-    # 计算每只股票需要获取日线数据的日期区间
     with with_db_session(engine_md) as session:
         # 获取每只股票需要获取日线数据的日期区间
         table = session.execute(sql_str)
@@ -210,65 +202,68 @@ def add_data_2_ckdvp(json_indicator, json_param, ths_code_set: set = None, begin
             wind_code_set is None or wind_code in wind_code_set}
 
     # 设置 dtype
-    dtype = {
-        'ths_code': String(20),
-        'key': String(80),
-        'time': Date,
-        'value': String(80),
-        'param': String(80),
-    }
-    data_df_list, data_count, tot_data_count, code_count = [], 0, 0, len(code_date_range_dic)
-    try:
-        for num, (ths_code, (begin_time, end_time)) in enumerate(code_date_range_dic.items(), start=1):
-            logger.debug('%d/%d) %s [%s - %s]', num, code_count, ths_code, begin_time, end_time)
-            data_df = invoker.THS_DateSerial(
-                ths_code,
-                json_indicator,
-                json_param,
-                'Days:Tradedays,Fill:Previous,Interval:D',
-                begin_time, end_time
-            )
-            if data_df is not None or data_df.shape[0] > 0:
-                data_df['key'] = json_indicator
-                data_df['param'] = json_param
-                data_df.rename(columns={json_indicator: 'value'}, inplace=True)
-                data_count += data_df.shape[0]
-                data_df_list.append(data_df)
+        dtype = {
+            'wind_code': String(20),
+            'key': String(80),
+            'time': Date,
+            'value': String(80),
+            'param': String(80),
 
-            # 大于阀值有开始插入
-            if data_count >= 10000:
+
+        }
+        data_df_list, data_count, tot_data_count, code_count = [], 0, 0, len(code_date_range_dic)
+        try:
+            for num, (wind_code, (date_from, date_to)) in enumerate(code_date_range_dic.items(), start=1):
+                logger.debug('%d/%d) %s [%s - %s]', num, code_count, wind_code, date_from, date_to)
+                data_df = invoker.wsd(
+                    wind_code,
+                    col_name,
+                    date_from,
+                    date_to,
+                    param
+                )
+                if data_df is not None or data_df.shape[0] > 0:
+                    # 对我们的表格进行规范整理,整理我们的列名，索引更改
+                    data_df['key'] = col_name
+                    data_df['param'] = param
+                    data_df['wind_code'] = wind_code
+                    data_df.rename(columns={col_name.upper(): 'value'}, inplace=True)
+                    data_df.index.rename('time', inplace=True)
+                    data_df.reset_index(inplace=True)
+                    data_count += data_df.shape[0]
+                    data_df_list.append(data_df)
+
+                # 大于阀值有开始插入
+                if data_count >= 10000:
+                    tot_data_df = pd.concat(data_df_list)
+                    tot_data_df.to_sql(table_name, engine_md, if_exists='append', index=False, dtype=dtype)
+                    tot_data_count += data_count
+                    data_df_list, data_count = [], 0
+
+                # 仅调试使用
+                if DEBUG and len(data_df_list) > 1:
+                    break
+
+                all_finished = True
+        finally:
+            if data_count > 0:
                 tot_data_df = pd.concat(data_df_list)
-                tot_data_df.to_sql('wind_ckdvp_stock', engine_md, if_exists='append', index=False, dtype=dtype)
+                tot_data_df.to_sql(table_name, engine_md, if_exists='append', index=False, dtype=dtype)
                 tot_data_count += data_count
-                data_df_list, data_count = [], 0
 
-            # 仅调试使用
-            if DEBUG and len(data_df_list) > 1:
-                break
+            if not has_table and engine_md.has_table(table_name):
+                create_pk_str = """ALTER TABLE {table_name}
+                    CHANGE COLUMN `wind_code` `wind_code` VARCHAR(20) NOT NULL ,
+                    CHANGE COLUMN `time` `time` DATE NOT NULL ,
+                    CHANGE COLUMN `key` `key` VARCHAR(80) NOT NULL ,
+                    CHANGE COLUMN `param` `param` VARCHAR(80) NOT NULL ,
+                    ADD PRIMARY KEY (`wind_code`, `time`, `key`, `param`)""".format(table_name=table_name)
+                with with_db_session(engine_md) as session:
+                    session.execute(create_pk_str)
 
-            all_finished = True
-    finally:
-        if data_count > 0:
-            tot_data_df = pd.concat(data_df_list)
-            tot_data_df.to_sql('wind_ckdvp_stock', engine_md, if_exists='append', index=False, dtype=dtype)
-            tot_data_count += data_count
+            logging.info("更新 %s 完成 新增数据 %d 条", table_name, tot_data_count)
 
-        if not has_table:
-            create_pk_str = """ALTER TABLE wind_ckdvp_stock
-                CHANGE COLUMN `wind_code` `wind_code` VARCHAR(20) NOT NULL ,
-                CHANGE COLUMN `time` `time` DATE NOT NULL ,
-                CHANGE COLUMN `key` `key` VARCHAR(80) NOT NULL ,
-                CHANGE COLUMN `param` `param` VARCHAR(80) NOT NULL ,
-                ADD PRIMARY KEY (`wind_code`, `time`, `key`, `param`)"""
-            with with_db_session(engine_md) as session:
-                session.execute(create_pk_str)
-
-        logging.info("更新 wind_ckdvp_stock 完成 新增数据 %d 条", tot_data_count)
-
-    return all_finished
-
-
-
+        return all_finished
 
 
 
@@ -280,7 +275,7 @@ if __name__ == '__main__':
     DEBUG = True
     # 更新每日股票数据
     wind_code_set=None
-    import_stock_daily()
+    # import_stock_daily()
     # import_stock_daily_wch()
-    add_new_col_data('ths_pe_ttm_stock', '101',ths_code_set=wind_code_set)
+    add_new_col_data('ebitdaps', '',wind_code_set=wind_code_set)
 
