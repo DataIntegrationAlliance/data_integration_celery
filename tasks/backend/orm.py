@@ -75,7 +75,7 @@ def build_primary_key(table_name_list):
         for num, table_name in enumerate(table_name_list, start=1):
             if table_name.find('_daily') != -1:
                 col_name = session.execute(query_pk_str,
-                                           params={'schema': config.DB_NAME_MD,
+                                           params={'schema': config.DB_SCHEMA_MD,
                                                    'table_name': table_name}).scalar()
                 if col_name is None:
                     # 如果没有记录则 创建主键
@@ -85,7 +85,7 @@ def build_primary_key(table_name_list):
 
             elif table_name.find('_info') != -1:
                 col_name = session.execute(query_pk_str,
-                                           params={'schema': config.DB_NAME_MD,
+                                           params={'schema': config.DB_SCHEMA_MD,
                                                    'table_name': table_name}).scalar()
                 if col_name is None:
                     # 如果没有记录则 创建主键

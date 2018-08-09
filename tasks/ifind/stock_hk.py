@@ -17,6 +17,8 @@ from tasks.utils.db_utils import with_db_session, add_col_2_table, alter_table_2
 from tasks.backend import engine_md
 from tasks import app
 from tasks.merge.code_mapping import update_from_info_table
+from tasks.utils.db_utils import bunch_insert_on_duplicate_update
+from tasks.config import config
 
 DEBUG = False
 logger = logging.getLogger()
@@ -24,6 +26,7 @@ DATE_BASE = datetime.strptime('1990-01-01', STR_FORMAT_DATE).date()
 ONE_DAY = timedelta(days=1)
 # 标示每天几点以后下载当日行情数据
 BASE_LINE_HOUR = 20
+TRIAL = False
 
 
 def get_stock_hk_code_set(date_fetch):
@@ -143,7 +146,7 @@ def import_stock_hk_daily_ds(ths_code_set: set = None, begin_time=None):
         ('ths_ss_vol_hks', '', DOUBLE),
         ('ths_ss_amt_d_hks', '', String(10)),
         ('ths_trading_status_hks', '', String(80)),
-        ('ths_suspen_reason_hks', '', String(100)),
+        ('ths_suspen_reason_hks', '', String(300)),
         ('ths_td_currency_d_hks', '', String(10)),
         ('ths_original_currency_hks', '', String(80)),
         ('ths_corp_total_shares_hks', '', DOUBLE),
@@ -193,6 +196,14 @@ def import_stock_hk_daily_ds(ths_code_set: set = None, begin_time=None):
             ths_code: (date_from if begin_time is None else min([date_from, begin_time]), date_to)
             for ths_code, date_from, date_to in table.fetchall() if
             ths_code_set is None or ths_code in ths_code_set}
+
+    if TRIAL:
+        date_from_min = date.today() - timedelta(days=(365 * 5))
+        # 试用账号只能获取近5年数据
+        code_date_range_dic = {
+            ths_code: (max([date_from, date_from_min]), date_to)
+            for ths_code, (date_from, date_to) in code_date_range_dic.items() if date_from_min <= date_to}
+
     # 设置 dtype
     dtype = {key: val for key, _, val in indicator_param_list}
     dtype['ths_code'] = String(20)
@@ -211,28 +222,47 @@ def import_stock_hk_daily_ds(ths_code_set: set = None, begin_time=None):
             )
             if data_df is not None or data_df.shape[0] > 0:
                 data_count += data_df.shape[0]
+                # data_df['ths_ss_vol_hks'] = data_df['ths_ss_vol_hks'].apply(
+                #     lambda x: 0 if x is None or pd.isna(x) else x)
+                # data_df['ths_corp_total_shares_hks'] = data_df['ths_corp_total_shares_hks'].apply(
+                #     lambda x: 0 if x is None or pd.isna(x) else x)
+                # data_df['ths_pe_ttm_hks'] = data_df['ths_pe_ttm_hks'].apply(
+                #     lambda x: 0 if x is None or pd.isna(x) else x)
+                # data_df['ths_pcf_operating_cash_flow_ttm_hks'] = data_df['ths_pcf_operating_cash_flow_ttm_hks'].apply(
+                #     lambda x: 0 if x is None or pd.isna(x) else x)
+                # data_df['ths_pcf_cash_net_flow_ttm_hks'] = data_df['ths_pcf_cash_net_flow_ttm_hks'].apply(
+                #     lambda x: 0 if x is None or pd.isna(x) else x)
+                # data_df['ths_ps_ttm_hks'] = data_df['ths_ps_ttm_hks'].apply(
+                #     lambda x: 0 if x is None or pd.isna(x) else x)
+                # data_df['ths_market_value_hks'] = data_df['ths_market_value_hks'].apply(
+                #     lambda x: 0 if x is None or pd.isna(x) else x)
                 data_df_list.append(data_df)
+
+            # 仅调试使用
+            if DEBUG and len(data_df_list) > 0:
+                break
+
             # 大于阀值有开始插入
-            if data_count >= 10000:
+            if data_count >= 2000:
                 tot_data_df = pd.concat(data_df_list)
-                tot_data_df.to_sql(table_name, engine_md, if_exists='append', index=False, dtype=dtype)
+                # tot_data_df.to_sql(table_name, engine_md, if_exists='append', index=False, dtype=dtype)
+                bunch_insert_on_duplicate_update(tot_data_df, table_name, engine_md, dtype)
                 tot_data_count += data_count
                 data_df_list, data_count = [], 0
 
-            # 仅调试使用
-            if DEBUG and len(data_df_list) > 1:
-                break
     finally:
         if data_count > 0:
             tot_data_df = pd.concat(data_df_list)
-            tot_data_df.to_sql(table_name, engine_md, if_exists='append', index=False, dtype=dtype)
+            # tot_data_df.to_sql(table_name, engine_md, if_exists='append', index=False, dtype=dtype)
+            bunch_insert_on_duplicate_update(tot_data_df, table_name, engine_md, dtype)
             tot_data_count += data_count
 
         logging.info("更新 %s 完成 新增数据 %d 条", table_name, tot_data_count)
 
-        if not has_table:
+        if not has_table and engine_md.has_table(table_name):
             alter_table_2_myisam(engine_md, [table_name])
             build_primary_key([table_name])
+
 
 @app.task
 def import_stock_hk_daily_his(ths_code_set: set = None, begin_time=None):
@@ -502,13 +532,14 @@ def add_data_2_ckdvp(json_indicator, json_param, ths_code_set: set = None, begin
 
 if __name__ == "__main__":
     # DEBUG = True
+    TRIAL = True
     ths_code = None  # '600006.SH,600009.SH'
     # 股票基本信息数据加载
-    import_stock_hk_info(ths_code)
+    # import_stock_hk_info(ths_code)
 
     ths_code_set = None  # {'600006.SH', '600009.SH'}
     # 股票日K历史数据加载
-    import_stock_hk_daily_his(ths_code_set)
+    # import_stock_hk_daily_his(ths_code_set)
     # 股票日K数据加载
     import_stock_hk_daily_ds(ths_code_set)
     # 添加新字段
