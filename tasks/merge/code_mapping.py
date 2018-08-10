@@ -33,6 +33,11 @@ def search_cap_type(pattern, table_name):
 
 
 def update_from_info_table(table_name):
+    """
+    更新 code_mapping 表，根据对应的 info表中的 ths_code 或 wind_code 更新对应的 code_mapping表中对应字段
+    :param table_name:
+    :return:
+    """
     ifind_cap_type = search_cap_type(ifind_info_table_pattern, table_name)
     wind_cap_type = search_cap_type(wind_info_table_pattern, table_name)
 
