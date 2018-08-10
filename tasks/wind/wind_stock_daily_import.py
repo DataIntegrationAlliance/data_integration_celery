@@ -4,12 +4,13 @@ import pandas as pd
 
 from tasks.wind import invoker
 from direstinvoker.ifind import APIError,UN_AVAILABLE_DATE
-from tasks.utils.fh_utils import get_last, get_first, date_2_str, STR_FORMAT_DATE, str_2_date
+from tasks.utils.fh_utils import get_last, get_first, date_2_str, STR_FORMAT_DATE, str_2_date, unzip_join
 import logging, os, json
 from sqlalchemy.types import String, Date, Integer
 from sqlalchemy.dialects.mysql import DOUBLE
 from tasks.backend import engine_md
 from tasks.utils.db_utils import with_db_session,add_col_2_table
+from tasks.utils.fh_utils import unzip_join
 logger = logging.getLogger()
 DATE_BASE = datetime.strptime('2005-01-01', STR_FORMAT_DATE).date()
 ONE_DAY = timedelta(days=1)
@@ -22,54 +23,86 @@ def import_stock_daily():
     """
     插入股票日线数据到最近一个工作日-1。
     如果超过 BASE_LINE_HOUR 时间，则获取当日的数据
-    :return: 
+    :return:
     """
     logging.info("更新 wind_stock_daily 开始")
-
+    table_name='wind_stock_daily'
+    param_list=[
+        ('open', DOUBLE),
+        ('high', DOUBLE),
+        ('low', DOUBLE),
+        ('close', DOUBLE),
+        ('adjfactor', DOUBLE),
+        ('volume', DOUBLE),
+        ('amt', DOUBLE),
+        ('pct_chg', DOUBLE),
+        ('maxupordown', Integer),
+        ('swing', DOUBLE),
+        ('turn', DOUBLE),
+        ('free_turn', DOUBLE),
+        ('trade_status', String(20)),
+        ('susp_days', Integer),
+        ('total_shares', DOUBLE),
+        ('free_float_shares', DOUBLE),
+        ('ev2_to_ebitda', DOUBLE),
+    ]
+    wind_indictor_str = ",".join([key for key, _ in param_list])
+    has_table = engine_md.has_table(table_name)
+    # 进行表格判断，确定是否含有wind_stock_daily
+    if has_table:
+        sql_str = """
+            SELECT wind_code, date_frm, if(delist_date<end_date, delist_date, end_date) date_to
+            FROM
+            (
+            SELECT info.wind_code, ifnull(trade_date, ipo_date) date_frm, delist_date,
+            if(hour(now())<16, subdate(curdate(),1), curdate()) end_date
+            FROM 
+                wind_stock_info info 
+            LEFT OUTER JOIN
+                (SELECT wind_code, adddate(max(trade_date),1) trade_date FROM {table_name} GROUP BY wind_code) daily
+            ON info.wind_code = daily.wind_code
+            ) tt
+            WHERE date_frm <= if(delist_date<end_date, delist_date, end_date) 
+            ORDER BY wind_code""".format(table_name=table_name)
+    else:
+        logger.warning('wind_stock_daily 不存在，仅使用 wind_stock_info 表进行计算日期范围')
+        sql_str = """
+            SELECT wind_code, date_frm, if(delist_date<end_date, delist_date, end_date) date_to
+            FROM
+              (
+                SELECT info.wind_code, ipo_date date_frm, delist_date,
+                if(hour(now())<16, subdate(curdate(),1), curdate()) end_date
+                FROM wind_stock_info info 
+              ) tt
+            WHERE date_frm <= if(delist_date<end_date, delist_date, end_date) 
+            ORDER BY wind_code"""
 
     with with_db_session(engine_md) as session:
-        # 获取每只股票最新交易日数据
-        sql_str = 'select wind_code, max(Trade_date) from wind_stock_daily group by wind_code'
+        # 获取每只股票需要获取日线数据的日期区间
         table = session.execute(sql_str)
-        stock_trade_date_latest_dic = dict(table.fetchall())
-        # 获取市场有效交易日数据
-        # sql_str = "select trade_date from wind_trade_date where trade_date > '2005-1-1'"
-        # table = session.execute(sql_str)
-        # trade_date_sorted_list = [t[0] for t in table.fetchall()]
-        # trade_date_sorted_list.sort()
-        # 获取每只股票上市日期、退市日期
-        table = session.execute('SELECT wind_code, ipo_date, delist_date FROM wind_stock_info')
-        stock_date_dic = {wind_code: (ipo_date, delist_date if delist_date is None or delist_date > UN_AVAILABLE_DATE else None) for
-                          wind_code, ipo_date, delist_date in table.fetchall()}
-    date_ending = date.today() - ONE_DAY if datetime.now().hour < BASE_LINE_HOUR else date.today()
+        # 计算每只股票需要获取日线数据的日期区间
+        begin_time=None
+        # 获取date_from,date_to，将date_from,date_to做为value值
+        code_date_range_dic = {
+            wind_code: (date_from if begin_time is None else min([date_from,begin_time]), date_to)
+            for wind_code, date_from, date_to in table.fetchall() if
+            wind_code_set is None or wind_code in wind_code_set}
+    # 设置 dtype
+    dtype = {key: val for key, val in param_list}
+    dtype['wind_code'] = String(20)
+    dtype['trade_date'] = Date
+
     data_df_list = []
-    data_len = len(stock_date_dic)
+    data_len = len(code_date_range_dic)
     logger.info('%d stocks will been import into wind_stock_daily', data_len)
+    #将data_df数据，添加到data_df_list
     try:
-        for data_num, (wind_code, date_pair) in enumerate(stock_date_dic.items()):
-            date_ipo, date_delist = date_pair
-            # 获取 date_from
-            if wind_code in stock_trade_date_latest_dic:
-                date_latest_t1 = stock_trade_date_latest_dic[wind_code] + ONE_DAY
-                date_from = max([date_latest_t1, DATE_BASE, date_ipo])
-            else:
-                date_from = max([DATE_BASE, date_ipo])
-            # date_from = get_first(trade_date_sorted_list, lambda x: x >= date_from)
-            # 获取 date_to
-            if date_delist is None:
-                date_to = date_ending
-            else:
-                date_to = min([date_delist, date_ending])
-            # date_to = get_last(trade_date_sorted_list, lambda x: x <= date_to)
-            if date_from is None or date_to is None or date_from > date_to:
-                continue
-            # 获取股票量价等行情数据
-            wind_indictor_str = "open,high,low,close,adjfactor,volume,amt,pct_chg,maxupordown," + \
-                                 "swing,turn,free_turn,trade_status,susp_days,total_shares,free_float_shares,ev2_to_ebitda"
+        for num, (wind_code, (date_from, date_to)) in enumerate(code_date_range_dic.items(), start=1):
+            logger.debug('%d/%d) %s [%s - %s]', num, data_len, wind_code, date_from, date_to)
             try:
                 data_df = invoker.wsd(wind_code, wind_indictor_str, date_from, date_to)
             except APIError as exp:
-                logger.exception("%d/%d) %s 执行异常", data_num, data_len, wind_code)
+                logger.exception("%d/%d) %s 执行异常", num, data_len, wind_code)
                 if exp.ret_dic.setdefault('error_code', 0) in (
                         -40520007,  # 没有可用数据
                         -40521009,  # 数据解码失败。检查输入参数是否正确，如：日期参数注意大小月月末及短二月
@@ -78,12 +111,13 @@ def import_stock_daily():
                 else:
                     break
             if data_df is None:
-                logger.warning('%d/%d) %s has no data during %s %s', data_num, data_len, wind_code, date_from, date_to)
+                logger.warning('%d/%d) %s has no data during %s %s', num, data_len, wind_code, date_from, date_to)
                 continue
-            logger.info('%d/%d) %d data of %s between %s and %s', data_num, data_len, data_df.shape[0], wind_code, date_from, date_to)
+            logger.info('%d/%d) %d data of %s between %s and %s', num, data_len, data_df.shape[0], wind_code, date_from, date_to)
             data_df['wind_code'] = wind_code
             data_df_list.append(data_df)
-            if DEBUG  and len(data_df_list) > 10:
+            # 仅调试使用
+            if DEBUG  and len(data_df_list) > 4:
                 break
     finally:
         # 导入数据库
@@ -92,29 +126,7 @@ def import_stock_daily():
             data_df_all.index.rename('trade_date', inplace=True)
             data_df_all.reset_index(inplace=True)
             data_df_all.set_index(['wind_code', 'trade_date'], inplace=True)
-            data_df_all.to_sql('wind_stock_daily', engine_md, if_exists='append',
-                               dtype={
-                                   'wind_code': String(20),
-                                   'trade_date': Date,
-                                   'open': DOUBLE,
-                                   'high': DOUBLE,
-                                   'low': DOUBLE,
-                                   'close': DOUBLE,
-                                   'adjfactor': DOUBLE,
-                                   'volume': DOUBLE,
-                                   'amt': DOUBLE,
-                                   'pct_chg': DOUBLE,
-                                   'maxupordown': Integer,
-                                   'swing': DOUBLE,
-                                   'turn': DOUBLE,
-                                   'free_turn': DOUBLE,
-                                   'trade_status': String(20),
-                                   'susp_days': Integer,
-                                   'total_shares': DOUBLE,
-                                   'free_DOUBLE_shares': DOUBLE,
-                                   'ev2_to_ebitda': DOUBLE,
-                               }
-                               )
+            data_df_all.to_sql('wind_stock_daily', engine_md, if_exists='append',dtype=dtype )
             logging.info("更新 wind_stock_daily 结束 %d 条信息被更新", data_df_all.shape[0])
 
 
@@ -275,7 +287,7 @@ if __name__ == '__main__':
     DEBUG = True
     # 更新每日股票数据
     wind_code_set=None
-    # import_stock_daily()
+    import_stock_daily()
     # import_stock_daily_wch()
-    add_new_col_data('ebitdaps', '',wind_code_set=wind_code_set)
+    # add_new_col_data('ebitdaps', '',wind_code_set=wind_code_set)
 
