@@ -12,9 +12,12 @@ from datetime import datetime, date, timedelta
 from tasks.utils.fh_utils import  STR_FORMAT_DATE
 from tasks.utils.db_utils import with_db_session
 from tasks.backend import engine_md
+from tasks.merge.code_mapping import update_from_info_table
+DEBUG = False
 
 
 def get_stock_code_set(date_fetch):
+    # 通过接口获取股票代码
     date_fetch_str = date_fetch.strftime(STR_FORMAT_DATE)
     stock_df = invoker.wset("sectorconstituent", "date=%s;sectorid=a001010100000000" % date_fetch_str)
     if stock_df is None:
@@ -28,13 +31,16 @@ def get_stock_code_set(date_fetch):
 def import_wind_stock_info(refresh=False):
 
     # 获取全市场股票代码及名称
+    table_name='wind_stock_info'
     logging.info("更新 wind_stock_info 开始")
+    #获取date—fetch
     if refresh:
         date_fetch = datetime.strptime('2005-1-1', STR_FORMAT_DATE).date()
     else:
         date_fetch = date.today()
     date_end = date.today()
     stock_code_set = set()
+#对date_fetch 进行一个判断，获取stock_code_set
     while date_fetch < date_end:
         stock_code_set_sub = get_stock_code_set(date_fetch)
         if stock_code_set_sub is not None:
@@ -51,6 +57,7 @@ def import_wind_stock_info(refresh=False):
     seg_count = 1000
     loop_count = math.ceil(float(stock_code_count) / seg_count)
     stock_info_df_list = []
+    #进行循环遍历获取stock_code_list_sub
     for n in range(loop_count):
         num_start = n * seg_count
         num_end = (n + 1) * seg_count
@@ -59,18 +66,21 @@ def import_wind_stock_info(refresh=False):
         # 尝试将 stock_code_list_sub 直接传递给wss，是否可行
         stock_info_df = invoker.wss(stock_code_list_sub, "sec_name,trade_code,ipo_date,delist_date,mkt,exch_city,exch_eng,prename")
         stock_info_df_list.append(stock_info_df)
-
+    #对数据表进行规范整理.整合,索引重命名
     stock_info_all_df = pd.concat(stock_info_df_list)
     stock_info_all_df.index.rename('WIND_CODE', inplace=True)
     logging.info('%s stock data will be import', stock_info_all_df.shape[0])
     stock_info_all_df.reset_index(inplace=True)
     data_list = list(stock_info_all_df.T.to_dict().values())
-    sql_str = "REPLACE INTO wind_stock_info (wind_code, trade_code, sec_name, ipo_date, delist_date, mkt, exch_city, exch_eng, prename) values (:WIND_CODE, :TRADE_CODE, :SEC_NAME, :IPO_DATE, :DELIST_DATE, :MKT, :EXCH_CITY, :EXCH_ENG, :PRENAME)"
+    #对wind_stock_info表进行数据插入
+    sql_str = "REPLACE INTO {table_name} (wind_code, trade_code, sec_name, ipo_date, delist_date, mkt, exch_city, exch_eng, prename) values (:WIND_CODE, :TRADE_CODE, :SEC_NAME, :IPO_DATE, :DELIST_DATE, :MKT, :EXCH_CITY, :EXCH_ENG, :PRENAME)"
     # sql_str = "insert INTO wind_stock_info (wind_code, trade_code, sec_name, ipo_date, delist_date, mkt, exch_city, exch_eng, prename) values (:WIND_CODE, :TRADE_CODE, :SEC_NAME, :IPO_DATE, :DELIST_DATE, :MKT, :EXCH_CITY, :EXCH_ENG, :PRENAME)"
+    #事物提交执行更新
     with with_db_session(engine_md) as session:
         session.execute(sql_str, data_list)
-        stock_count = session.execute('select count(*) from wind_stock_info').first()[0]
-    logging.info("更新 wind_stock_info 完成 存量数据 %d 条", stock_count)
+        stock_count = session.execute('select count(*) from {table_name}').scalar()
+    logging.info("更新 %s 完成 存量数据 %d 条",{table_name},stock_count)
+    update_from_info_table(table_name)
 
 
 if __name__ == "__main__":
