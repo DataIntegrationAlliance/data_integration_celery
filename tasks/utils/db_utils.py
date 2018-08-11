@@ -7,6 +7,8 @@
 @contact : mmmaaaggg@163.com
 @desc    : 数据库相关工具
 """
+import pandas as pd
+import numpy as np
 from sqlalchemy import MetaData, Column, Table
 from sqlalchemy.orm.session import Session
 from sqlalchemy.orm import sessionmaker
@@ -146,3 +148,38 @@ def add_col_2_table(engine, table_name, col_name, col_type_str):
         with with_db_session(engine) as session:
             session.execute(add_col_sql_str)
         logger.info('%s 添加 %s [%s] 列成功', table_name, col_name, col_type_str)
+
+
+def bunch_insert_on_duplicate_update(df: pd.DataFrame, table_name, engine, dtype=None):
+    """
+    将 DataFrame 数据批量插入数据库，ON DUPLICATE KEY UPDATE
+    :param df:
+    :param table_name:
+    :param engine:
+    :param dtype: 仅在表不存在的情况下自动创建使用
+    :return:
+    """
+    has_table = engine.has_table(table_name)
+    if has_table:
+        col_name_list = list(df.columns)
+        generated_directive = ["{0}=VALUES({0})".format(col_name) for col_name in col_name_list]
+        sql_str = "insert into {table_name}({col_names}) VALUES({params}) ON DUPLICATE KEY UPDATE {update}".format(
+            table_name=table_name,
+            col_names=','.join(col_name_list),
+            params=','.join([':' + col_name for col_name in col_name_list]),
+            update=','.join(generated_directive),
+        )
+        data_dic_list = df.to_dict('records')
+        for data_dic in data_dic_list:
+            for k, v in data_dic.items():
+                if isinstance(v, float) and np.isnan(v):
+                    data_dic[k] = None
+        with with_db_session(engine) as session:
+            rslt = session.execute(sql_str, params=data_dic)
+            insert_count = rslt.rowcount
+            session.commit()
+    else:
+        df.to_sql(table_name, engine, if_exists='append', index=False, dtype=dtype)
+        insert_count = df.shape[0]
+
+    return insert_count

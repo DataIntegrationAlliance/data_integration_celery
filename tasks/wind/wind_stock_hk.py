@@ -17,6 +17,7 @@ from fh_tools.fh_utils import get_last, get_first, date_2_str
 import logging
 from sqlalchemy.types import String, Date, Float, Integer
 from sqlalchemy.dialects.mysql import DOUBLE
+from tasks.merge.code_mapping import update_from_info_table
 logger = logging.getLogger()
 DATE_BASE = datetime.strptime('1980-01-01', STR_FORMAT_DATE).date()
 ONE_DAY = timedelta(days=1)
@@ -38,9 +39,13 @@ def get_stock_code_set(date_fetch):
 
 
 def import_wind_stock_info_hk(refresh=False):
-
-    # 获取全市场股票代码及名称
-    logging.info("更新 wind_stock_info_hk 开始")
+    """
+    获取全市场股票代码及名称 导入 港股股票信息 到 wind_stock_info_hk
+    :param refresh: 默认为False，True 则进行全部更新
+    :return:
+    """
+    table_name = 'wind_stock_info_hk'
+    logging.info("更新 %s 开始", table_name)
     if refresh:
         date_fetch = DATE_BASE
     else:
@@ -78,12 +83,15 @@ def import_wind_stock_info_hk(refresh=False):
     engine = get_db_engine()
     stock_info_all_df.reset_index(inplace=True)
     data_list = list(stock_info_all_df.T.to_dict().values())
-    sql_str = "REPLACE INTO wind_stock_info_hk (wind_code, trade_code, sec_name, ipo_date, delist_date, mkt, exch_city, exch_eng, prename) values (:WIND_CODE, :TRADE_CODE, :SEC_NAME, :IPO_DATE, :DELIST_DATE, :MKT, :EXCH_CITY, :EXCH_ENG, :PRENAME)"
+    sql_str = "REPLACE INTO {table_name} (wind_code, trade_code, sec_name, ipo_date, delist_date, mkt, exch_city, exch_eng, prename) values (:WIND_CODE, :TRADE_CODE, :SEC_NAME, :IPO_DATE, :DELIST_DATE, :MKT, :EXCH_CITY, :EXCH_ENG, :PRENAME)".format(
+        table_name=table_name
+    )
     # sql_str = "insert INTO wind_stock_info_hk (wind_code, trade_code, sec_name, ipo_date, delist_date, mkt, exch_city, exch_eng, prename) values (:WIND_CODE, :TRADE_CODE, :SEC_NAME, :IPO_DATE, :DELIST_DATE, :MKT, :EXCH_CITY, :EXCH_ENG, :PRENAME)"
     with get_db_session(engine) as session:
         session.execute(sql_str, data_list)
-        stock_count = session.execute('select count(*) from wind_stock_info_hk').first()[0]
-    logging.info("更新 wind_stock_info_hk 完成 存量数据 %d 条", stock_count)
+        stock_count = session.execute('select count(*) from {table_name}0'.format(table_name=table_name)).first()[0]
+    logging.info("更新 %s 完成 存量数据 %d 条", table_name, stock_count)
+    update_from_info_table(table_name)
 
 
 def import_stock_daily_hk():

@@ -19,8 +19,8 @@ if IS_LINUX_OS:
 
 class CeleryConfig:
     # Celery settings
-    broker_url = 'amqp://**:**@localhost:3306/celery_tasks',
-    result_backend = 'amqp://**:**@localhost:3306/backend'
+    broker_url = 'amqp://mg:***@localhost:3306/celery_tasks',
+    result_backend = 'amqp://mg:***@localhost:3306/backend'
     accept_content = ['json']  # , 'pickle'
     timezone = 'Asia/Shanghai'
     imports = ('tasks', )
@@ -38,9 +38,10 @@ class CeleryConfig:
 # os.getenv() enables configuration through OS environment variables
 class ConfigClass(object):
     # Sql Alchemy settings
-    DB_NAME_MD = 'md'
+    DB_SCHEMA_MD = 'md_integration'
     DB_URL_DIC = {
-        DB_NAME_MD: 'mysql://**:**@localhost/md_integration?charset=utf8'
+        DB_SCHEMA_MD: "mysql://mg:***@localhost/{DB_SCHEMA_MD}?charset=utf8".format(
+            DB_SCHEMA_MD=DB_SCHEMA_MD)
     }
 
     # ifind settings
@@ -80,6 +81,7 @@ class ConfigClass(object):
         }
     )
     logging.getLogger('sqlalchemy.engine').setLevel(logging.WARN)
+    logging.getLogger('urllib3.connectionpool').setLevel(logging.INFO)
     dictConfig(logging_config)
 
 

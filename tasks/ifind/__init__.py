@@ -27,5 +27,6 @@ from tasks.ifind.future import *
 
 if __name__ == '__main__':
     print_indicator_param_dic(
-        'ths_qhjc_future;ths_qhdm_future;ths_zqlx_future;ths_jypz_future;ths_jydw_future;ths_contract_multiplier_future;ths_bjdw_future;ths_zxbdjw_future;ths_zdfxz_future;ths_jybzj_future;ths_contract_listed_date_future;ths_ksjyr_future;ths_zhjyr_future;ths_zhjgr_future;ths_jgyf_future;ths_gpjzj_future;ths_zcjybzj_future;ths_hyyfsm_future;ths_jysjsm_future;ths_zhjyrsm_future;ths_jgrqsm_future;ths_jysjc_future;ths_hyywjc_future;ths_hyywmc_future',';;;;;;;;;;;;;;;;;;;;;;;'
+        'ths_corp_total_shares_hks;ths_pe_ttm_hks;ths_pb_hks;ths_pcf_operating_cash_flow_ttm_hks;ths_pcf_cash_net_flow_ttm_hks;ths_ps_ttm_hks;ths_dividend_rate_hks;ths_market_value_hks',
+        ';100;2017,103;100;100;100;2017;HKD'
     )
