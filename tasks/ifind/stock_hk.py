@@ -18,7 +18,6 @@ from tasks.backend import engine_md
 from tasks import app
 from tasks.merge.code_mapping import update_from_info_table
 from tasks.utils.db_utils import bunch_insert_on_duplicate_update
-from tasks.config import config
 
 DEBUG = False
 logger = logging.getLogger()
@@ -187,8 +186,6 @@ def import_stock_hk_daily_ds(ths_code_set: set = None, begin_time=None):
         logger.warning('%s 不存在，仅使用 ifind_stock_hk_info 表进行计算日期范围', table_name)
     with with_db_session(engine_md) as session:
         # 获取每只股票需要获取日线数据的日期区间
-        # table = session.execute(sql_str)
-
         table = session.execute(sql_str)
 
         # 获取每只股票需要获取日线数据的日期区间
@@ -222,20 +219,6 @@ def import_stock_hk_daily_ds(ths_code_set: set = None, begin_time=None):
             )
             if data_df is not None or data_df.shape[0] > 0:
                 data_count += data_df.shape[0]
-                # data_df['ths_ss_vol_hks'] = data_df['ths_ss_vol_hks'].apply(
-                #     lambda x: 0 if x is None or pd.isna(x) else x)
-                # data_df['ths_corp_total_shares_hks'] = data_df['ths_corp_total_shares_hks'].apply(
-                #     lambda x: 0 if x is None or pd.isna(x) else x)
-                # data_df['ths_pe_ttm_hks'] = data_df['ths_pe_ttm_hks'].apply(
-                #     lambda x: 0 if x is None or pd.isna(x) else x)
-                # data_df['ths_pcf_operating_cash_flow_ttm_hks'] = data_df['ths_pcf_operating_cash_flow_ttm_hks'].apply(
-                #     lambda x: 0 if x is None or pd.isna(x) else x)
-                # data_df['ths_pcf_cash_net_flow_ttm_hks'] = data_df['ths_pcf_cash_net_flow_ttm_hks'].apply(
-                #     lambda x: 0 if x is None or pd.isna(x) else x)
-                # data_df['ths_ps_ttm_hks'] = data_df['ths_ps_ttm_hks'].apply(
-                #     lambda x: 0 if x is None or pd.isna(x) else x)
-                # data_df['ths_market_value_hks'] = data_df['ths_market_value_hks'].apply(
-                #     lambda x: 0 if x is None or pd.isna(x) else x)
                 data_df_list.append(data_df)
 
             # 仅调试使用
@@ -404,11 +387,11 @@ def add_new_col_data(col_name, param, db_col_name=None, col_type_str='DOUBLE', t
     # 将数据更新到 ds 表中
     if all_finished:
         sql_str = """update {table_name} daily, ifind_ckdvp_stock_hk ckdvp
-        set daily.{db_col_name} = ckdvp.value
-        where daily.ths_code = ckdvp.ths_code
-        and daily.time = ckdvp.time
-        and ckdvp.key = '{db_col_name}'
-        and ckdvp.param = '{param}'""".format(db_col_name=db_col_name, param=param, table_name=table_name)
+            set daily.{db_col_name} = ckdvp.value
+            where daily.ths_code = ckdvp.ths_code
+            and daily.time = ckdvp.time
+            and ckdvp.key = '{db_col_name}'
+            and ckdvp.param = '{param}'""".format(db_col_name=db_col_name, param=param, table_name=table_name)
         with with_db_session(engine_md) as session:
             session.execute(sql_str)
             session.commit()
