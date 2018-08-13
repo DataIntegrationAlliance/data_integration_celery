@@ -663,7 +663,6 @@ def add_data_2_ckdvp(col_name, param, wind_code_set: set = None, begin_time=None
         return all_finished
 
 
-
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG, format='%(asctime)s: %(levelname)s [%(name)s:%(funcName)s] %(message)s')
     DEBUG = True
