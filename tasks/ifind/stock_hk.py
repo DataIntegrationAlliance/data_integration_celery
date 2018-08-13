@@ -328,7 +328,7 @@ def import_stock_hk_daily_his(ths_code_set: set = None, begin_time=None):
                 'Interval:D,CPS:1,baseDate:1900-01-01,Currency:YSHB,fill:Previous',
                 begin_time, end_time
             )
-            if data_df is not None or data_df.shape[0] > 0:
+            if data_df is not None and data_df.shape[0] > 0:
                 data_count += data_df.shape[0]
                 data_df_list.append(data_df)
             # 大于阀值有开始插入
@@ -516,13 +516,14 @@ def add_data_2_ckdvp(json_indicator, json_param, ths_code_set: set = None, begin
 if __name__ == "__main__":
     # DEBUG = True
     TRIAL = True
-    ths_code = None  # '600006.SH,600009.SH'
     # 股票基本信息数据加载
-    # import_stock_hk_info(ths_code)
+    # ths_code = None  # '600006.SH,600009.SH'
+    # refresh = False
+    # import_stock_hk_info(ths_code, refresh=refresh)
 
     ths_code_set = None  # {'600006.SH', '600009.SH'}
     # 股票日K历史数据加载
-    # import_stock_hk_daily_his(ths_code_set)
+    import_stock_hk_daily_his(ths_code_set)
     # 股票日K数据加载
     import_stock_hk_daily_ds(ths_code_set)
     # 添加新字段

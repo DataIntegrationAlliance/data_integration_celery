@@ -1,24 +1,102 @@
-from datetime import date, datetime, timedelta
+# -*- coding: utf-8 -*-
+"""
+Created on 2017/4/14
+@author: MG
+"""
+import math
 import pandas as pd
-
-
-from tasks.wind import invoker
-from direstinvoker.ifind import APIError,UN_AVAILABLE_DATE
-from tasks.utils.fh_utils import get_last, get_first, date_2_str, STR_FORMAT_DATE, str_2_date, unzip_join
 import logging, os, json
+from tasks.merge.code_mapping import update_from_info_table
+from datetime import date, datetime, timedelta
+from tasks.wind import invoker
+from direstinvoker.ifind import APIError, UN_AVAILABLE_DATE
+from tasks.utils.fh_utils import get_last, get_first, date_2_str, STR_FORMAT_DATE, str_2_date, unzip_join
+from tasks import app
 from sqlalchemy.types import String, Date, Integer
 from sqlalchemy.dialects.mysql import DOUBLE
 from tasks.backend import engine_md
-from tasks.utils.db_utils import with_db_session,add_col_2_table
-from tasks.utils.fh_utils import unzip_join
+from tasks.utils.db_utils import with_db_session, add_col_2_table
+DEBUG = False
 logger = logging.getLogger()
 DATE_BASE = datetime.strptime('2005-01-01', STR_FORMAT_DATE).date()
 ONE_DAY = timedelta(days=1)
 # 标示每天几点以后下载当日行情数据
 BASE_LINE_HOUR = 16
-DEBUG = False
 
 
+def get_stock_code_set(date_fetch):
+    """
+     # 通过接口获取股票代码
+    :param date_fetch:
+    :return:
+    """
+    date_fetch_str = date_fetch.strftime(STR_FORMAT_DATE)
+    stock_df = invoker.wset("sectorconstituent", "date=%s;sectorid=a001010100000000" % date_fetch_str)
+    if stock_df is None:
+        logging.warning('%s 获取股票代码失败', date_fetch_str)
+        return None
+    stock_count = stock_df.shape[0]
+    logging.info('get %d stocks on %s', stock_count, date_fetch_str)
+    return set(stock_df['wind_code'])
+
+
+@app.task
+def import_wind_stock_info(refresh=False):
+    # 获取全市场股票代码及名称
+    table_name = 'wind_stock_info'
+    logging.info("更新 wind_stock_info 开始")
+    """获取date—fetch
+    """
+    if refresh:
+        date_fetch = datetime.strptime('2005-1-1', STR_FORMAT_DATE).date()
+    else:
+        date_fetch = date.today()
+    date_end = date.today()
+    stock_code_set = set()
+    # 对date_fetch 进行一个判断，获取stock_code_set
+    while date_fetch < date_end:
+        stock_code_set_sub = get_stock_code_set(date_fetch)
+        if stock_code_set_sub is not None:
+            stock_code_set |= stock_code_set_sub
+        date_fetch += timedelta(days=365)
+    stock_code_set_sub = get_stock_code_set(date_end)
+    if stock_code_set_sub is not None:
+        stock_code_set |= stock_code_set_sub
+    # 获取股票对应上市日期，及摘牌日期
+    # w.wss("300005.SZ,300372.SZ,000003.SZ", "ipo_date,trade_code,mkt,exch_city,exch_eng")
+    stock_code_list = list(stock_code_set)
+    stock_code_count = len(stock_code_list)
+    seg_count = 1000
+    loop_count = math.ceil(float(stock_code_count) / seg_count)
+    stock_info_df_list = []
+    # 进行循环遍历获取stock_code_list_sub
+    for n in range(loop_count):
+        num_start = n * seg_count
+        num_end = (n + 1) * seg_count
+        num_end = num_end if num_end <= stock_code_count else stock_code_count
+        stock_code_list_sub = stock_code_list[num_start:num_end]
+        # 尝试将 stock_code_list_sub 直接传递给wss，是否可行
+        stock_info_df = invoker.wss(stock_code_list_sub,
+                                    "sec_name,trade_code,ipo_date,delist_date,mkt,exch_city,exch_eng,prename")
+        stock_info_df_list.append(stock_info_df)
+    # 对数据表进行规范整理.整合,索引重命名
+    stock_info_all_df = pd.concat(stock_info_df_list)
+    stock_info_all_df.index.rename('WIND_CODE', inplace=True)
+    logging.info('%s stock data will be import', stock_info_all_df.shape[0])
+    stock_info_all_df.reset_index(inplace=True)
+    data_list = list(stock_info_all_df.T.to_dict().values())
+    # 对wind_stock_info表进行数据插入
+    sql_str = "REPLACE INTO {table_name} (wind_code, trade_code, sec_name, ipo_date, delist_date, mkt, exch_city, exch_eng, prename) values (:WIND_CODE, :TRADE_CODE, :SEC_NAME, :IPO_DATE, :DELIST_DATE, :MKT, :EXCH_CITY, :EXCH_ENG, :PRENAME)"
+    # sql_str = "insert INTO wind_stock_info (wind_code, trade_code, sec_name, ipo_date, delist_date, mkt, exch_city, exch_eng, prename) values (:WIND_CODE, :TRADE_CODE, :SEC_NAME, :IPO_DATE, :DELIST_DATE, :MKT, :EXCH_CITY, :EXCH_ENG, :PRENAME)"
+    # 事物提交执行更新
+    with with_db_session(engine_md) as session:
+        session.execute(sql_str, data_list)
+        stock_count = session.execute('select count(*) from {table_name}').scalar()
+    logging.info("更新 %s 完成 存量数据 %d 条", {table_name}, stock_count)
+    update_from_info_table(table_name)
+
+
+@app.task
 def import_stock_daily():
     """
     插入股票日线数据到最近一个工作日-1。
@@ -26,8 +104,8 @@ def import_stock_daily():
     :return:
     """
     logging.info("更新 wind_stock_daily 开始")
-    table_name='wind_stock_daily'
-    param_list=[
+    table_name = 'wind_stock_daily'
+    param_list = [
         ('open', DOUBLE),
         ('high', DOUBLE),
         ('low', DOUBLE),
@@ -81,10 +159,10 @@ def import_stock_daily():
         # 获取每只股票需要获取日线数据的日期区间
         table = session.execute(sql_str)
         # 计算每只股票需要获取日线数据的日期区间
-        begin_time=None
+        begin_time = None
         # 获取date_from,date_to，将date_from,date_to做为value值
         code_date_range_dic = {
-            wind_code: (date_from if begin_time is None else min([date_from,begin_time]), date_to)
+            wind_code: (date_from if begin_time is None else min([date_from, begin_time]), date_to)
             for wind_code, date_from, date_to in table.fetchall() if
             wind_code_set is None or wind_code in wind_code_set}
     # 设置 dtype
@@ -95,7 +173,7 @@ def import_stock_daily():
     data_df_list = []
     data_len = len(code_date_range_dic)
     logger.info('%d stocks will been import into wind_stock_daily', data_len)
-    #将data_df数据，添加到data_df_list
+    # 将data_df数据，添加到data_df_list
     try:
         for num, (wind_code, (date_from, date_to)) in enumerate(code_date_range_dic.items(), start=1):
             logger.debug('%d/%d) %s [%s - %s]', num, data_len, wind_code, date_from, date_to)
@@ -113,11 +191,12 @@ def import_stock_daily():
             if data_df is None:
                 logger.warning('%d/%d) %s has no data during %s %s', num, data_len, wind_code, date_from, date_to)
                 continue
-            logger.info('%d/%d) %d data of %s between %s and %s', num, data_len, data_df.shape[0], wind_code, date_from, date_to)
+            logger.info('%d/%d) %d data of %s between %s and %s', num, data_len, data_df.shape[0], wind_code, date_from,
+                        date_to)
             data_df['wind_code'] = wind_code
             data_df_list.append(data_df)
             # 仅调试使用
-            if DEBUG  and len(data_df_list) > 4:
+            if DEBUG and len(data_df_list) > 4:
                 break
     finally:
         # 导入数据库
@@ -126,21 +205,21 @@ def import_stock_daily():
             data_df_all.index.rename('trade_date', inplace=True)
             data_df_all.reset_index(inplace=True)
             data_df_all.set_index(['wind_code', 'trade_date'], inplace=True)
-            data_df_all.to_sql('wind_stock_daily', engine_md, if_exists='append',dtype=dtype )
+            data_df_all.to_sql('wind_stock_daily', engine_md, if_exists='append', dtype=dtype)
             logging.info("更新 wind_stock_daily 结束 %d 条信息被更新", data_df_all.shape[0])
 
 
+@app.task
 def add_new_col_data(col_name, param, db_col_name=None, col_type_str='DOUBLE', wind_code_set: set = None):
     """
     1）修改 daily 表，增加字段
-    2）ckpv表增加数据
-    3）第二部不见得1天能够完成，当第二部完成后，将ckvp数据更新daily表中
+    2）wind_ckdvp_stock表增加数据
+    3）第二部不见得1天能够完成，当第二部完成后，将wind_ckdvp_stock数据更新daily表中
     :param col_name:增加字段名称
     :param param: 参数
-    :param dtype: 数据库字段类型
     :param db_col_name: 默认为 None，此时与col_name相同
     :param col_type_str: DOUBLE, VARCHAR(20), INTEGER, etc. 不区分大小写
-    :param ths_code_set: 默认 None， 否则仅更新指定 ths_code
+    :param wind_code_set: 默认 None， 否则仅更新指定 wind_code
     :return:
     """
     if db_col_name is None:
@@ -149,17 +228,17 @@ def add_new_col_data(col_name, param, db_col_name=None, col_type_str='DOUBLE', w
 
     # 检查当前数据库是否存在 db_col_name 列，如果不存在则添加该列
     add_col_2_table(engine_md, 'wind_stock_daily', db_col_name, col_type_str)
-    # 将数据增量保存到 ckdvp 表
-    all_finished = add_data_2_ckdvp(col_name,param, wind_code_set)
+    # 将数据增量保存到 wind_ckdvp_stock 表
+    all_finished = add_data_2_ckdvp(col_name, param, wind_code_set)
     # 将数据更新到 ds 表中
-    #对表的列进行整合，daily表的列属性值ckdvp的value 根据所有条件进行判定
+    # 对表的列进行整合，daily表的列属性值插入wind_ckdvp_stock的value 根据所有条件进行判定
     if all_finished:
         sql_str = """
             update wind_stock_daily daily, wind_ckdvp_stock ckdvp
             set daily.{db_col_name} = ckdvp.value
             where daily.wind_code = ckdvp.wind_code
             and ckdvp.key = '{db_col_name}' and ckdvp.param = '{param}'
-           
+
             and ckdvp.time = daily.trade_date""".format(db_col_name=db_col_name, param=param)
         # 进行事务提交
         with with_db_session(engine_md) as session:
@@ -169,8 +248,14 @@ def add_new_col_data(col_name, param, db_col_name=None, col_type_str='DOUBLE', w
         logger.info('更新 %s 字段 wind_stock_daily 表 %d 条记录', db_col_name, data_count)
 
 
-def add_data_2_ckdvp(col_name, param, wind_code_set:set=None,begin_time=None):
-    #判断表格是否存在，存在则进行表格的关联查询
+def add_data_2_ckdvp(col_name, param, wind_code_set: set = None, begin_time=None):
+    """判断表格是否存在，存在则进行表格的关联查询
+    :param col_name: 增加的列属性名
+    :param param: 参数
+    :param wind_code_set: 默认为None
+    :param begin_time: 默认为None
+    :return:
+    """
     table_name = 'wind_ckdvp_stock'
     all_finished = False
     has_table = engine_md.has_table('wind_ckdvp_stock')
@@ -213,14 +298,13 @@ def add_data_2_ckdvp(col_name, param, wind_code_set:set=None,begin_time=None):
             for wind_code, date_from, date_to in table.fetchall() if
             wind_code_set is None or wind_code in wind_code_set}
 
-    # 设置 dtype
+        # 设置 dtype
         dtype = {
             'wind_code': String(20),
             'key': String(80),
             'time': Date,
             'value': String(80),
             'param': String(80),
-
 
         }
         data_df_list, data_count, tot_data_count, code_count = [], 0, 0, len(code_date_range_dic)
@@ -278,16 +362,12 @@ def add_data_2_ckdvp(col_name, param, wind_code_set:set=None,begin_time=None):
         return all_finished
 
 
-
-
-
-
-if __name__ == '__main__':
-    logging.basicConfig(level=logging.DEBUG, format='%(asctime)s: %(levelname)s [%(name)s:%(funcName)s] %(message)s')
+if __name__ == "__main__":
+    import_wind_stock_info(refresh=False)
+    logging.basicConfig(level=logging.DEBUG, format=' %(asctime)s: %(levelname)s [%(name)s: %(funcName)s] %(message)s')
     DEBUG = True
     # 更新每日股票数据
-    wind_code_set=None
+    wind_code_set = None
     import_stock_daily()
     # import_stock_daily_wch()
     # add_new_col_data('ebitdaps', '',wind_code_set=wind_code_set)
-
