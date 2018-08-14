@@ -10,12 +10,13 @@ from tasks import app
 from datetime import date, datetime, timedelta
 from tasks.backend import engine_md
 from tasks.wind import invoker
-from tasks.utils.db_utils import with_db_session, add_col_2_table
+from tasks.utils.db_utils import with_db_session, add_col_2_table,alter_table_2_myisam
 from tasks.utils.fh_utils import STR_FORMAT_DATE
 from direstinvoker.ifind import APIError, UN_AVAILABLE_DATE
 from tasks.utils.fh_utils import get_last, get_first, date_2_str
 from sqlalchemy.types import String, Date, Float, Integer
 from sqlalchemy.dialects.mysql import DOUBLE
+from tasks.backend.orm import build_primary_key
 from tasks.merge.code_mapping import update_from_info_table
 from tasks.utils.db_utils import bunch_insert_on_duplicate_update
 DEBUG = False
@@ -41,6 +42,7 @@ def get_stock_code_set(date_fetch):
     return set(stock_df['wind_code'])
 
 
+@app.tasks
 def import_wind_stock_info_hk(refresh=False):
     """
     获取全市场股票代码及名称 导入 港股股票信息 到 wind_stock_info_hk
@@ -147,7 +149,7 @@ def import_stock_daily_hk():
         ('PB_MRQ', DOUBLE),
     ]
     # 将列表列名转化为小写
-    col_name_dic = {col_name.upper(): col_name.lower() for col_name in param_list.keys()}
+    col_name_dic = {col_name.upper(): col_name.lower() for col_name in param_list}
     # 获取列表列名
     col_name_list = [col_name.lower() for col_name in col_name_dic.keys()]
     # wind_indictor_str = "open,high,low,close,adjfactor,volume,amt,pct_chg,maxupordown," + \
@@ -234,6 +236,9 @@ def import_stock_daily_hk():
             data_df_all.set_index(['wind_code', 'trade_date'], inplace=True)
             bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md, dtype=dtype)
             logging.info("更新 wind_stock_daily_hk 结束 %d 条信息被更新", data_df_all.shape[0])
+            if not has_table and engine_md.has_table(table_name):
+                alter_table_2_myisam(engine_md, [table_name])
+                build_primary_key([table_name])
 
 
 @app.task
@@ -333,6 +338,9 @@ def import_stock_quertarly_hk():
             # data_df_all.to_sql('wind_stock_quertarly_hk', engine_md, if_exists='append')
             bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md, dtype=dtype)
             logging.info("更新 wind_stock_quertarly_hk 结束 %d 条信息被更新", data_df_all.shape[0])
+            if not has_table and engine_md.has_table(table_name):
+                alter_table_2_myisam(engine_md, [table_name])
+                build_primary_key([table_name])
 
 
 def fill_col():
@@ -434,6 +442,7 @@ def fill_col():
             logger.info('%d data imported', data_df_not_null.shape[0])
         else:
             logger.warning('no data for update')
+
 
 @app.task
 def add_new_col_data(col_name, param, db_col_name=None, col_type_str='DOUBLE', wind_code_set: set = None):
@@ -578,6 +587,9 @@ def add_data_2_ckdvp(col_name, param, wind_code_set: set = None, begin_time=None
                 with with_db_session(engine_md) as session:
                     session.execute(create_pk_str)
             logging.info("更新 %s 完成 新增数据 %d 条", table_name, tot_data_count)
+            if not has_table and engine_md.has_table(table_name):
+                alter_table_2_myisam(engine_md, [table_name])
+                build_primary_key([table_name])
         return all_finished
 
 
@@ -587,7 +599,7 @@ if __name__ == "__main__":
     wind_code_set = {'1680.HK'}
     # wind_code_set = None
     # import_wind_stock_info_hk(refresh=False)
-    # import_stock_daily_hk(wind_code_set)'1680.HK'
+    import_stock_daily_hk()
     # import_stock_quertarly_hk()
     # fill_col()
-    add_new_col_data('ebitdaps', '', wind_code_set=wind_code_set)
+    # add_new_col_data('ebitdaps', '', wind_code_set=wind_code_set)
