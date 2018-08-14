@@ -83,17 +83,10 @@ def import_wind_stock_info(refresh=False):
     # 获取股票对应上市日期，及摘牌日期
     # w.wss("300005.SZ,300372.SZ,000003.SZ", "ipo_date,trade_code,mkt,exch_city,exch_eng")
     stock_code_list = list(stock_code_set)
-    stock_code_count = len(stock_code_list)
     seg_count = 1000
-    loop_count = math.ceil(float(stock_code_count) / seg_count)
     stock_info_df_list = []
 
     # 进行循环遍历获取stock_code_list_sub
-    # for n in range(loop_count):
-    #     num_start = n * seg_count
-    #     num_end = (n + 1) * seg_count
-    #     num_end = num_end if num_end <= stock_code_count else stock_code_count
-    #     stock_code_list_sub = stock_code_list[num_start:num_end]
     for stock_code_list_sub in split_chunk(stock_code_list, seg_count):
         # 尝试将 stock_code_list_sub 直接传递给wss，是否可行
         stock_info_df = invoker.wss(stock_code_list_sub, param)
@@ -111,9 +104,9 @@ def import_wind_stock_info(refresh=False):
     # 事物提交执行更新
     # with with_db_session(engine_md) as session:
     #     session.execute(sql_str, data_list)
-    #     stock_count = session.execute('select count(*) from {table_name}').scalar()
-    stock_count = bunch_insert_on_duplicate_update(stock_info_all_df, table_name, engine_md, dtype=dtype)
-    logging.info("更新 %s 完成 存量数据 %d 条", table_name, stock_count)
+    #     data_count = session.execute('select count(*) from {table_name}').scalar()
+    data_count = bunch_insert_on_duplicate_update(stock_info_all_df, table_name, engine_md, dtype=dtype)
+    logging.info("更新 %s 完成 存量数据 %d 条", table_name, data_count)
     if not has_table and engine_md.has_table(table_name):
         alter_table_2_myisam(engine_md, [table_name])
         build_primary_key([table_name])
