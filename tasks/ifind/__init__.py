@@ -20,7 +20,7 @@ def print_indicator_param_dic(*args):
         print(str(item) + ',')
     print(']')
 
-# 着两条语句不能够提前，将会导致循环引用异常
+# 以下语句不能够提前，将会导致循环引用异常
 from tasks.ifind.stock import *
 from tasks.ifind.trade_date import *
 from tasks.ifind.future import *

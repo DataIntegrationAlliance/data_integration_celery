@@ -73,7 +73,7 @@ def import_fund_info(ths_code=None, refresh=False):
             ths_code = ths_code[:10]
 
     indicator_param_list = [
-        ('ths_product_short_name_sp', '', String(40)),
+        ('ths_product_short_name_sp', '', String(80)),
         ('ths_product_full_name_sp', '', String(80)),
         ('ths_trust_category_sp', '', String(40)),
         ('ths_is_structured_product_sp', '', String(10)),
@@ -81,7 +81,7 @@ def import_fund_info(ths_code=None, refresh=False):
         ('ths_low_add_amt_sp', '', Integer),
         ('ths_fore_max_issue_scale_sp', '', String(40)),
         ('ths_actual_issue_scale_sp', '', String(40)),
-        ('ths_invest_manager_current_sp', '', String(10)),
+        ('ths_invest_manager_current_sp', '', String(60)),
         ('ths_mendator_sp', '', String(20)),
         ('ths_recommend_sd_sp', '', Date),
         ('ths_introduction_ed_sp', '', Date),
@@ -92,10 +92,10 @@ def import_fund_info(ths_code=None, refresh=False):
         ('ths_remain_duration_d_sp', '', Integer),
         ('ths_float_manage_rate_sp', '', DOUBLE),
         ('ths_mandate_fee_rate_sp', '', DOUBLE),
-        ('ths_subscription_rate_explain_sp', '', String(250)),
-        ('ths_redemp_rate_explain_sp', '', String(250)),
-        ('ths_opening_period_explain_sp', '', String(250)),
-        ('ths_close_period_explain_sp', '', String(250)),
+        ('ths_subscription_rate_explain_sp', '', String(300)),
+        ('ths_redemp_rate_explain_sp', '', String(300)),
+        ('ths_opening_period_explain_sp', '', String(300)),
+        ('ths_close_period_explain_sp', '', String(300)),
         ('ths_trustee_sp', '', String(100)),
         ('ths_secbroker_sp', '', String(40))
     ]
@@ -224,9 +224,9 @@ def import_private_fund_daily(ths_code_set: set = None, begin_time=None):
 
 
 if __name__ == "__main__":
-    DEBUG = True
+    # DEBUG = True
     ths_code = None  # '600006.SH,600009.SH'
     # 基金基本信息数据加载
-    # import_fund_info(ths_code)
+    import_fund_info(ths_code)
     # 基金日K数据行情加载
-    import_private_fund_daily(ths_code)
+    # import_private_fund_daily(ths_code)

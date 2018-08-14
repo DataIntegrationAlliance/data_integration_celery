@@ -162,10 +162,10 @@ def bunch_insert_on_duplicate_update(df: pd.DataFrame, table_name, engine, dtype
     has_table = engine.has_table(table_name)
     if has_table:
         col_name_list = list(df.columns)
-        generated_directive = ["{0}=VALUES({0})".format(col_name) for col_name in col_name_list]
+        generated_directive = ["`{0}`=VALUES(`{0}`)".format(col_name) for col_name in col_name_list]
         sql_str = "insert into {table_name}({col_names}) VALUES({params}) ON DUPLICATE KEY UPDATE {update}".format(
             table_name=table_name,
-            col_names=','.join(col_name_list),
+            col_names= "`" + "`,`".join(col_name_list) + "`",
             params=','.join([':' + col_name for col_name in col_name_list]),
             update=','.join(generated_directive),
         )
