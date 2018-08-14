@@ -164,7 +164,7 @@ def import_stock_hk_daily_ds(ths_code_set: set = None, begin_time=None):
             FROM
             (
                 SELECT info.ths_code, ifnull(trade_date_max_1, ths_ipo_date_hks) date_frm, ths_stop_listing_date_hks,
-                if(hour(now())<16, subdate(curdate(),1), curdate()) end_date
+                if(hour(now())<19, subdate(curdate(),1), curdate()) end_date
                 FROM 
                     ifind_stock_hk_info info 
                 LEFT OUTER JOIN
@@ -178,7 +178,7 @@ def import_stock_hk_daily_ds(ths_code_set: set = None, begin_time=None):
             FROM
             (
                 SELECT info.ths_code, ths_ipo_date_hks date_frm, ths_stop_listing_date_hks,
-                if(hour(now())<16, subdate(curdate(),1), curdate()) end_date
+                if(hour(now())<19, subdate(curdate(),1), curdate()) end_date
                 FROM ifind_stock_hk_info info 
             ) tt
             WHERE date_frm <= if(ths_stop_listing_date_hks<end_date, ths_stop_listing_date_hks, end_date) 
@@ -283,7 +283,7 @@ def import_stock_hk_daily_his(ths_code_set: set = None, begin_time=None):
             FROM
             (
                 SELECT info.ths_code, ifnull(trade_date_max_1, ths_ipo_date_hks) date_frm, ths_stop_listing_date_hks,
-                if(hour(now())<16, subdate(curdate(),1), curdate()) end_date
+                if(hour(now())<19, subdate(curdate(),1), curdate()) end_date
                 FROM 
                     ifind_stock_hk_info info 
                 LEFT OUTER JOIN
@@ -298,7 +298,7 @@ def import_stock_hk_daily_his(ths_code_set: set = None, begin_time=None):
             FROM
             (
                 SELECT info.ths_code, ths_ipo_date_hks date_frm, ths_stop_listing_date_hks,
-                if(hour(now())<16, subdate(curdate(),1), curdate()) end_date
+                if(hour(now())<19, subdate(curdate(),1), curdate()) end_date
                 FROM ifind_stock_hk_info info 
             ) tt
             WHERE date_frm <= if(ths_stop_listing_date_hks<end_date, ths_stop_listing_date_hks, end_date) 
@@ -419,7 +419,7 @@ def add_data_2_ckdvp(json_indicator, json_param, ths_code_set: set = None, begin
             FROM
             (
                 select info.ths_code, ifnull(trade_date_max_1, ths_ipo_date_hks) date_frm, ths_stop_listing_date_hks,
-                    if(hour(now())<16, subdate(curdate(),1), curdate()) end_date
+                    if(hour(now())<19, subdate(curdate(),1), curdate()) end_date
                 from 
                     ifind_stock_hk_info info 
                 left outer join
@@ -438,7 +438,7 @@ def add_data_2_ckdvp(json_indicator, json_param, ths_code_set: set = None, begin
             FROM
             (
                 SELECT info.ths_code, ths_ipo_date_hks date_frm, ths_stop_listing_date_hks,
-                if(hour(now())<16, subdate(curdate(),1), curdate()) end_date
+                if(hour(now())<19, subdate(curdate(),1), curdate()) end_date
                 FROM ifind_stock_hk_info info 
             ) tt
             WHERE date_frm <= if(ths_stop_listing_date_hks<end_date, ths_stop_listing_date_hks, end_date) 
@@ -523,7 +523,7 @@ if __name__ == "__main__":
 
     ths_code_set = None  # {'600006.SH', '600009.SH'}
     # 股票日K历史数据加载
-    import_stock_hk_daily_his(ths_code_set)
+    # import_stock_hk_daily_his(ths_code_set)
     # 股票日K数据加载
     import_stock_hk_daily_ds(ths_code_set)
     # 添加新字段
