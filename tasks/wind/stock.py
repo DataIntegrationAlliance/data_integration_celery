@@ -6,7 +6,7 @@ Created on 2017/4/14
 import math
 import pandas as pd
 import logging, os, json
-from tasks.merge.code_mapping import update_from_info_table
+from tasks.backend.orm import build_primary_key
 from datetime import date, datetime, timedelta
 from tasks.wind import invoker
 from direstinvoker.ifind import APIError, UN_AVAILABLE_DATE
@@ -15,7 +15,8 @@ from tasks import app
 from sqlalchemy.types import String, Date, Integer
 from sqlalchemy.dialects.mysql import DOUBLE
 from tasks.backend import engine_md
-from tasks.utils.db_utils import with_db_session, add_col_2_table
+from tasks.merge.code_mapping import update_from_info_table
+from tasks.utils.db_utils import with_db_session, add_col_2_table, alter_table_2_myisam
 DEBUG = False
 logger = logging.getLogger()
 DATE_BASE = datetime.strptime('2005-01-01', STR_FORMAT_DATE).date()
@@ -47,6 +48,7 @@ def import_wind_stock_info(refresh=False):
     logging.info("更新 wind_stock_info 开始")
     """获取date—fetch
     """
+    has_table = engine_md.has_table(table_name)
     if refresh:
         date_fetch = datetime.strptime('2005-1-1', STR_FORMAT_DATE).date()
     else:
@@ -93,6 +95,9 @@ def import_wind_stock_info(refresh=False):
         session.execute(sql_str, data_list)
         stock_count = session.execute('select count(*) from {table_name}').scalar()
     logging.info("更新 %s 完成 存量数据 %d 条", {table_name}, stock_count)
+    if not has_table and engine_md.has_table(table_name):
+        alter_table_2_myisam(engine_md, [table_name])
+        build_primary_key([table_name])
     update_from_info_table(table_name)
 
 
@@ -207,7 +212,9 @@ def import_stock_daily():
             data_df_all.set_index(['wind_code', 'trade_date'], inplace=True)
             data_df_all.to_sql('wind_stock_daily', engine_md, if_exists='append', dtype=dtype)
             logging.info("更新 wind_stock_daily 结束 %d 条信息被更新", data_df_all.shape[0])
-
+            if not has_table and engine_md.has_table(table_name):
+                alter_table_2_myisam(engine_md, [table_name])
+                build_primary_key([table_name])
 
 @app.task
 def add_new_col_data(col_name, param, db_col_name=None, col_type_str='DOUBLE', wind_code_set: set = None):
@@ -305,7 +312,6 @@ def add_data_2_ckdvp(col_name, param, wind_code_set: set = None, begin_time=None
             'time': Date,
             'value': String(80),
             'param': String(80),
-
         }
         data_df_list, data_count, tot_data_count, code_count = [], 0, 0, len(code_date_range_dic)
         try:
@@ -358,7 +364,9 @@ def add_data_2_ckdvp(col_name, param, wind_code_set: set = None, begin_time=None
                     session.execute(create_pk_str)
 
             logging.info("更新 %s 完成 新增数据 %d 条", table_name, tot_data_count)
-
+            if not has_table and engine_md.has_table(table_name):
+                alter_table_2_myisam(engine_md, [table_name])
+                build_primary_key([table_name])
         return all_finished
 
 

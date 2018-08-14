@@ -39,6 +39,7 @@ def get_stock_hk_code_set(date_fetch):
     return set(stock_df['THSCODE'])
 
 
+
 @app.task
 def import_stock_hk_info(ths_code=None, refresh=False):
     """
@@ -122,9 +123,10 @@ def import_stock_hk_info(ths_code=None, refresh=False):
     dtype = {key: val for key, _, val in indicator_param_list}
     dtype['ths_code'] = String(20)
     data_count = data_df.shape[0]
-    data_df.to_sql(table_name, engine_md, if_exists='append', index=False, dtype=dtype)
+    # data_df.to_sql(table_name, engine_md, if_exists='append', index=False, dtype=dtype)
+    bunch_insert_on_duplicate_update(data_df, table_name, engine_md, dtype)
     logging.info("更新 %s 完成 存量数据 %d 条", table_name, data_count)
-    if not has_table:
+    if not has_table and engine_md.has_table(table_name):
         alter_table_2_myisam(engine_md, [table_name])
         build_primary_key([table_name])
 
@@ -343,7 +345,7 @@ def import_stock_hk_daily_his(ths_code_set: set = None, begin_time=None):
 
         logging.info("更新 %s 完成 新增数据 %d 条", table_name, tot_data_count)
 
-        if not has_table:
+        if not has_table and engine_md.has_table(table_name):
             alter_table_2_myisam(engine_md, [table_name])
             build_primary_key([table_name])
 
@@ -498,7 +500,7 @@ def add_data_2_ckdvp(json_indicator, json_param, ths_code_set: set = None, begin
             tot_data_df.to_sql(table_name, engine_md, if_exists='append', index=False, dtype=dtype)
             tot_data_count += data_count
 
-        if not has_table:
+        if not has_table and engine_md.has_table(table_name):
             create_pk_str = """ALTER TABLE {table_name}
                 CHANGE COLUMN `ths_code` `ths_code` VARCHAR(20) NOT NULL ,
                 CHANGE COLUMN `time` `time` DATE NOT NULL ,
