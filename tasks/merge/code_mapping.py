@@ -210,8 +210,8 @@ def update_from_info_table(table_name):
                 logger.debug('从 %s 表中更新 code_mapping 记录 %d 条', table_name, rslt.rowcount)
                 session.commit()
     elif wind_cap_type is not None:
-        if ifind_cap_type.find('fund') >= 0:
-            update_from_wind_fund(table_name, ifind_cap_type)
+        if wind_cap_type.find('fund') >= 0:
+            update_from_wind_fund(table_name, wind_cap_type)
         else:
             sql_str = """insert into code_mapping(unique_code, wind_code, market, type) 
                 select wind_code, wind_code, 
