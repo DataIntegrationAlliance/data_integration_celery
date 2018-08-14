@@ -171,7 +171,7 @@ def bunch_insert_on_duplicate_update(df: pd.DataFrame, table_name, engine, dtype
                 if isinstance(v, float) and np.isnan(v):
                     data_dic[k] = None
         with with_db_session(engine) as session:
-            rslt = session.execute(sql_str, params=data_dic)
+            rslt = session.execute(sql_str, params=data_dic_list)
             insert_count = rslt.rowcount
             session.commit()
     else:
