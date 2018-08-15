@@ -24,53 +24,14 @@ ONE_DAY = timedelta(days=1)
 BASE_LINE_HOUR = 16
 
 
-def build_commodity_info():
-    table_name = 'wind_commodity_info'
+def build_macroeconomy_info():
+    table_name = 'wind_macroeconomy_info'
     has_table = engine_md.has_table(table_name)
     indicators_dic = [
-        #豆粕现货价格
-        ["S5006056", "m_price_dg", "东莞豆粕价格", "2009-01-04", None, ''],
-        ["S5006045", "m_price_lyg", "连云港豆粕价格", "2009-01-04", None, ''],
-        ["S5006038", "m_price_rz", "日照豆粕价格", "2009-01-04", None, ''],
-        ["S5006055", "m_price_zj", "湛江豆粕价格", "2009-01-04", None, ''],
-        ["S5006038", "m_price_zjg", "张家港豆粕价格", "2009-01-04", None, ''],
-        ["S0142909", "m_price_moa", "农业部统计豆粕价格", "2008-02-14", None, ''],
-        ["S5006057", "m_price_fcg", "防城港豆粕价格", "2009-01-04", None, ''],
-        ["S5006030", "m_price_dl", "大连豆粕价格", "2009-01-04", None, ''],
-        ["S5006032", "m_price_tj", "天津豆粕价格", "2009-01-04", None, ''],
-        ["S5006044", "m_price_cd", "成都豆粕价格", "2009-01-04", None, ''],
-        #豆油现货价格
-        ["S0142915", "y_price_average", "豆油平均价格", "2008-03-03", None, '一级豆油现货'],
-        ["S5005983", "y_price_hp", "黄埔豆油价格", "2009-01-04", None, '一级豆油现货价格'],
-        ["S5005982", "y_price_nb", "宁波豆油价格", "2009-01-04", None, '一级豆油现货价格'],
-        ["S5005981", "y_price_zjg", "张家港豆油价格", "2009-01-04", None, '一级豆油现货价格'],
-        ["S5005980", "y_price_rz", "日照豆油价格", "2009-01-04", None, '一级豆油现货价格'],
-        ["S5005979", "y_price_tj", "天津豆油价格", "2009-01-04", None, '一级豆油现货价格'],
-        ["S5005978", "y_price_dl", "大连豆油价格", "2009-01-04", None, '一级豆油现货价格'],
-        #豆油出厂价格
-        ["S5028743", "y_price_fcg_fab", "防城港豆油出厂价格", "2007-01-04", None, '一级豆油散装出厂价'],
-        ["S5028742", "y_price_zj_fab", "湛江豆油出厂价格", "2007-01-04", None, '一级豆油散装出厂价'],
-        ["S5028740", "y_price_zjg_fab", "张家港豆油出厂价格", "2007-01-04", None, '一级豆油散装出厂价'],
-        ["S5028738", "y_price_rz_fab", "日照豆油出厂价格", "2007-01-04", None, '一级豆油散装出厂价'],
-        ["S5028735", "y_price_jingjin_fab", "京津豆油出厂价格", "2007-01-04", None, '一级豆油散装出厂价'],
-        ["S5028735", "y_price_dl_fab", "大连豆油出厂价格", "2007-01-04", None, '一级豆油散装出厂价'],
-        #菜籽油出厂价格
-        ["S5028744", "oi4_price_xy_fab", "河南信阳出厂价格", "2007-01-04", None, '四级菜油出厂价'],
-        ["S5028747", "oi4_price_nt_fab", "南通出厂价格", "2007-01-04", None, '四级菜油出厂价'],
-        ["S5028750", "oi4_price_wh_fab", "武汉出厂价格", "2007-01-04", None, '四级菜油出厂价'],
-        ["S5028751", "oi4_price_jz_fab", "荆州出厂价格", "2007-01-04", None, '四级菜油出厂价'],
-        ["S5028753", "oi4_price_cde_fab", "常德出厂价格", "2007-01-04", None, '四级菜油出厂价'],
-        ["S5028755", "oi4_price_cdu_fab", "成都出厂价格", "2007-01-04", None, '四级菜油出厂价'],
-        ["S5028752", "oi4_price_yy_fab", "岳阳出厂价格", "2007-01-04", None, '四级菜油出厂价'],
-        #中国棕榈油价格
-        ["S0142919", "p_price_average", "棕榈油平均价格", "2008-02-29", None, '棕榈油农业部统计价格'],
-        ["S5006011", "p_price_average_24", "24度棕榈油平均价格", "2009-01-04", None, '现货价'],
-        ["S5006005", "p_price_fj", "福建24度棕榈油价格", "2009-01-04", None, '现货价'],
-        ["S5006006", "p_price_gd", "广东24度棕榈油价格", "2009-01-04", None, '现货价'],
-        ["S5006007", "p_price_nb", "宁波24度棕榈油价格", "2009-01-04", None, '现货价'],
-        ["S5006008", "p_price_zjg", "张家港24度棕榈油价格", "2009-01-04", None, '现货价'],
-        ["S5006009", "p_price_tj", "天津24度棕榈油价格", "2009-01-04", None, '现货价'],
-        ["S5006009", "p_price_rz", "日照24度棕榈油价格", "2009-01-04", None, '现货价'],
+        #人民币汇率
+        ["M0067855", "us2rmb", "美元兑人民币即期汇率", "1994-01-04", None, '中国货币网'],
+
+
 
     ]
     dtype = {
@@ -100,7 +61,7 @@ def import_edb(wind_code_set=None):
     通过wind接口获取并导入EDB数据
     :return:
     """
-    table_name = 'wind_commodity_edb'
+    table_name = 'wind_macroeconomy_edb'
     has_table = engine_md.has_table(table_name)
     logging.info("更新 %s 开始", table_name)
     param_list = [
@@ -108,8 +69,8 @@ def import_edb(wind_code_set=None):
      ]
     rename_col_dic = {key.upper(): key.lower() for key, _ in param_list}
 
-    # info_df = pd.read_sql('wind_commodity_info', engine_md)
-    # 进行表格判断，确定是否含有 wind_commodity_edb
+
+    # 进行表格判断，确定是否含有 wind_macroeconomy_edb
     if has_table:
         sql_str = """
                 SELECT `key`, date_frm, if(end_date<end_date2, end_date, end_date2) date_to
@@ -126,14 +87,14 @@ def import_edb(wind_code_set=None):
                 WHERE date_frm <= if(end_date<end_date2, end_date, end_date2) 
                 ORDER BY `key`""".format(table_name=table_name)
     else:
-        logger.warning('%s 不存在，仅使用 wind_commodity_info 表进行计算日期范围', table_name)
+        logger.warning('%s 不存在，仅使用 wind_macroeconomy_info 表进行计算日期范围', table_name)
         sql_str = """
                 SELECT `key`, date_frm, if(end_date<end_date2, end_date, end_date2) date_to
                 FROM
                   (
                     SELECT info.`key`, begin_date date_frm, end_date,
                     if(hour(now())<16, subdate(curdate(),1), curdate()) end_date2
-                    FROM wind_commodity_info info 
+                    FROM wind_macroeconomy_info info 
                   ) tt
                 WHERE date_frm <= if(end_date<end_date2, end_date, end_date2) 
                 ORDER BY `key`"""
@@ -205,6 +166,6 @@ def import_edb(wind_code_set=None):
 
 if __name__ == "__main__":
     DEBUG = True
-    build_commodity_info()
+    build_macroeconomy_info()
     # 更新每日股票数据
     import_edb()
