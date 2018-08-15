@@ -17,13 +17,10 @@ import json
 from datetime import date, datetime, timedelta
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.expression import Insert
-<<<<<<< HEAD
 from tasks.utils.fh_utils import date_2_str
-=======
 from .fh_utils import date_2_str
 import logging
 logger = logging.getLogger()
->>>>>>> 14ba2471f68f21869152250792b1f1926b414e7a
 
 
 class SessionWrapper:
