@@ -17,7 +17,6 @@ import json
 from datetime import date, datetime, timedelta
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.expression import Insert
-from tasks.utils.fh_utils import date_2_str
 from .fh_utils import date_2_str
 import logging
 logger = logging.getLogger()
@@ -180,3 +179,23 @@ def bunch_insert_on_duplicate_update(df: pd.DataFrame, table_name, engine, dtype
         insert_count = df.shape[0]
 
     return insert_count
+
+
+if __name__ == "__main__":
+    from sqlalchemy import create_engine
+    import numpy as np
+    engine = create_engine("mysql://mg:Dcba1234@localhost/md_integration?charset=utf8",
+                           echo=False, encoding="utf-8")
+    table_name = 'test_only'
+    if not engine.has_table(table_name):
+        df = pd.DataFrame({'a': [1.0, 11.0], 'b': [2.0, 22.0], 'c': [3, 33], 'd': [4, 44]})
+        df.to_sql(table_name, engine, index=False, if_exists='append')
+        with with_db_session(engine) as session:
+            session.execute("""ALTER TABLE {table_name}
+        CHANGE COLUMN a a DOUBLE NOT NULL FIRST,
+        CHANGE COLUMN d d INTEGER,
+        ADD PRIMARY KEY (a)""".format(table_name=table_name))
+
+    df = pd.DataFrame({'a': [1.0, 111.0], 'b': [2.2, 222.0], 'c': [3.0, np.nan]})
+    insert_count = bunch_insert_on_duplicate_update(df, table_name, engine, dtype=None)
+    print(insert_count)
