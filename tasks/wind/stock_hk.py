@@ -115,6 +115,8 @@ def import_wind_stock_info_hk(refresh=False):
     if not has_table and engine_md.has_table(table_name):
         alter_table_2_myisam(engine_md, [table_name])
         build_primary_key([table_name])
+
+    # 更新 code_mapping 表
     update_from_info_table(table_name)
 
 
