@@ -8,11 +8,16 @@ Created on 2017/4/14
 # w.wss("002482.SZ,300343.SZ", "div_recorddate,div_exdate","rptDate=20151231")
 # w.wss("002482.SZ,300343.SZ", "div_cashbeforetax2,div_cashaftertax2,div_stock2,div_capitalization2,div_capitalization,div_stock,div_cashaftertax,div_cashbeforetax,div_cashandstock,div_recorddate,div_exdate,div_paydate,div_trddateshareb,div_preDisclosureDate,div_prelandate,div_smtgdate,div_impdate","rptDate=20151231;currencyType=BB")
 import pandas as pd
-from config_fh import get_db_session, STR_FORMAT_DATE, WIND_REST_URL, get_db_engine
+from tasks import app
+from tasks.ifind import invoker
 from datetime import datetime, date
-from fh_tools.windy_utils_rest import WindRest
-from sqlalchemy.types import String, Date, FLOAT
-
+from tasks.backend import engine_md
+from tasks.backend.orm import build_primary_key
+from tasks.utils.db_utils import with_db_session, bunch_insert_on_duplicate_update
+from tasks.utils.fh_utils import STR_FORMAT_DATE
+from tasks.utils.db_utils import alter_table_2_myisam
+from sqlalchemy.types import String, Date
+from sqlalchemy.dialects.mysql import DOUBLE
 UN_AVAILABLE_DATE = datetime.strptime('1900-01-01', STR_FORMAT_DATE).date()
 TODAY = date.today()
 BASE_DATE = datetime.strptime('2010-12-31', STR_FORMAT_DATE).date()
@@ -28,10 +33,34 @@ def str_date(x):
     return ret_x
 
 
+@app.tasks
 def import_wind_bonus():
-    w = WindRest(WIND_REST_URL)
-    engine = get_db_engine()
-    with get_db_session(engine) as session:
+    """
+    :return:
+    """
+    table_name = 'wind_stock_bonus'
+    has_table = engine_md.has_table(table_name)
+    param_list = [
+        ('div_cashbeforetax2', DOUBLE),
+        ('div_cashaftertax2', DOUBLE),
+        ('div_stock2', DOUBLE),
+        ('div_capitalization2', DOUBLE),
+        ('div_capitalization', DOUBLE),
+        ('div_stock', DOUBLE),
+        ('div_cashaftertax', DOUBLE),
+        ('div_cashbeforetax', DOUBLE),
+        ('div_cashandstock', DOUBLE),
+        ('div_recorddate', Date),
+        ('div_exdate', Date),
+        ('div_paydate', Date),
+        ('div_trddateshareb', Date),
+        ('div_preDisclosureDate', Date),
+        ('div_prelandate', Date),
+        ('div_smtgdate', Date),
+        ('div_impdate', Date),
+    ]
+    param = ",".join([key for key, _ in param_list])
+    with with_db_session(engine_md) as session:
         table = session.execute('SELECT wind_code, ipo_date, delist_date FROM wind_stock_info')
         stock_date_dic = {wind_code: (ipo_date, delist_date if delist_date > UN_AVAILABLE_DATE else None) for wind_code, ipo_date, delist_date in table.fetchall()}
     print(len(stock_date_dic))
@@ -42,11 +71,13 @@ def import_wind_bonus():
                  datetime.strptime('2014-12-31', STR_FORMAT_DATE).date(),
                  datetime.strptime('2015-12-31', STR_FORMAT_DATE).date(),
                  ]
+    dtype = {key: val for key, val in param_list}
+    dtype['wind_code'] = String(20)
     dic_exdate_df_list = []
     for rep_date in DATE_LIST:
         rep_date_str = rep_date.strftime('%Y%m%d')
         stock_list = [s for s, date_pair in stock_date_dic.items() if date_pair[0] < rep_date and (rep_date < date_pair[1] if date_pair[1] is not None else True)]
-        dic_exdate_df = w.wss(stock_list, "div_cashbeforetax2,div_cashaftertax2,div_stock2,div_capitalization2,div_capitalization,div_stock,div_cashaftertax,div_cashbeforetax,div_cashandstock,div_recorddate,div_exdate,div_paydate,div_trddateshareb,div_preDisclosureDate,div_prelandate,div_smtgdate,div_impdate","rptDate=%s;currencyType=BB" % rep_date_str)
+        dic_exdate_df = invoker.wss(stock_list, param)
         dic_exdate_df_list.append(dic_exdate_df)
 
     dic_exdate_df_all = pd.concat(dic_exdate_df_list)
@@ -67,28 +98,10 @@ def import_wind_bonus():
                   dic_exdate_df_all['DIV_RECORDDATE'].apply(lambda x: x is None)
                   )
     dic_exdate_df_available = dic_exdate_df_all[condition]
-    dic_exdate_df_available.to_sql('wind_stock_bonus', engine, if_exists='append',
-                                   dtype={
-                                       'wind_code': String(20),
-                                       'div_cashbeforetax2': FLOAT,
-                                       'div_cashaftertax2': FLOAT,
-                                       'div_stock2': FLOAT,
-                                       'div_capitalization2': FLOAT,
-                                       'div_capitalization': FLOAT,
-                                       'div_stock': FLOAT,
-                                       'div_cashaftertax': FLOAT,
-                                       'div_cashbeforetax': FLOAT,
-                                       'div_cashandstock': FLOAT,
-                                       'div_recorddate': Date,
-                                       'div_exdate': Date,
-                                       'div_paydate': Date,
-                                       'div_trddateshareb': Date,
-                                       'div_preDisclosureDate': Date,
-                                       'div_prelandate': Date,
-                                       'div_smtgdate': Date,
-                                       'div_impdate': Date
-                                   }
-                                   )
+    bunch_insert_on_duplicate_update(dic_exdate_df_available, table_name, engine_md, dtype=dtype)
+    if not has_table and engine_md.has_table(table_name):
+        alter_table_2_myisam(engine_md, [table_name])
+        build_primary_key([table_name])
 
 if __name__ == "__main__":
     import_wind_bonus()
