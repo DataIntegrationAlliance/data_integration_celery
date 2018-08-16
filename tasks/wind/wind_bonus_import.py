@@ -16,7 +16,7 @@ from tasks.backend.orm import build_primary_key
 from tasks.utils.db_utils import with_db_session, bunch_insert_on_duplicate_update
 from tasks.utils.fh_utils import STR_FORMAT_DATE
 from tasks.utils.db_utils import alter_table_2_myisam
-from sqlalchemy.types import String, Date
+from sqlalchemy.types import String, Date, FLOAT
 from sqlalchemy.dialects.mysql import DOUBLE
 UN_AVAILABLE_DATE = datetime.strptime('1900-01-01', STR_FORMAT_DATE).date()
 TODAY = date.today()
