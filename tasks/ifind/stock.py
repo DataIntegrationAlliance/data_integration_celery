@@ -15,7 +15,8 @@ from tasks.utils.fh_utils import get_last, get_first, date_2_str, STR_FORMAT_DAT
 from sqlalchemy.types import String, Date, Integer
 from sqlalchemy.dialects.mysql import DOUBLE
 from tasks.utils.fh_utils import unzip_join
-from tasks.utils.db_utils import with_db_session, add_col_2_table
+from tasks.utils.db_utils import with_db_session, add_col_2_table, bunch_insert_on_duplicate_update, \
+    alter_table_2_myisam
 from tasks.backend import engine_md
 from tasks.merge.code_mapping import update_from_info_table
 from tasks import app
@@ -48,6 +49,7 @@ def import_stock_info(ths_code=None, refresh=False):
     :return:
     """
     table_name = 'ifind_stock_info'
+    has_table = engine_md.has_table(table_name)
     logging.info("更新 wind_stock_info 开始")
     if ths_code is None:
         # 获取全市场股票代码及名称
@@ -89,18 +91,24 @@ def import_stock_info(ths_code=None, refresh=False):
         logging.info("没有可用的 stock info 可以更新")
         return
     # 删除历史数据，更新数据
-    with with_db_session(engine_md) as session:
-        session.execute(
-            "DELETE FROM {table_name} WHERE ths_code IN (".format(table_name=table_name) + ','.join(
-                [':code%d' % n for n in range(len(stock_code_set))]
-            ) + ")",
-            params={'code%d' % n: val for n, val in enumerate(stock_code_set)})
-        session.commit()
+    # with with_db_session(engine_md) as session:
+    #     session.execute(
+    #         "DELETE FROM {table_name} WHERE ths_code IN (".format(table_name=table_name) + ','.join(
+    #             [':code%d' % n for n in range(len(stock_code_set))]
+    #         ) + ")",
+    #         params={'code%d' % n: val for n, val in enumerate(stock_code_set)})
+    #     session.commit()
     dtype = {key: val for key, _, val in indicator_param_list}
     dtype['ths_code'] = String(20)
-    data_count = data_df.shape[0]
-    data_df.to_sql(table_name, engine_md, if_exists='append', index=False, dtype=dtype)
+    # data_count = data_df.shape[0]
+    # data_df.to_sql(table_name, engine_md, if_exists='append', index=False, dtype=dtype)
+    data_count = bunch_insert_on_duplicate_update(data_df, table_name, engine_md, dtype)
     logging.info("更新 %s 完成 存量数据 %d 条", table_name, data_count)
+    if not has_table and engine_md.has_table(table_name):
+        alter_table_2_myisam(engine_md, [table_name])
+        build_primary_key([table_name])
+
+    # 更新 code_mapping 表
     update_from_info_table(table_name)
 
 
