@@ -6,8 +6,15 @@ Created on 2017/4/20
 from datetime import date, datetime, timedelta
 import pandas as pd
 import numpy as np
-from config_fh import get_db_engine, get_db_session, STR_FORMAT_DATE, UN_AVAILABLE_DATE, WIND_REST_URL
-from fh_tools.windy_utils_rest import WindRest
+from direstinvoker.iwind import UN_AVAILABLE_DATE
+from sqlalchemy.types import Date
+from tasks.backend.orm import build_primary_key
+from tasks.backend import engine_md
+from tasks.utils.fh_utils import STR_FORMAT_DATE, date_2_str, str_2_date
+from tasks.utils.db_utils import with_db_session, bunch_insert_on_duplicate_update, alter_table_2_myisam
+from tasks.wind import invoker
+
+
 import logging
 logger = logging.getLogger()
 
@@ -19,10 +26,10 @@ def import_trade_date():
     日后将会考虑将两张表进行合并
     :return: 
     """
-    w = WindRest(WIND_REST_URL)
-    engine = get_db_engine()
+    table_name = 'wind_trade_date_all'
+    has_table = engine_md.has_table(table_name)
     trade_date_start = None
-    with get_db_session(engine) as session:
+    with with_db_session(engine_md) as session:
         try:
             table = session.execute('select exch_code,max(trade_date) from wind_trade_date_all group by exch_code')
             exch_code_trade_date_dic = {exch_code: trade_date for exch_code, trade_date in table.fetchall()}
@@ -30,7 +37,7 @@ def import_trade_date():
             logger.exception("交易日获取异常")
         if trade_date_start is None:
             trade_date_start = '1980-01-01'
-
+    exch_code_trade_date_dic = {}
     #
     exchange_code_dict = {
         "HKEX":"香港",
@@ -52,21 +59,30 @@ def import_trade_date():
             trade_date_start = '1980-01-01'
         end_date_str = (date.today() + timedelta(days=310)).strftime(STR_FORMAT_DATE)
         if exchange_code is None or exchange_code == "":
-            trade_date_list = w.tdays(trade_date_start, end_date_str)
+            trade_date_list = invoker.tdays(trade_date_start, end_date_str)
         else:
-            trade_date_list = w.tdays(trade_date_start, end_date_str, "TradingCalendar=%s" % exchange_code)
+            trade_date_list = invoker.tdays(trade_date_start, end_date_str, "TradingCalendar=%s" % exchange_code)
         if trade_date_list is None:
             logger.warning("没有查询到交易日期")
         date_count = len(trade_date_list)
         if date_count > 0:
             logger.info("%d 条交易日数据将被导入", date_count)
-            with get_db_session() as session:
+            with with_db_session(engine_md) as session:
                 session.execute("insert into wind_trade_date_all (trade_date,exch_code) VALUE (:trade_date,:exch_code)" ,
                                 params=[{'trade_date': trade_date,'exch_code':exchange_code} for trade_date in trade_date_list])
+            # bunch_insert_on_duplicate_update(trade_date_list, table_name, engine_md, dtype=dtype)
             logger.info('%d 条交易日数据导入 %s 完成', date_count,'wind_trade_date_all')
+            if not has_table and engine_md.has_table(table_name):
+                alter_table_2_myisam(engine_md, [table_name])
+                # build_primary_key([table_name])
+                create_pk_str = """ALTER TABLE {TABLE_NAME}
+                CHANGE COLUMN 'KEY' 'KEY' VARCHAR(20) NOT NULL FIRST ,
+                CHANGE COLUMN 'trade_date' 'trade_date' DATA NOT NULL AFTER 'KEY',
+                ADD PRIMARY KEY ('key','trade_date')""".format(table_name=table_name)
+                with with_db_session(engine_md) as session:
+                    session.execute(create_pk_str)
 
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG, format='%(asctime)s: %(levelname)s [%(name)s:%(funcName)s] %(message)s')
-    # import_trade_date()
     import_trade_date()
