@@ -19,6 +19,7 @@ import warnings
 from functools import reduce
 import xlrd
 
+logger = logging.getLogger()
 STR_FORMAT_DATE = '%Y-%m-%d'
 STR_FORMAT_DATETIME = '%Y-%m-%d %H:%M:%S'
 STR_FORMAT_DATETIME2 = '%Y-%m-%d %H:%M:%S.%f'
@@ -26,7 +27,31 @@ PATTERN_DATE_FORMAT_RESTRICT = re.compile(r"\d{4}(\D)*\d{2}(\D)*\d{2}")
 PATTERN_DATE_FORMAT = re.compile(r"\d{4}(\D)*\d{1,2}(\D)*\d{1,2}")
 
 
+def is_not_nan_or_none(x):
+    """
+    判断是否不是 NAN 或 None
+    :param x:
+    :return:
+    """
+    return False if x is None else not(isinstance(x, float) and np.isnan(x))
+
+
+def is_nan_or_none(x):
+    """
+    判断是否是 NAN 或 None
+    :param x:
+    :return:
+    """
+    return True if x is None else isinstance(x, float) and np.isnan(x)
+
+
 def split_chunk(l: list, n: int):
+    """
+    将数组按照给定长度进行分割
+    :param l:
+    :param n:
+    :return:
+    """
     for i in range(0, len(l), n):
         yield l[i:i + n]
 
@@ -61,6 +86,27 @@ def populate_obj(model_obj, data_dic: dict, attr_list=None, error_if_no_key=Fals
             raise KeyError("data_dic 缺少 '%s' key 无法设置到 %s" % (name, model_obj.__class__.__name__))
         else:
             warnings.warn("data_dic 缺少 '%s' key 无法设置到 %s" % (name, model_obj.__class__.__name__))
+
+
+def log_param_when_exception(func):
+
+    @functools.wraps(func)
+    def handler(*arg, **kwargs):
+        try:
+            return func(*arg, **kwargs)
+        except Exception as exp:
+            msg = '%s(%s, %s)' % (
+                func.__name__,
+                ', '.join([str(v) for v in arg]),
+                ', '.join(
+                    ['{key}={value}'.format(key=str(key), value=str(value))
+                     for key, value in kwargs.items()]
+                )
+            )
+            logger.exception(msg)
+            raise exp from exp
+
+    return handler
 
 
 def try_n_times(times=3, sleep_time=3, logger: logging.Logger=None):
@@ -1102,33 +1148,33 @@ def merge_nav_from_file(file_list, date_from=None):
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG, format='%(asctime)s: %(levelname)s [%(name)s] %(message)s')
-    from pandas.io.formats.excel import ExcelCell
-    # 基金绩效分析
-    file_path = r'd:\WSPych\fof_ams\Stage\periodic_task\analysis_cache\2016-6-1_2018-6-1\各策略指数走势_按机构.csv'
-    file_path_no_extention, _ = os.path.splitext(file_path)
-    stat_df, sheet_mdd_df_dic, sheet_mon_rr_dic = return_risk_analysis_by_xls(file_path, encoding='GBK')  # , date_col="日期", nav_col_list=['产品净值']
-    if stat_df is not None:
-        stat_df.to_csv('%s_绩效统计.csv' % file_path_no_extention, encoding='GBK')
-    for sheet_name, mdd_df in sheet_mdd_df_dic.items():
-        mdd_df.to_csv('%s_%s_最大回撤.csv' % (file_path_no_extention, sheet_name), encoding='GBK')
-    if len(sheet_mon_rr_dic) > 0:
-        xls_file_path = '%s_%s_月度收益.xls' % (file_path_no_extention, sheet_name)
-        writer = pd.ExcelWriter(xls_file_path)
-        try:
-            for sheet_name, mon_rr_dic in sheet_mon_rr_dic.items():
-                start_row = 1
-                for name, monthly_rr_df in mon_rr_dic.items():
-                    year_set = {trade_date.year for trade_date in monthly_rr_df.index}
-                    monthly_rr_matrix_df = pd.DataFrame(index=year_set, columns=range(1, 13))
-                    for trade_date, rr_s in monthly_rr_df.T.items():
-                        monthly_rr_matrix_df.loc[trade_date.year, trade_date.month] = '%2.2f%%' % (rr_s[0] * 100)
-                    # 写 excel
-                    # sheet.write(start_row, 0, name)
-                    writer.write_cells([ExcelCell(0, 0, name)], sheet_name, startrow=start_row - 1)
-                    monthly_rr_matrix_df.to_excel(writer, sheet_name, startrow=start_row)
-                    start_row += len(year_set) + 3
-        finally:
-            writer.close()
+    # # 基金绩效分析
+    # from pandas.io.formats.excel import ExcelCell
+    # file_path = r'd:\WSPych\fof_ams\Stage\periodic_task\analysis_cache\2016-6-1_2018-6-1\各策略指数走势_按机构.csv'
+    # file_path_no_extention, _ = os.path.splitext(file_path)
+    # stat_df, sheet_mdd_df_dic, sheet_mon_rr_dic = return_risk_analysis_by_xls(file_path, encoding='GBK')  # , date_col="日期", nav_col_list=['产品净值']
+    # if stat_df is not None:
+    #     stat_df.to_csv('%s_绩效统计.csv' % file_path_no_extention, encoding='GBK')
+    # for sheet_name, mdd_df in sheet_mdd_df_dic.items():
+    #     mdd_df.to_csv('%s_%s_最大回撤.csv' % (file_path_no_extention, sheet_name), encoding='GBK')
+    # if len(sheet_mon_rr_dic) > 0:
+    #     xls_file_path = '%s_%s_月度收益.xls' % (file_path_no_extention, sheet_name)
+    #     writer = pd.ExcelWriter(xls_file_path)
+    #     try:
+    #         for sheet_name, mon_rr_dic in sheet_mon_rr_dic.items():
+    #             start_row = 1
+    #             for name, monthly_rr_df in mon_rr_dic.items():
+    #                 year_set = {trade_date.year for trade_date in monthly_rr_df.index}
+    #                 monthly_rr_matrix_df = pd.DataFrame(index=year_set, columns=range(1, 13))
+    #                 for trade_date, rr_s in monthly_rr_df.T.items():
+    #                     monthly_rr_matrix_df.loc[trade_date.year, trade_date.month] = '%2.2f%%' % (rr_s[0] * 100)
+    #                 # 写 excel
+    #                 # sheet.write(start_row, 0, name)
+    #                 writer.write_cells([ExcelCell(0, 0, name)], sheet_name, startrow=start_row - 1)
+    #                 monthly_rr_matrix_df.to_excel(writer, sheet_name, startrow=start_row)
+    #                 start_row += len(year_set) + 3
+    #     finally:
+    #         writer.close()
 
     # 基金净值合并
     # file_list = [
@@ -1148,12 +1194,12 @@ if __name__ == "__main__":
     #      'date_colum_name': '日期', 'nav_colum_name_list': ['诚盛1期净值']},
     # ]
 
-    file_list = [
-        {'file_path': r"d:\Works\F复华投资\L路演、访谈、评估报告\合晟\合晟产品历史净值.csv"},
-        {'file_path': r"d:\Works\F复华投资\L路演、访谈、评估报告\展弘\展弘投放产品历史净值.xlsx"},
-        {'file_path': r"d:\Works\F复华投资\L路演、访谈、评估报告\新萌\新萌合并业绩后净值.xlsx"},
-        {'file_path': r"d:\Works\F复华投资\L路演、访谈、评估报告\思勰\思勰合并后净值 2018 - 03 - 09.xls"},
-    ]
+    # file_list = [
+    #     {'file_path': r"d:\Works\F复华投资\L路演、访谈、评估报告\合晟\合晟产品历史净值.csv"},
+    #     {'file_path': r"d:\Works\F复华投资\L路演、访谈、评估报告\展弘\展弘投放产品历史净值.xlsx"},
+    #     {'file_path': r"d:\Works\F复华投资\L路演、访谈、评估报告\新萌\新萌合并业绩后净值.xlsx"},
+    #     {'file_path': r"d:\Works\F复华投资\L路演、访谈、评估报告\思勰\思勰合并后净值 2018 - 03 - 09.xls"},
+    # ]
     #
     # file_list = [
     #     {'file_path': r'd:\Works\F复华投资\L路演、访谈、评估报告\思勰\思瑞二号周净值.xlsx',
@@ -1182,12 +1228,19 @@ if __name__ == "__main__":
     # logging.info("输出文件：\n%s", file_path)
 
     # 测试 chuck 函数
-    a_list = list(range(1, 17))
-    for b_list in split_chunk(a_list, 4):
-        print(b_list)
-    for b_list in split_chunk(a_list, 5):
-        print(b_list)
-    for b_list in split_chunk(a_list, 16):
-        print(b_list)
-    for b_list in split_chunk(a_list, 17):
-        print(b_list)
+    # a_list = list(range(1, 17))
+    # for b_list in split_chunk(a_list, 4):
+    #     print(b_list)
+    # for b_list in split_chunk(a_list, 5):
+    #     print(b_list)
+    # for b_list in split_chunk(a_list, 16):
+    #     print(b_list)
+    # for b_list in split_chunk(a_list, 17):
+    #     print(b_list)
+
+    # 测试 log_param_when_exception 函数
+    # @log_param_when_exception
+    # def foo(a, b, c=None, *args, **kwargs):
+    #     raise Exception('some error')
+    #
+    # foo(1, 2, 3, 4, e=5, f=6)
