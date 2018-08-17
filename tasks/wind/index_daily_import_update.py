@@ -98,7 +98,7 @@ def import_wind_index_daily_first(wind_codes):
         #                 'trade_date': Date,
         #             })
         bunch_insert_on_duplicate_update(index_df, table_name, engine_md, dtype=dtype)
-        logger.info('Success import %s - %s with %d data' % (code, index_name, index_df.shape[0]))
+        logger.info('Success import %s with %d data' % (code, index_df.shape[0]))
         if not has_table and engine_md.has_table(table_name):
             alter_table_2_myisam(engine_md, [table_name])
             build_primary_key([table_name])
