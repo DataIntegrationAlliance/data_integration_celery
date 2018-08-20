@@ -120,6 +120,8 @@ def import_stock_daily_ds(ths_code_set: set = None, begin_time=None):
     :param begin_time:
     :return:
     """
+    table_name = 'ifind_stock_daily_ds'
+    has_table = engine_md.has_table(table_name)
     indicator_param_list = [
         ('ths_af_stock', '', DOUBLE),
         ('ths_up_and_down_status_stock', '', String(10)),
@@ -130,7 +132,7 @@ def import_stock_daily_ds(ths_code_set: set = None, begin_time=None):
     # jsonIndicator='ths_pre_close_stock;ths_open_price_stock;ths_high_price_stock;ths_low_stock;ths_close_price_stock;ths_chg_ratio_stock;ths_chg_stock;ths_vol_stock;ths_trans_num_stock;ths_amt_stock;ths_turnover_ratio_stock;ths_vaild_turnover_stock;ths_af_stock;ths_up_and_down_status_stock;ths_trading_status_stock;ths_suspen_reason_stock;ths_last_td_date_stock'
     # jsonparam='100;100;100;100;100;;100;100;;;;;;;;;'
     json_indicator, json_param = unzip_join([(key, val) for key, val, _ in indicator_param_list], sep=';')
-    if engine_md.has_table('ifind_stock_daily_ds'):
+    if has_table:
         sql_str = """SELECT ths_code, date_frm, if(ths_delist_date_stock<end_date, ths_delist_date_stock, end_date) date_to
             FROM
             (
@@ -139,11 +141,11 @@ def import_stock_daily_ds(ths_code_set: set = None, begin_time=None):
                 FROM 
                     ifind_stock_info info 
                 LEFT OUTER JOIN
-                    (SELECT ths_code, adddate(max(time),1) trade_date_max_1 FROM ifind_stock_daily_ds GROUP BY ths_code) daily
+                    (SELECT ths_code, adddate(max(time),1) trade_date_max_1 FROM {table_name} GROUP BY ths_code) daily
                 ON info.ths_code = daily.ths_code
             ) tt
             WHERE date_frm <= if(ths_delist_date_stock<end_date, ths_delist_date_stock, end_date) 
-            ORDER BY ths_code"""
+            ORDER BY ths_code""".format(table_name=table_name)
     else:
         sql_str = """SELECT ths_code, date_frm, if(ths_delist_date_stock<end_date, ths_delist_date_stock, end_date) date_to
             FROM
@@ -157,8 +159,6 @@ def import_stock_daily_ds(ths_code_set: set = None, begin_time=None):
         logger.warning('ifind_stock_daily_ds 不存在，仅使用 ifind_stock_info 表进行计算日期范围')
     with with_db_session(engine_md) as session:
         # 获取每只股票需要获取日线数据的日期区间
-        table = session.execute(sql_str)
-
         table = session.execute(sql_str)
 
         # 获取每只股票需要获取日线数据的日期区间
@@ -187,8 +187,9 @@ def import_stock_daily_ds(ths_code_set: set = None, begin_time=None):
                 data_df_list.append(data_df)
             # 大于阀值有开始插入
             if data_count >= 10000:
-                tot_data_df = pd.concat(data_df_list)
-                tot_data_df.to_sql('ifind_stock_daily_ds', engine_md, if_exists='append', index=False, dtype=dtype)
+                data_df_all = pd.concat(data_df_list)
+                # data_df_all.to_sql('ifind_stock_daily_ds', engine_md, if_exists='append', index=False, dtype=dtype)
+                data_count = bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md, dtype)
                 tot_data_count += data_count
                 data_df_list, data_count = [], 0
 
@@ -197,9 +198,14 @@ def import_stock_daily_ds(ths_code_set: set = None, begin_time=None):
                 break
     finally:
         if data_count > 0:
-            tot_data_df = pd.concat(data_df_list)
-            tot_data_df.to_sql('ifind_stock_daily_ds', engine_md, if_exists='append', index=False, dtype=dtype)
+            data_df_all = pd.concat(data_df_list)
+            # data_df_all.to_sql(table_name, engine_md, if_exists='append', index=False, dtype=dtype)
+            data_count = bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md, dtype)
             tot_data_count += data_count
+
+        if has_table and engine_md.has_table(table_name):
+            alter_table_2_myisam(engine_md, [table_name])
+            build_primary_key([table_name])
 
         logging.info("更新 ifind_stock_daily 完成 新增数据 %d 条", tot_data_count)
 
@@ -313,11 +319,13 @@ def import_stock_daily_his(ths_code_set: set = None, begin_time=None):
 def save_ifind_stock_daily_his(data_df_list, dtype):
     """保存数据到 ifind_stock_daily_his"""
     if len(data_df_list) > 0:
-        tot_data_df = pd.concat(data_df_list)
+        table_name = 'ifind_stock_daily_his'
+        data_df_all = pd.concat(data_df_list)
         # TODO: 需要解决重复数据插入问题，日后改为sql语句插入模式
-        tot_data_df.to_sql('ifind_stock_daily_his', engine_md, if_exists='append', index=False, dtype=dtype)
-        data_count = tot_data_df.shape[0]
-        logger.info('保存数据到 ifind_stock_daily_his 成功，包含 %d 条记录', data_count)
+        # data_df_all.to_sql(table_name, engine_md, if_exists='append', index=False, dtype=dtype)
+        # data_count = tot_data_df.shape[0]
+        data_count = bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md, dtype)
+        logger.info('保存数据到 %s 成功，包含 %d 条记录', table_name, data_count)
         return data_count
     else:
         return 0
@@ -372,7 +380,8 @@ def add_data_2_ckdvp(json_indicator, json_param, ths_code_set: set = None, begin
     :return: 全部数据加载完成，返回True，否则False，例如数据加载中途流量不够而中断
     """
     all_finished = False
-    has_table = engine_md.has_table('ifind_ckdvp_stock')
+    table_name = 'ifind_ckdvp_stock'
+    has_table = engine_md.has_table(table_name)
     if has_table:
         sql_str = """
             select ths_code, date_frm, if(ths_delist_date_stock<end_date, ths_delist_date_stock, end_date) date_to
@@ -383,15 +392,15 @@ def add_data_2_ckdvp(json_indicator, json_param, ths_code_set: set = None, begin
                 from 
                     ifind_stock_info info 
                 left outer join
-                    (select ths_code, adddate(max(time),1) trade_date_max_1 from ifind_ckdvp_stock 
-                        where ifind_ckdvp_stock.key='{0}' and param='{1}' group by ths_code
+                    (select ths_code, adddate(max(time),1) trade_date_max_1 from {table_name} 
+                        where {table_name}.key='{0}' and param='{1}' group by ths_code
                     ) daily
                 on info.ths_code = daily.ths_code
             ) tt
             where date_frm <= if(ths_delist_date_stock<end_date, ths_delist_date_stock, end_date) 
-            order by ths_code""".format(json_indicator, json_param)
+            order by ths_code""".format(json_indicator, json_param, table_name=table_name)
     else:
-        logger.warning('ifind_ckdvp_stock 不存在，仅使用 ifind_stock_info 表进行计算日期范围')
+        logger.warning('%s 不存在，仅使用 ifind_stock_info 表进行计算日期范围', table_name)
         sql_str = """
             SELECT ths_code, date_frm, 
                 if(ths_delist_date_stock<end_date, ths_delist_date_stock, end_date) date_to
@@ -441,8 +450,9 @@ def add_data_2_ckdvp(json_indicator, json_param, ths_code_set: set = None, begin
 
             # 大于阀值有开始插入
             if data_count >= 10000:
-                tot_data_df = pd.concat(data_df_list)
-                tot_data_df.to_sql('ifind_ckdvp_stock', engine_md, if_exists='append', index=False, dtype=dtype)
+                data_df_all = pd.concat(data_df_list)
+                # tot_data_df.to_sql(table_name, engine_md, if_exists='append', index=False, dtype=dtype)
+                data_count = bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md, dtype)
                 tot_data_count += data_count
                 data_df_list, data_count = [], 0
 
@@ -453,21 +463,22 @@ def add_data_2_ckdvp(json_indicator, json_param, ths_code_set: set = None, begin
             all_finished = True
     finally:
         if data_count > 0:
-            tot_data_df = pd.concat(data_df_list)
-            tot_data_df.to_sql('ifind_ckdvp_stock', engine_md, if_exists='append', index=False, dtype=dtype)
+            data_df_all = pd.concat(data_df_list)
+            # tot_data_df.to_sql(table_name, engine_md, if_exists='append', index=False, dtype=dtype)
+            data_count = bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md, dtype)
             tot_data_count += data_count
 
         if not has_table:
-            create_pk_str = """ALTER TABLE ifind_ckdvp_stock
+            create_pk_str = """ALTER TABLE {table_name}
                 CHANGE COLUMN `ths_code` `ths_code` VARCHAR(20) NOT NULL ,
                 CHANGE COLUMN `time` `time` DATE NOT NULL ,
                 CHANGE COLUMN `key` `key` VARCHAR(80) NOT NULL ,
                 CHANGE COLUMN `param` `param` VARCHAR(80) NOT NULL ,
-                ADD PRIMARY KEY (`ths_code`, `time`, `key`, `param`)"""
+                ADD PRIMARY KEY (`ths_code`, `time`, `key`, `param`)""".format(table_name=table_name)
             with with_db_session(engine_md) as session:
                 session.execute(create_pk_str)
 
-        logging.info("更新 ifind_ckdvp_stock 完成 新增数据 %d 条", tot_data_count)
+        logging.info("更新 %s 完成 新增数据 %d 条", table_name, tot_data_count)
 
     return all_finished
 

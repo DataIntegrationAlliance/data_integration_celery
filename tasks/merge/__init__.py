@@ -9,7 +9,7 @@
 """
 import pandas as pd
 from functools import partial
-import warnings
+# import warnings
 import logging
 from tasks.utils.fh_utils import is_not_nan_or_none, log_param_when_exception
 
@@ -37,13 +37,14 @@ def prefer_right(data_s: pd.Series, left_key, right_key, **kwargs):
 
 
 @log_param_when_exception
-def mean_value(data_s: pd.Series, left_key, right_key, primary_keys=None, **kwargs):
+def mean_value(data_s: pd.Series, left_key, right_key, primary_keys=None, warning_accuracy=None, **kwargs):
     """
     取均值，默认如果不同则 warning
     :param data_s:
     :param left_key:
     :param right_key:
     :param primary_keys:
+    :param warning_accuracy:
     :param kwargs:
     :return:
     """
@@ -53,13 +54,33 @@ def mean_value(data_s: pd.Series, left_key, right_key, primary_keys=None, **kwar
     if is_not_nan_or_none(data_s[right_key]):
         value_list.append(data_s[right_key])
     data_count = len(value_list)
-    if data_count == 2 and value_list[0] != value_list[1]:
-        msg = '[%s] %s=%f 与 %s=%f 数值不同' % (
-            ','.join([str(data_s[key]) for key in primary_keys]),
-            left_key, value_list[0], right_key, value_list[1])
-        warnings.warn(msg, UserWarning)
+    if data_count == 2 and (
+            (warning_accuracy is None and value_list[0] != value_list[1])
+            or
+            (warning_accuracy is not None and abs(value_list[0] - value_list[1]) >= warning_accuracy)
+    ):
+        pk_str = ','.join([str(data_s[key]) for key in primary_keys]) if primary_keys is not None else None
+        if pk_str is None:
+            msg = '%s=%f 与 %s=%f 数值不同' % (left_key, value_list[0], right_key, value_list[1])
+        else:
+            msg = '[%s] %s=%f 与 %s=%f 数值差异较大' % (pk_str, left_key, value_list[0], right_key, value_list[1])
+        # warnings.warn(msg, UserWarning)
         logger.warning(msg)
-    return sum(value_list) / data_count
+    if data_count == 2:
+        ret_val = (sum(value_list) / data_count)
+    elif data_count == 1:
+        ret_val = value_list[0]
+    else:
+        ret_val = None
+    return ret_val
+
+
+@log_param_when_exception
+def get_value(data_s: pd.Series, key, default=None, **kwargs):
+    if is_not_nan_or_none(data_s[key]):
+        return data_s[key]
+    else:
+        return default
 
 
 def merge_data(data_df: pd.DataFrame, col_merge_rule_dic: dict) -> pd.DataFrame:
