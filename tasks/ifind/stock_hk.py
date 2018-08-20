@@ -2,6 +2,8 @@
 """
 Created on 2018/1/17
 @author: MG
+@contact : mmmaaaggg@163.com
+@desc    : 2018-08-20 已经正式运行测试完成，可以正常使用
 """
 
 import logging
@@ -219,7 +221,7 @@ def import_stock_hk_daily_ds(ths_code_set: set = None, begin_time=None):
                 'Days:Tradedays,Fill:Previous,Interval:D',
                 begin_time, end_time
             )
-            if data_df is not None or data_df.shape[0] > 0:
+            if data_df is not None and data_df.shape[0] > 0:
                 data_count += data_df.shape[0]
                 data_df_list.append(data_df)
 
@@ -475,7 +477,7 @@ def add_data_2_ckdvp(json_indicator, json_param, ths_code_set: set = None, begin
                 'Days:Tradedays,Fill:Previous,Interval:D',
                 begin_time, end_time
             )
-            if data_df is not None or data_df.shape[0] > 0:
+            if data_df is not None and data_df.shape[0] > 0:
                 data_df['key'] = json_indicator
                 data_df['param'] = json_param
                 data_df.rename(columns={json_indicator: 'value'}, inplace=True)
