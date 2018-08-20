@@ -145,6 +145,5 @@ def build_primary_key(table_name_list):
                     logger.debug('%d/%d) %s 无需操作', num, table_count, table_name)
 
 
-
 if __name__ == "__main__":
     init()
