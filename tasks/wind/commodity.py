@@ -71,6 +71,54 @@ def build_commodity_info():
         ["S5006008", "p_price_zjg", "张家港24度棕榈油价格", "2009-01-04", None, '现货价'],
         ["S5006009", "p_price_tj", "天津24度棕榈油价格", "2009-01-04", None, '现货价'],
         ["S5006009", "p_price_rz", "日照24度棕榈油价格", "2009-01-04", None, '现货价'],
+        #螺纹钢
+        ["S5707798", "rb_price_nation", "全国螺纹钢均价", "2008-12-23", None, 'HRB400 20mm'],
+        ["S0033213", "rb_price_bj", "北京螺纹钢均价", "2007-01-08", None, 'HRB400 20mm'],
+        ["S0073207", "rb_price_tj", "天津螺纹钢均价", "2007-01-08", None, 'HRB400 20mm'],
+        ["S0033217", "rb_price_gz", "广州螺纹钢均价", "2007-01-08", None, 'HRB400 20mm'],
+        ["S0033227", "rb_price_sh", "上海螺纹钢均价", "2007-01-08", None, 'HRB400 20mm'],
+        ["S5704770", "rb_price_hz", "杭州螺纹钢均价", "2007-04-24", None, 'HRB400 20mm'],
+        ["S0033232", "rb_price_wh", "武汉螺纹钢均价", "2007-01-08", None, 'HRB400 20mm'],
+        ["S5704771", "rb_price_nj", "南京螺纹钢均价", "2007-04-24", None, 'HRB400 20mm'],
+        ["S5704774", "rb_price_fz", "福州螺纹钢均价", "2007-04-24", None, 'HRB400 20mm'],
+        ["S5704784", "rb_price_ty", "太原螺纹钢均价", "2007-04-24", None, 'HRB400 20mm'],
+        ["S5704788", "rb_price_cd", "成都螺纹钢均价", "2007-04-24", None, 'HRB400 20mm'],
+
+        #外汇市场
+        ["M0067855", "us2rmb", "美元兑人民币即期汇率", "1994-01-04", None, '中国货币网'],
+        ["M0000185", "us2rmb_mid", "美元兑人民币中间价", "1994-08-31", None, '中国人民银行'],
+        ["M0290205", "us2cnh", "美元兑人民币离岸汇率", "2012-04-30", None, '中国货币网'],
+        ["M0000271", "usdx", "美元指数", "1971-01-04", None, '倚天财经'],
+        #利率市场_上海银行同业拆借
+        ["M1001854", "SHIBOR_N", "SHIBOR_N", "2006-10-08", None, '全国银行间同业拆借中心'],
+        ["M1001855", "SHIBOR_1W", "SHIBOR_1W", "2006-10-08", None, '全国银行间同业拆借中心'],
+        ["M1001856", "SHIBOR_2W", "SHIBOR_2W", "2006-10-08", None, '全国银行间同业拆借中心'],
+        ["M1001857", "SHIBOR_1M", "SHIBOR_1M", "2006-10-08", None, '全国银行间同业拆借中心'],
+        ["M1001858", "SHIBOR_3M", "SHIBOR_3M", "2006-10-08", None, '全国银行间同业拆借中心'],
+        ["M1001859", "SHIBOR_6M", "SHIBOR_6M", "2006-10-08", None, '全国银行间同业拆借中心'],
+        ["M1001860", "SHIBOR_9M", "SHIBOR_9M", "2006-10-08", None, '全国银行间同业拆借中心'],
+        ["M1001861", "SHIBOR_1Y", "SHIBOR_1Y", "2006-10-08", None, '全国银行间同业拆借中心'],
+        #香港同业拆借
+        ["M0062945", "HIBOR_N", "HIBOR_N", "2006-01-03", None, '香港同业拆借市场'],
+        ["M0062946", "HIBOR_1W", "HIBOR_1W", "2006-01-03", None, '香港同业拆借市场'],
+        ["M0062947", "HIBOR_2W", "HIBOR_2W", "2006-01-03", None, '香港同业拆借市场'],
+        ["M0062948", "HIBOR_1M", "HIBOR_1M", "2002-03-04", None, '香港同业拆借市场'],
+        ["M0062949", "HIBOR_2M", "HIBOR_2M", "2002-03-04", None, '香港同业拆借市场'],
+        ["M0062950", "HIBOR_3M", "HIBOR_3M", "2002-03-04", None, '香港同业拆借市场'],
+        ["M0062953", "HIBOR_6M", "HIBOR_6M", "2002-03-04", None, '香港同业拆借市场'],
+        ["M0062959", "HIBOR_12M", "HIBOR_12M", "2002-03-04", None, '香港同业拆借市场'],
+        #伦敦同业
+        
+
+        #螺纹钢库存
+        ["S0181750", "rb_inventory", "螺纹钢库存", "2010-05-21", None, '含上海全部仓库，单位：万吨'],
+        ["S0110142", "wire_inventory", "线材库存", "2006-03-17", None, '单位：万吨'],
+        ["S0110143", "hc_inventory", "热卷库存", "2006-03-17", None, '单位：万吨'],
+        ["S0110144", "steel_plate_inventory", "中板库存", "2006-03-17", None, '单位：万吨'],
+        ["S0110145", "cold_rolled_inventory", "冷轧库存", "2006-03-17", None, '单位：万吨'],
+        ["S5708249", "key_steelworks_inventory", "重点钢厂库存", "2009-05-31", None, '单位：万吨'],
+        #上海线螺采购量
+        ["S5704503", "line_rb_purchase", "上海线螺采购量", "2004-10-17", None, '单位：吨'],
 
     ]
     dtype = {
@@ -155,7 +203,7 @@ def import_edb(wind_code_set=None):
 
     data_df_list = []
     data_len = len(code_date_range_dic)
-    logger.info('%d stocks will been import into wind_stock_daily', data_len)
+    logger.info('%d stocks will been import into wind_commodity_edb', data_len)
     # 将data_df数据，添加到data_df_list
     try:
         for num, (key_code, (date_from, date_to)) in enumerate(code_date_range_dic.items(), start=1):
@@ -204,7 +252,7 @@ def import_edb(wind_code_set=None):
 
 
 if __name__ == "__main__":
-    DEBUG = True
+    # DEBUG = True
     build_commodity_info()
     # 更新每日股票数据
     import_edb()
