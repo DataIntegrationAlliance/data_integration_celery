@@ -254,7 +254,7 @@ def import_smfund_daily():
             print('%d %s has no code_a will be ignored' % (data_num, wind_code))
             # print(df.iloc[i, :])
             continue
-        # 获得数据存储到df_a
+        # 获得数据存储到df_a里面
         # df_a = wsd_cache(w, code_a, field, beginTime, today, "")
         df_a = invoker.wsd(code_a, field, date_from_str, date_ending_str, "")
         df_a.rename(columns=lambda x: x.swapcase() + '_a', inplace=True)
