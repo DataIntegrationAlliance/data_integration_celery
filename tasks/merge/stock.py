@@ -122,7 +122,7 @@ def merge_stock_daily(date_from=None):
         'low': (DOUBLE, mean_value, {
             'left_key': 'low_x', 'right_key': 'low_y',
             'warning_accuracy': 0.01, 'primary_keys': ('ths_code', 'time')}),
-        # 原因不详，wind接口取到的部分 close 数据不准确
+        # TODO: 原因不详，wind接口取到的部分 close 数据不准确
         'close': (DOUBLE, prefer_left, {
             'left_key': 'close_x', 'right_key': 'close_y',
             'warning_accuracy': 0.01, 'primary_keys': ('ths_code', 'time')}),

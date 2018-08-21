@@ -6,11 +6,7 @@ Created on Fri Mar 31 10:52:30 2017
 
 """
 import pandas as pd
-from math import isnan
-import pymysql
-from sqlalchemy import create_engine
 from direstinvoker.iwind import APIError
-
 from tasks import app
 from tasks.backend.orm import build_primary_key
 from datetime import datetime, date, timedelta
@@ -23,6 +19,7 @@ from tasks.backend import engine_md
 from tasks.merge.code_mapping import update_from_info_table
 from tasks.utils.fh_utils import STR_FORMAT_DATE, date_2_str, str_2_date
 import logging
+
 DEBUG = False
 logger = logging.getLogger()
 ONE_DAY = timedelta(days=1)
@@ -64,7 +61,6 @@ def import_smfund_info():
     ]
     col_name = ",".join([col_name for col_name, _ in col_name_param_list])
     # 获取各个历史时段的分级基金列表，并汇总全部基金代码
-    today = date.today().strftime('%Y-%m-%d')
     dates = ['2011-01-01', '2013-01-01', '2015-01-01', '2017-01-01', '2018-01-01']  # 分三个时间点获取市场上所有分级基金产品
     df = pd.DataFrame()
     # 获取接数据
@@ -80,15 +76,14 @@ def import_smfund_info():
     dtype["fund_maturitydate"] = Date
     if has_table:
         with with_db_session(engine_md) as session:
-            table = session.execute("select wind_code from wind_smfund_info")
+            table = session.execute("SELECT wind_code FROM wind_smfund_info")
             wind_code_existed = set([content[0] for content in table.fetchall()])
         wind_code_new = list(set(wind_code_all) - wind_code_existed)
     else:
         wind_code_new = list(set(wind_code_all))
-    # wind_code_new = [code for code in wind_code_new if code.find('!') < 0]
     # if len(wind_code_new) == 0:
     #     print('no sm fund imported')
-    # # 查询数据库，剔除已存在的基金代码
+    # 查询数据库，剔除已存在的基金代码
     wind_code_new = [code for code in wind_code_new if code.find('!') < 0]
     info_df = invoker.wss(wind_code_new, 'fund_setupdate, fund_maturitydate')
     if info_df is None:
@@ -101,7 +96,8 @@ def import_smfund_info():
 
     for code in info_df.index:
         beginDate = info_df.loc[code, 'fund_setupdate'].strftime('%Y-%m-%d')
-        temp_df = invoker.wset("leveragedfundinfo", "date=%s;windcode=%s;field=%s" % (beginDate, code, field))  # ;field=%s  , field
+        temp_df = invoker.wset("leveragedfundinfo",
+                               "date=%s;windcode=%s;field=%s" % (beginDate, code, field))  # ;field=%s  , field
         df = df.append(temp_df)
         if DEBUG and len(df) > 10:
             break
@@ -121,22 +117,6 @@ def import_smfund_info():
 
     # 更新 code_mapping 表
     update_from_info_table(table_name)
-    # info_df.to_sql('wind_smfund_info', engine, if_exists='append', index_label='wind_code',
-    #                dtype={
-    #                    'wind_code': String(20),
-    #                    'fund_setupdate': Date,
-    #                    'fund_maturitydate': Date,
-    #                    'fund_type': String(20),
-    #                    'sec_name': String(50),
-    #                    'class_a_code': String(20),
-    #                    'class_a_name': String(50),
-    #                    'class_b_code': String(20),
-    #                    'class_b_name': String(50),
-    #                    'track_indexcode': String(20),
-    #                    'track_indexname': String(50),
-    #                    'tradable': String(20),
-    #                })
-    # w.close()
 
 
 @app.tasks
@@ -186,30 +166,30 @@ def import_smfund_daily():
         ('pct_chg_b', DOUBLE),
 
     ]
-    #wset的调用参数
+    # wset的调用参数
     wind_indictor_str = ",".join([key for key, _ in col_name_param_list[:14]])
     # 设置dtype类型
     dtype = {key: val for key, val in col_name_param_list}
 
     date_ending = date.today() - ONE_DAY if datetime.now().hour < BASE_LINE_HOUR else date.today()
     date_ending_str = date_ending.strftime('%Y-%m-%d')
-    #对于 表格是否存在进行判断，取值
+    # 对于 表格是否存在进行判断，取值
     if has_table:
         sql_str = """
-            select wind_code, ifnull(date, fund_setupdate) date_start, class_a_code, class_b_code
-            from wind_smfund_info fi left outer join
-            (select code_p, adddate(max(trade_date), 1) trade_date_max from wind_smfund_daily group by code_p) smd
-            on fi.wind_code = smd.code_p
-            where fund_setupdate is not null
-            and class_a_code is not null
-            and class_b_code is not null"""
+            SELECT wind_code, ifnull(date, fund_setupdate) date_start, class_a_code, class_b_code
+            FROM wind_smfund_info fi LEFT OUTER JOIN
+            (SELECT code_p, adddate(max(trade_date), 1) trade_date_max FROM wind_smfund_daily GROUP BY code_p) smd
+            ON fi.wind_code = smd.code_p
+            WHERE fund_setupdate IS NOT NULL
+            AND class_a_code IS NOT NULL
+            AND class_b_code IS NOT NULL"""
     else:
         sql_str = """
-            select wind_code, ifnull(date, fund_setupdate) date_start, class_a_code, class_b_code
-            from wind_smfund_info
-            where fund_setupdate is not null
-            and class_a_code is not null
-            and class_b_code is not null"""
+            SELECT wind_code, ifnull(date, fund_setupdate) date_start, class_a_code, class_b_code
+            FROM wind_smfund_info
+            WHERE fund_setupdate IS NOT NULL
+            AND class_a_code IS NOT NULL
+            AND class_b_code IS NOT NULL"""
     df = pd.read_sql(sql_str, engine_md)
     df.set_index('wind_code', inplace=True)
 
@@ -231,7 +211,7 @@ def import_smfund_daily():
         if date_from > date_ending:
             logger.info('%d/%d) %s %s %s 跳过', data_num, data_len, wind_code, date_from_str, date_ending_str)
             continue
-           # 设置wsd接口参数
+        # 设置wsd接口参数
         field = "open,high,low,close,volume,amt,pct_chg"
         # wsd_cache(w, code, field, beginTime, today, "")
         try:

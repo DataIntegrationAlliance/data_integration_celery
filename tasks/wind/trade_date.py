@@ -14,8 +14,8 @@ from tasks.utils.fh_utils import STR_FORMAT_DATE, date_2_str, str_2_date
 from tasks.utils.db_utils import with_db_session, bunch_insert_on_duplicate_update, alter_table_2_myisam
 from tasks.wind import invoker
 
-
 import logging
+
 logger = logging.getLogger()
 
 
@@ -28,27 +28,23 @@ def import_trade_date():
     """
     table_name = 'wind_trade_date_all'
     has_table = engine_md.has_table(table_name)
-    trade_date_start = None
     with with_db_session(engine_md) as session:
         try:
-            table = session.execute('select exch_code,max(trade_date) from wind_trade_date_all group by exch_code')
+            table = session.execute('SELECT exch_code,max(trade_date) FROM wind_trade_date_all GROUP BY exch_code')
             exch_code_trade_date_dic = {exch_code: trade_date for exch_code, trade_date in table.fetchall()}
-        except Exception as exp:
+        except Exception:
             logger.exception("交易日获取异常")
-        if trade_date_start is None:
-            trade_date_start = '1980-01-01'
-    exch_code_trade_date_dic = {}
-    #
+
     exchange_code_dict = {
-        "HKEX":"香港",
-        "NYSE":"纽约",
-        "SZSE":"深圳",
-        "TWSE":"台湾",
-        "NASDAQ":"纳斯达克",
-        "AMEX":"美国证券交易所",
-        "TSE":"东京",
-        "LSE":"伦敦",
-        "SGX":"新加坡"
+        "HKEX": "香港",
+        "NYSE": "纽约",
+        "SZSE": "深圳",
+        "TWSE": "台湾",
+        "NASDAQ": "纳斯达克",
+        "AMEX": "美国证券交易所",
+        "TSE": "东京",
+        "LSE": "伦敦",
+        "SGX": "新加坡"
     }
     exchange_code_list = list(exchange_code_dict.keys())
     for exchange_code in exchange_code_list:
@@ -68,10 +64,12 @@ def import_trade_date():
         if date_count > 0:
             logger.info("%d 条交易日数据将被导入", date_count)
             with with_db_session(engine_md) as session:
-                session.execute("insert into wind_trade_date_all (trade_date,exch_code) VALUE (:trade_date,:exch_code)" ,
-                                params=[{'trade_date': trade_date,'exch_code':exchange_code} for trade_date in trade_date_list])
+                session.execute(
+                    "INSERT INTO wind_trade_date_all (trade_date,exch_code) VALUE (:trade_date,:exch_code)",
+                    params=[{'trade_date': trade_date, 'exch_code': exchange_code} for trade_date in
+                            trade_date_list])
             # bunch_insert_on_duplicate_update(trade_date_list, table_name, engine_md, dtype=dtype)
-            logger.info('%d 条交易日数据导入 %s 完成', date_count,'wind_trade_date_all')
+            logger.info('%d 条交易日数据导入 %s 完成', date_count, 'wind_trade_date_all')
             if not has_table and engine_md.has_table(table_name):
                 alter_table_2_myisam(engine_md, [table_name])
                 # build_primary_key([table_name])
