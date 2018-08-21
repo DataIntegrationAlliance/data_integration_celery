@@ -22,8 +22,7 @@ from tasks.backend.orm import build_primary_key
 from sqlalchemy.types import String, Date, Integer
 from tasks.utils.db_utils import alter_table_2_myisam
 from tasks.merge.code_mapping import update_from_info_table
-from tasks.utils.fh_utils import get_last, get_first, str_2_date
-from tasks.utils.db_utils import with_db_session, bunch_insert_on_duplicate_update
+from tasks.utils.db_utils import with_db_session,bunch_insert_on_duplicate_update
 DEBUG = False
 logger = logging.getLogger()
 DATE_BASE = datetime.strptime('1998-01-01', STR_FORMAT_DATE).date()
