@@ -199,7 +199,7 @@ def import_private_fund_daily(ths_code_set: set = None, begin_time=None):
                 json_param,
                 begin_time, end_time
             )
-            if data_df is not None or data_df.shape[0] > 0:
+            if data_df is not None and data_df.shape[0] > 0:
                 data_count += data_df.shape[0]
                 data_df_list.append(data_df)
             # 大于阀值有开始插入
