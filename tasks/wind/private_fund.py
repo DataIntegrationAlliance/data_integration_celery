@@ -24,7 +24,7 @@ DEBUG = False
 logger = logging.getLogger()
 
 
-@app.tasks
+@app.task
 def wind_fund_info_import(table_name, get_df=False):
     # 初始化服务器接口，用于下载万得数据
     # table_name = 'fund_info'
@@ -140,7 +140,7 @@ def fund_nav_df_2_sql(table_name, fund_nav_df, engine_md, is_append=True):
     return trade_date_latest
 
 
-@app.tasks
+@app.task
 def update_wind_fund_nav(get_df=False, wind_code_list=None):
     table_name = 'wind_fund_nav'
     # 初始化数据下载端口

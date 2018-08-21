@@ -104,7 +104,7 @@ def import_wind_index_daily_first(wind_codes):
             build_primary_key([table_name])
 
 
-@app.tasks
+@app.task
 def import_wind_index_daily():
     """导入指数数据"""
     table_name = "wind_index_daily"
@@ -260,7 +260,7 @@ def import_wind_index_daily_by_xls(file_path, wind_code, index_name):
     logger.info("%s %s %d 条数据被导入", wind_code, index_name, data_df.shape[0])
 
 
-@app.tasks
+@app.task
 def import_wind_index_info(wind_codes):
     """
     导入指数信息

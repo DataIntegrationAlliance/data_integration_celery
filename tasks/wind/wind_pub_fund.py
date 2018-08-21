@@ -44,7 +44,7 @@ def get_wind_code_set(date_fetch):
     return set(wind_code_s)
 
 
-@app.tasks
+@app.task
 def import_pub_fund_info(first_time=False):
     """
     获取全市场可转债基本信息
@@ -143,7 +143,7 @@ def import_pub_fund_info(first_time=False):
     update_from_info_table(table_name)
 
 
-@app.tasks
+@app.task
 def import_pub_fund_daily():
     """
     导入公募基金日线数据

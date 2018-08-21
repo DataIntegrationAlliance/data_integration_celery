@@ -41,7 +41,7 @@ def get_cb_set(date_fetch):
     return set(data_df['wind_code'])
 
 
-@app.tasks
+@app.task
 def import_cb_info(first_time=False):
     """
     获取全市场可转债数据
@@ -124,7 +124,7 @@ def import_cb_info(first_time=False):
     update_from_info_table(table_name)
 
 
-@app.tasks
+@app.task
 def import_cb_daily():
     """
     导入可转债日线数据

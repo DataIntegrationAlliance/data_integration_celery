@@ -27,7 +27,7 @@ ONE_DAY = timedelta(days=1)
 BASE_LINE_HOUR = 16
 
 
-@app.tasks
+@app.task
 def import_smfund_info():
     """
     :return:
@@ -119,7 +119,7 @@ def import_smfund_info():
     update_from_info_table(table_name)
 
 
-@app.tasks
+@app.task
 def import_smfund_daily():
     """
     :return:
