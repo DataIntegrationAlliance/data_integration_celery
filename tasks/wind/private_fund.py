@@ -24,7 +24,7 @@ DEBUG = False
 logger = logging.getLogger()
 
 
-@app.tasks
+@app.task
 def wind_fund_info_import(table_name, get_df=False):
     # 初始化服务器接口，用于下载万得数据
     # table_name = 'fund_info'
@@ -54,10 +54,11 @@ def wind_fund_info_import(table_name, get_df=False):
         ('FUND_TYPE', String(20)),
         ('FUND_FUNDMANAGER', String(20))
     ]
-    clo_name_dic = {col_name.upper(): col_name.lower() for col_name, _ in param_list}
+    col_name_dic = {col_name.upper(): col_name.lower() for col_name, _ in param_list}
     # 获取列表名
-    col_name_list = [col_name.lower() for col_name in clo_name_dic.keys()]
+    col_name_list = [col_name.lower() for col_name in col_name_dic.keys()]
     param_str = ",".join(col_name_list)
+    # 设置dtype类型
     dtype = {key.lower(): val for key, val in param_list}
     dtype['wind_code'] = String(20)
     dtype['sec_name'] = String(200),
@@ -96,7 +97,7 @@ def wind_fund_info_import(table_name, get_df=False):
     info_df['FUND_SETUPDATE'] = info_df['FUND_SETUPDATE'].apply(lambda x: str_2_date(x))
     info_df['FUND_MATURITYDATE'] = info_df['FUND_MATURITYDATE'].apply(lambda x: str_2_date(x))
     info_df = fund_types_df.join(info_df, how='right')
-    info_df.rename(columns=clo_name_dic, inplace=True)
+    info_df.rename(columns=col_name_dic, inplace=True)
     info_df.index.names = ['wind_code']
     info_df.reset_index(inplace=True)
     info_df.drop_duplicates(inplace=True)
@@ -140,7 +141,7 @@ def fund_nav_df_2_sql(table_name, fund_nav_df, engine_md, is_append=True):
     return trade_date_latest
 
 
-@app.tasks
+@app.task
 def update_wind_fund_nav(get_df=False, wind_code_list=None):
     table_name = 'wind_fund_nav'
     # 初始化数据下载端口
@@ -164,6 +165,7 @@ def update_wind_fund_nav(get_df=False, wind_code_list=None):
                ) wfn
                on fi.wind_code = wfn.wind_code""", engine_md)
     else:
+
         logger.warning('wind_fund_nav 不存在，仅使用 fund_info 表进行计算日期范围')
         fund_info_df = pd.read_sql_query("""SELECT DISTINCT fi.wind_code as wind_code, 
                      fund_setupdate date_from,

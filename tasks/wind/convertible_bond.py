@@ -22,8 +22,7 @@ from tasks.backend.orm import build_primary_key
 from sqlalchemy.types import String, Date, Integer
 from tasks.utils.db_utils import alter_table_2_myisam
 from tasks.merge.code_mapping import update_from_info_table
-from tasks.utils.fh_utils import get_last, get_first, str_2_date
-from tasks.utils.db_utils import with_db_session, bunch_insert_on_duplicate_update
+from tasks.utils.db_utils import with_db_session,bunch_insert_on_duplicate_update
 DEBUG = False
 logger = logging.getLogger()
 DATE_BASE = datetime.strptime('1998-01-01', STR_FORMAT_DATE).date()
@@ -41,7 +40,7 @@ def get_cb_set(date_fetch):
     return set(data_df['wind_code'])
 
 
-@app.tasks
+@app.task
 def import_cb_info(first_time=False):
     """
     获取全市场可转债数据
@@ -124,7 +123,7 @@ def import_cb_info(first_time=False):
     update_from_info_table(table_name)
 
 
-@app.tasks
+@app.task
 def import_cb_daily():
     """
     导入可转债日线数据
