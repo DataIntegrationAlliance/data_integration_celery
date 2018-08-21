@@ -343,7 +343,7 @@ def add_data_2_ckdvp(col_name, param, wind_code_set: set = None, begin_time=None
                     date_to,
                     param
                 )
-                if data_df is not None or data_df.shape[0] > 0:
+                if data_df is not None and data_df.shape[0] > 0:
                     # 对我们的表格进行规范整理,整理我们的列名，索引更改
                     data_df['key'] = col_name
                     data_df['param'] = param
