@@ -155,6 +155,9 @@ def bunch_insert_on_duplicate_update(df: pd.DataFrame, table_name, engine, dtype
     :param dtype: 仅在表不存在的情况下自动创建使用
     :return:
     """
+    if df is None or df.shape[0] == 0:
+        return 0
+
     has_table = engine.has_table(table_name)
     if has_table:
         col_name_list = list(df.columns)
