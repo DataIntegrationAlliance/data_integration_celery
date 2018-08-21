@@ -33,7 +33,7 @@ def str_date(x):
     return ret_x
 
 
-@app.tasks
+@app.task
 def import_wind_bonus():
     """
     :return:
