@@ -2,6 +2,7 @@
 """
 Created on 2017/4/20
 @author: MG
+@desc    : 2018-08-21 已经正式运行测试完成，可以正常使用
 """
 from datetime import date, datetime, timedelta
 import pandas as pd
@@ -26,11 +27,12 @@ def import_trade_date():
     日后将会考虑将两张表进行合并
     :return: 
     """
-    table_name = 'wind_trade_date_all'
+    table_name = 'wind_trade_date'
     has_table = engine_md.has_table(table_name)
     with with_db_session(engine_md) as session:
         try:
-            table = session.execute('SELECT exch_code,max(trade_date) FROM wind_trade_date_all GROUP BY exch_code')
+            table = session.execute('SELECT exch_code,max(trade_date) FROM {table_name} GROUP BY exch_code'.format(
+                table_name=table_name))
             exch_code_trade_date_dic = {exch_code: trade_date for exch_code, trade_date in table.fetchall()}
         except Exception:
             logger.exception("交易日获取异常")
@@ -65,14 +67,14 @@ def import_trade_date():
             logger.info("%d 条交易日数据将被导入", date_count)
             with with_db_session(engine_md) as session:
                 session.execute(
-                    "INSERT INTO wind_trade_date_all (trade_date,exch_code) VALUE (:trade_date,:exch_code)",
+                    "INSERT INTO {table_name} (trade_date,exch_code) VALUE (:trade_date,:exch_code)".format(
+                        table_name=table_name),
                     params=[{'trade_date': trade_date, 'exch_code': exchange_code} for trade_date in
                             trade_date_list])
             # bunch_insert_on_duplicate_update(trade_date_list, table_name, engine_md, dtype=dtype)
-            logger.info('%d 条交易日数据导入 %s 完成', date_count, 'wind_trade_date_all')
+            logger.info('%s %d 条交易日数据导入 %s 完成', exchange_code, date_count, table_name)
             if not has_table and engine_md.has_table(table_name):
                 alter_table_2_myisam(engine_md, [table_name])
-                # build_primary_key([table_name])
                 create_pk_str = """ALTER TABLE {TABLE_NAME}
                 CHANGE COLUMN 'KEY' 'KEY' VARCHAR(20) NOT NULL FIRST ,
                 CHANGE COLUMN 'trade_date' 'trade_date' DATA NOT NULL AFTER 'KEY',
