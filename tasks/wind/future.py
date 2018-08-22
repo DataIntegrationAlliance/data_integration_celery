@@ -9,6 +9,8 @@ import pandas as pd
 from datetime import datetime, date, timedelta
 from direstinvoker.ifind import APIError
 from sqlalchemy.dialects.mysql import DOUBLE
+
+from tasks import app
 from tasks.wind import invoker
 from tasks.utils.db_utils import with_db_session
 from tasks.backend import engine_md
@@ -19,6 +21,7 @@ from tasks.merge.code_mapping import update_from_info_table
 from tasks.backend import engine_md
 from tasks.utils.db_utils import alter_table_2_myisam
 from tasks.utils.db_utils import bunch_insert_on_duplicate_update
+
 logger = logging.getLogger()
 RE_PATTERN_MFPRICE = re.compile(r'\d*\.*\d*')
 ONE_DAY = timedelta(days=1)
@@ -56,6 +59,7 @@ def get_date_since(wind_code_ipo_date_dic, regex_str, date_establish):
     return date_since
 
 
+@app.task
 def import_wind_future_info_hk():
     """
     更新期货合约列表信息
@@ -122,22 +126,22 @@ def import_wind_future_info_hk():
     ndays_per_update = 60
     # 获取接口参数以及参数列表
     col_name_param_list = [
-            ("ipo_date", Date),
-            ("sec_name", String(50)),
-            ("sec_englishname", String(200)),
-            ("exch_eng", String(200)),
-            ("lasttrade_date", Date),
-            ("lastdelivery_date", Date),
-            ("dlmonth", String(20)),
-            ("lprice",DOUBLE),
-            ("sccode", String(20)),
-            ("margin", DOUBLE),
-            ("punit", String(200)),
-            ("changelt", DOUBLE),
-            ("mfprice", DOUBLE),
-            ("contractmultiplier", DOUBLE),
-            ("ftmargins", String(100)),
-            ("trade_code", String(200)),
+        ("ipo_date", Date),
+        ("sec_name", String(50)),
+        ("sec_englishname", String(200)),
+        ("exch_eng", String(200)),
+        ("lasttrade_date", Date),
+        ("lastdelivery_date", Date),
+        ("dlmonth", String(20)),
+        ("lprice", DOUBLE),
+        ("sccode", String(20)),
+        ("margin", DOUBLE),
+        ("punit", String(200)),
+        ("changelt", DOUBLE),
+        ("mfprice", DOUBLE),
+        ("contractmultiplier", DOUBLE),
+        ("ftmargins", String(100)),
+        ("trade_code", String(200)),
     ]
     wind_indictor_str = ",".join(col_name for col_name, _ in col_name_param_list)
     dtype = {key: val for key, val in col_name_param_list}
@@ -154,7 +158,7 @@ def import_wind_future_info_hk():
             date_since_str = date_since.strftime(STR_FORMAT_DATE)
             # w.wset("sectorconstituent","date=2017-05-02;sectorid=a599010205000000")
             # future_info_df = wset_cache(w, "sectorconstituent", "date=%s;sectorid=%s" % (date_since_str, sector_id))
-            future_info_df =invoker.wset("sectorconstituent", "date=%s;sectorid=%s" % (date_since_str, sector_id))
+            future_info_df = invoker.wset("sectorconstituent", "date=%s;sectorid=%s" % (date_since_str, sector_id))
             wind_code_set |= set(future_info_df['wind_code'])
             # future_info_df = future_info_df[['wind_code', 'sec_name']]
             # future_info_dic_list = future_info_df.to_dict(orient='records')
@@ -176,7 +180,7 @@ def import_wind_future_info_hk():
     # future_info_df = wss_cache(w, wind_code_list,
     #                            "ipo_date,sec_name,sec_englishname,exch_eng,lasttrade_date,lastdelivery_date,dlmonth,lprice,sccode,margin,punit,changelt,mfprice,contractmultiplier,ftmargins,trade_code")
     if len(wind_code_list) > 0:
-        future_info_df = invoker.wss(wind_code_list,wind_indictor_str)
+        future_info_df = invoker.wss(wind_code_list, wind_indictor_str)
         future_info_df['MFPRICE'] = future_info_df['MFPRICE'].apply(mfprice_2_num)
         future_info_count = future_info_df.shape[0]
 
@@ -213,6 +217,7 @@ def import_wind_future_info_hk():
         update_from_info_table(table_name)
 
 
+@app.task
 def import_wind_future_hk_daily():
     """
     更新期货合约日级别行情信息
@@ -371,6 +376,7 @@ def import_wind_future_hk_daily():
         # w.close()
 
 
+@app.task
 def import_wind_future_info():
     """
     更新 香港股指 期货合约列表信息
@@ -485,17 +491,16 @@ def import_wind_future_info():
     # 手动生成合约列表
     # 香港恒生指数期货，香港国企指数期货合约只有07年2月开始的合约，且无法通过 wset 进行获取
     wind_code_list = ['%s%02d%02d.HK' % (name, year, month)
-                      for name, year, month in itertools.product(['HSIF', 'HHIF'], range(7,19), range(1,13))
-                      if not(year==7 and month==1)]
+                      for name, year, month in itertools.product(['HSIF', 'HHIF'], range(7, 19), range(1, 13))
+                      if not (year == 7 and month == 1)]
 
     # 获取合约基本信息
     # w.wss("AU1706.SHF,AG1612.SHF,AU0806.SHF", "ipo_date,sec_name,sec_englishname,exch_eng,lasttrade_date,lastdelivery_date,dlmonth,lprice,sccode,margin,punit,changelt,mfprice,contractmultiplier,ftmargins,trade_code")
     # future_info_df = wss_cache(w, wind_code_list,
     #                            "ipo_date,sec_name,sec_englishname,exch_eng,lasttrade_date,lastdelivery_date,dlmonth,lprice,sccode,margin,punit,changelt,mfprice,contractmultiplier,ftmargins,trade_code")
     if len(wind_code_list) > 0:
-        future_info_df = invoker.wss(wind_code_list,wind_indictor_str)
+        future_info_df = invoker.wss(wind_code_list, wind_indictor_str)
         future_info_df['MFPRICE'] = future_info_df['MFPRICE'].apply(mfprice_2_num)
-
         future_info_df.rename(columns={c: str.lower(c) for c in future_info_df.columns}, inplace=True)
         future_info_df.index.rename('wind_code', inplace=True)
         future_info_df = future_info_df[~(future_info_df['ipo_date'].isna() | future_info_df['lasttrade_date'].isna())]
@@ -523,7 +528,6 @@ def import_wind_future_info():
         #                       })
         bunch_insert_on_duplicate_update(future_info_df, table_name, engine_md, dtype=dtype)
         logger.info("更新 wind_future_info_hk 结束 %d 条记录被更新", future_info_count)
-
 
 
 if __name__ == "__main__":
