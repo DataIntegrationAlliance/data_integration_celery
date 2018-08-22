@@ -42,7 +42,7 @@ def get_stock_code_set(date_fetch):
 
 
 @app.task
-def import_wind_stock_info_hk(refresh=False):
+def import_stock_info_hk(refresh=False):
     """
     获取全市场股票代码及名称 导入 港股股票信息 到 wind_stock_info_hk
     :param refresh: 默认为False，True 则进行全部更新
@@ -495,10 +495,10 @@ def add_data_2_ckdvp(col_name, param, wind_code_set: set = None, begin_time=None
 
 
 if __name__ == "__main__":
-    DEBUG = True
+    # DEBUG = True
     # wind_code_set = {'1680.HK'}
     wind_code_set = None
-    # import_wind_stock_info_hk(refresh=False)
+    import_stock_info_hk()
     import_stock_daily_hk(wind_code_set)
     # import_stock_quertarly_hk()
     # add_new_col_data('ebitdaps', '', wind_code_set=wind_code_set)
