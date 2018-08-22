@@ -4,17 +4,27 @@ Created on 2017/5/2
 @author: MG
 """
 import logging
-from datetime import datetime, date, timedelta
-from fh_tools.windy_utils_rest import WindRest, APIError
-from sqlalchemy.types import String, Date, Float
 import re, itertools
 import pandas as pd
-from config_fh import WIND_REST_URL, STR_FORMAT_DATE, get_db_engine, get_db_session
+from datetime import datetime, date, timedelta
+from direstinvoker.ifind import APIError
+from sqlalchemy.dialects.mysql import DOUBLE
+from tasks.wind import invoker
+from tasks.utils.db_utils import with_db_session
+from tasks.backend import engine_md
+from sqlalchemy.types import String, Date, Float
+from tasks.utils.fh_utils import STR_FORMAT_DATE, date_2_str, str_2_date
+from tasks.backend.orm import build_primary_key
+from tasks.merge.code_mapping import update_from_info_table
+from tasks.backend import engine_md
+from tasks.utils.db_utils import alter_table_2_myisam
+from tasks.utils.db_utils import bunch_insert_on_duplicate_update
 logger = logging.getLogger()
 RE_PATTERN_MFPRICE = re.compile(r'\d*\.*\d*')
 ONE_DAY = timedelta(days=1)
 # 标示每天几点以后下载当日行情数据
 BASE_LINE_HOUR = 16
+DEBUG = False
 
 
 def mfprice_2_num(input_str):
@@ -46,22 +56,26 @@ def get_date_since(wind_code_ipo_date_dic, regex_str, date_establish):
     return date_since
 
 
-def import_wind_future_info():
+def import_wind_future_info_hk():
     """
     更新期货合约列表信息
     :return: 
     """
-    logger.info("更新 wind_future_info 开始")
+    table_name = "wind_future_info_hk"
+    has_table = engine_md.has_table(table_name)
+    logger.info("更新 wind_future_info_hk 开始")
     # 获取已存在合约列表
-    sql_str = 'select wind_code, ipo_date from wind_future_info'
-    engine = get_db_engine()
-    with get_db_session(engine) as session:
-        table = session.execute(sql_str)
-        wind_code_ipo_date_dic = dict(table.fetchall())
+    if has_table:
+        sql_str = 'select wind_code, ipo_date from wind_future_info_hk'
+        with with_db_session(engine_md) as session:
+            table = session.execute(sql_str)
+            wind_code_ipo_date_dic = dict(table.fetchall())
+    else:
+        wind_code_ipo_date_dic = {}
 
     # 通过wind获取合约列表
     # w.start()
-    rest = WindRest(WIND_REST_URL)  # 初始化服务器接口，用于下载万得数据
+    # 初始化服务器接口，用于下载万得数据
     future_sectorid_dic_list = [
         {'subject_name': 'CFE 沪深300', 'regex': r"IF\d{4}\.CFE",
          'sectorid': 'a599010102000000', 'date_establish': '2010-4-16'},
@@ -106,6 +120,28 @@ def import_wind_future_info():
     ]
     wind_code_set = set()
     ndays_per_update = 60
+    # 获取接口参数以及参数列表
+    col_name_param_list = [
+            ("ipo_date", Date),
+            ("sec_name", String(50)),
+            ("sec_englishname", String(200)),
+            ("exch_eng", String(200)),
+            ("lasttrade_date", Date),
+            ("lastdelivery_date", Date),
+            ("dlmonth", String(20)),
+            ("lprice",DOUBLE),
+            ("sccode", String(20)),
+            ("margin", DOUBLE),
+            ("punit", String(200)),
+            ("changelt", DOUBLE),
+            ("mfprice", DOUBLE),
+            ("contractmultiplier", DOUBLE),
+            ("ftmargins", String(100)),
+            ("trade_code", String(200)),
+    ]
+    wind_indictor_str = ",".join(col_name for col_name, _ in col_name_param_list)
+    dtype = {key: val for key, val in col_name_param_list}
+    dtype['wind_code'] = String(20)
     # 获取历史期货合约列表信息
     for future_sectorid_dic in future_sectorid_dic_list:
         subject_name = future_sectorid_dic['subject_name']
@@ -118,7 +154,7 @@ def import_wind_future_info():
             date_since_str = date_since.strftime(STR_FORMAT_DATE)
             # w.wset("sectorconstituent","date=2017-05-02;sectorid=a599010205000000")
             # future_info_df = wset_cache(w, "sectorconstituent", "date=%s;sectorid=%s" % (date_since_str, sector_id))
-            future_info_df = rest.wset("sectorconstituent", "date=%s;sectorid=%s" % (date_since_str, sector_id))
+            future_info_df =invoker.wset("sectorconstituent", "date=%s;sectorid=%s" % (date_since_str, sector_id))
             wind_code_set |= set(future_info_df['wind_code'])
             # future_info_df = future_info_df[['wind_code', 'sec_name']]
             # future_info_dic_list = future_info_df.to_dict(orient='records')
@@ -140,85 +176,131 @@ def import_wind_future_info():
     # future_info_df = wss_cache(w, wind_code_list,
     #                            "ipo_date,sec_name,sec_englishname,exch_eng,lasttrade_date,lastdelivery_date,dlmonth,lprice,sccode,margin,punit,changelt,mfprice,contractmultiplier,ftmargins,trade_code")
     if len(wind_code_list) > 0:
-        future_info_df = rest.wss(wind_code_list,
-                                  "ipo_date,sec_name,sec_englishname,exch_eng,lasttrade_date,lastdelivery_date,dlmonth,lprice,sccode,margin,punit,changelt,mfprice,contractmultiplier,ftmargins,trade_code")
-
+        future_info_df = invoker.wss(wind_code_list,wind_indictor_str)
         future_info_df['MFPRICE'] = future_info_df['MFPRICE'].apply(mfprice_2_num)
         future_info_count = future_info_df.shape[0]
 
         future_info_df.rename(columns={c: str.lower(c) for c in future_info_df.columns}, inplace=True)
         future_info_df.index.rename('wind_code', inplace=True)
-        future_info_df.to_sql('wind_future_info', engine, if_exists='append',
-                              dtype={
-                                  'wind_code': String(20),
-                                  'trade_code': String(20),
-                                  'sec_name': String(50),
-                                  'sec_englishname': String(50),
-                                  'exch_eng': String(50),
-                                  'ipo_date': Date,
-                                  'lasttrade_date': Date,
-                                  'lastdelivery_date': Date,
-                                  'dlmonth': String(20),
-                                  'lprice': Float,
-                                  'sccode': String(20),
-                                  'margin': Float,
-                                  'punit': String(20),
-                                  'changelt': Float,
-                                  'mfprice': Float,
-                                  'contractmultiplier': Float,
-                                  'ftmargins': String(100),
-                              })
-        logger.info("更新 wind_future_info 结束 %d 条记录被更新", future_info_count)
-        # w.close()
+        future_info_df.reset_index(inplace=True)
+        # future_info_df.to_sql('wind_future_info', engine_md, if_exists='append',
+        #                       dtype={
+        #                           'wind_code': String(20),
+        #                           'trade_code': String(20),
+        #                           'sec_name': String(50),
+        #                           'sec_englishname': String(50),
+        #                           'exch_eng': String(50),
+        #                           'ipo_date': Date,
+        #                           'lasttrade_date': Date,
+        #                           'lastdelivery_date': Date,
+        #                           'dlmonth': String(20),
+        #                           'lprice': Float,
+        #                           'sccode': String(20),
+        #                           'margin': Float,
+        #                           'punit': String(20),
+        #                           'changelt': Float,
+        #                           'mfprice': Float,
+        #                           'contractmultiplier': Float,
+        #                           'ftmargins': String(100),
+        #                       })
+        data_count = bunch_insert_on_duplicate_update(future_info_df, table_name, engine_md, dtype=dtype)
+        logging.info("更新 %s 结束 %d 条信息被更新", table_name, data_count)
+        if not has_table and engine_md.has_table(table_name):
+            alter_table_2_myisam(engine_md, [table_name])
+            build_primary_key([table_name])
+
+        logger.info("更新 wind_future_info_hk 结束 %d 条记录被更新", future_info_count)
+        update_from_info_table(table_name)
 
 
-def import_wind_future_daily():
+def import_wind_future_hk_daily():
     """
     更新期货合约日级别行情信息
     :return: 
     """
-    logger.info("更新 wind_future_daily 开始")
+    logger.info("更新 wind_future_daily_hk 开始")
+    table_name = "wind_future_daily_hk"
+    has_table = engine_md.has_table(table_name)
     date_ending = date.today() - ONE_DAY if datetime.now().hour < BASE_LINE_HOUR else date.today()
     # w.wsd("AG1612.SHF", "open,high,low,close,volume,amt,dealnum,settle,oi,st_stock", "2016-11-01", "2016-12-21", "")
     # sql_str = """select fi.wind_code, ifnull(trade_date_max_1, ipo_date) date_frm,
     # lasttrade_date
-    # from wind_future_info fi left outer join
-    # (select wind_code, adddate(max(trade_date),1) trade_date_max_1 from wind_future_daily group by wind_code) wfd
+    # from wind_future_info_hk fi left outer join
+    # (select wind_code, adddate(max(trade_date),1) trade_date_max_1 from wind_future_daily_hk group by wind_code) wfd
     # on fi.wind_code = wfd.wind_code"""
     # 16 点以后 下载当天收盘数据，16点以前只下载前一天的数据
     # 对于 date_to 距离今年超过1年的数据不再下载：发现有部分历史过于久远的数据已经无法补全，
     # 如：AL0202.SHF AL9902.SHF CU0202.SHF
-    sql_str = """select wind_code, date_frm, if(lasttrade_date<end_date, lasttrade_date, end_date) date_to
-FROM
-(
-select fi.wind_code, ifnull(trade_date_max_1, ipo_date) date_frm, 
-    lasttrade_date,
-		if(hour(now())<16, subdate(curdate(),1), curdate()) end_date
-    from wind_future_info fi left outer join
-    (select wind_code, adddate(max(trade_date),1) trade_date_max_1 from wind_future_daily group by wind_code) wfd
-    on fi.wind_code = wfd.wind_code
-) tt
-where date_frm <= if(lasttrade_date<end_date, lasttrade_date, end_date) 
-and subdate(curdate(), 360) < if(lasttrade_date<end_date, lasttrade_date, end_date) 
-order by wind_code"""
-    engine = get_db_engine()
+    col_param_list = [
+        ("open", DOUBLE),
+        ("high", DOUBLE),
+        ("low", DOUBLE),
+        ("close", DOUBLE),
+        ("volume", DOUBLE),
+        ("amt", DOUBLE),
+        ("dealnum", DOUBLE),
+        ("settle", DOUBLE),
+        ("oi", DOUBLE),
+        ("st_stock", DOUBLE),
+        ('position', DOUBLE),
+        ('instrument_id', String(20)),
+        ('trade_date', Date,)
+    ]
+    wind_indictor_str = ",".join([key for key, _ in col_param_list[:10]])
+    dtype = {key: value for key, value in col_param_list}
+    dtype["wind_code"] = String(20)
+    if has_table:
+        sql_str = """
+            select wind_code, date_frm, if(lasttrade_date<end_date, lasttrade_date, end_date) date_to
+            FROM
+            (
+            select fi.wind_code, ifnull(trade_date_max_1, ipo_date) date_frm, 
+                lasttrade_date,
+                if(hour(now())<16, subdate(curdate(),1), curdate()) end_date
+            from wind_future_info_hk fi 
+            left outer join
+                (select wind_code, adddate(max(trade_date),1) trade_date_max_1 from wind_future_daily_hk group by wind_code) wfd
+            on fi.wind_code = wfd.wind_code
+            ) tt
+            where date_frm <= if(lasttrade_date<end_date, lasttrade_date, end_date) 
+            and subdate(curdate(), 360) < if(lasttrade_date<end_date, lasttrade_date, end_date) 
+            order by wind_code"""
+    else:
+        sql_str = """
+            SELECT wind_code, date_frm,
+                if(lasttrade_date<end_date,lasttrade_date, end_date) date_to
+            FROM
+            (
+                SELECT info.wind_code,ipo_date date_frm, lasttrade_date,
+                if(hour(now())<16, subdate(curdate(),1), curdate()) end_date
+                FROM wind_future_info_hk info
+            ) tt
+            WHERE date_frm <= if(lasttrade_date<end_date, lasttrade_date, end_date)
+            ORDER BY wind_code;
+         """
     future_date_dic = {}
-    with get_db_session(engine) as session:
+    with with_db_session(engine_md) as session:
         table = session.execute(sql_str)
-        for wind_code, date_frm, lasttrade_date in table.fetchall():
-            if date_frm is None:
-                continue
-            if isinstance(date_frm, str):
-                date_frm = datetime.strptime(date_frm, STR_FORMAT_DATE).date()
-            if isinstance(lasttrade_date, str):
-                lasttrade_date = datetime.strptime(lasttrade_date, STR_FORMAT_DATE).date()
-            date_to = date_ending if date_ending < lasttrade_date else lasttrade_date
-            if date_frm > date_to:
-                continue
-            future_date_dic[wind_code] = (date_frm, date_to)
+        begin_time = None
+        # 获取date_from,date_to，将date_from,date_to做为value值
+        future_date_dic = {
+            wind_code: (date_from if begin_time is None else min([date_from, begin_time]), date_to)
+            for wind_code, date_from, date_to in table.fetchall() if
+            wind_code_set is None or wind_code in wind_code_set}
+        # for wind_code, date_frm, lasttrade_date in table.fetchall():
+        #     if date_frm is None:
+        #         continue
+        #     if isinstance(date_frm, str):
+        #         date_frm = datetime.strptime(date_frm, STR_FORMAT_DATE).date()
+        #     if isinstance(lasttrade_date, str):
+        #         lasttrade_date = datetime.strptime(lasttrade_date, STR_FORMAT_DATE).date()
+        #     date_to = date_ending if date_ending < lasttrade_date else lasttrade_date
+        #     if date_frm > date_to:
+        #         continue
+        #     future_date_dic[wind_code] = (date_frm, date_to)
     data_df_list = []
     # w.start()
-    rest = WindRest(WIND_REST_URL)  # 初始化服务器接口，用于下载万得数据
+    # 初始化服务器接口，用于下载万得数据
     data_len = len(future_date_dic)
     try:
         logger.info("%d future instrument will be handled", data_len)
@@ -234,8 +316,7 @@ order by wind_code"""
             # data_df_tmp = wsd_cache(w, wind_code, "open,high,low,close,volume,amt,dealnum,settle,oi,st_stock",
             #                         date_frm, date_to, "")
             try:
-                data_df_tmp = rest.wsd(wind_code, "open,high,low,close,volume,amt,dealnum,settle,oi,st_stock",
-                                   date_frm_str, date_to_str, "")
+                data_df_tmp = invoker.wsd(wind_code, wind_indictor_str, date_frm_str, date_to_str, "")
             except APIError as exp:
                 logger.exception("%d/%d) %s 执行异常", data_num, data_len, wind_code)
                 if exp.ret_dic.setdefault('error_code', 0) in (
@@ -247,8 +328,9 @@ order by wind_code"""
                     break
             data_df_tmp['wind_code'] = wind_code
             data_df_list.append(data_df_tmp)
-            # if len(data_df_list) >= 50:
-            #     break
+            # 仅仅调试时使用
+            if DEBUG and len(data_df_list) >= 3:
+                break
     finally:
         data_df_count = len(data_df_list)
         if data_df_count > 0:
@@ -260,47 +342,74 @@ order by wind_code"""
             data_df = data_df.set_index(['wind_code', 'trade_date'])
             data_df.rename(columns={c: str.lower(c) for c in data_df.columns}, inplace=True)
             data_df.rename(columns={'oi': 'position'}, inplace=True)
+            data_df.reset_index(inplace=True)
             data_count = data_df.shape[0]
-            data_df.to_sql('wind_future_daily', engine, if_exists='append',
-                           index_label=['wind_code', 'trade_date'],
-                           dtype={
-                               'wind_code': String(20),
-                               'instrument_id': String(20),
-                               'trade_date': Date,
-                               'open': Float,
-                               'high': Float,
-                               'low': Float,
-                               'close': Float,
-                               'volume': Float,
-                               'amt': Float,
-                               'dealnum': Float,
-                               'settle': Float,
-                               'position': Float,
-                               'st_stock': Float,
-                           })
-            logger.info("更新 wind_future_daily 结束 %d 条记录被更新", data_count)
+            # data_df.to_sql('wind_future_daily_hk', engine_md, if_exists='append',
+            #                index_label=['wind_code', 'trade_date'],
+            #                dtype={
+            #                    'wind_code': String(20),
+            #                    'instrument_id': String(20),
+            #                    'trade_date': Date,
+            #                    'open': Float,
+            #                    'high': Float,
+            #                    'low': Float,
+            #                    'close': Float,
+            #                    'volume': Float,
+            #                    'amt': Float,
+            #                    'dealnum': Float,
+            #                    'settle': Float,
+            #                    'position': Float,
+            #                    'st_stock': Float,
+            #                })
+            bunch_insert_on_duplicate_update(data_df, table_name, engine_md, dtype=dtype)
+            logger.info("更新 wind_future_daily_hk 结束 %d 条记录被更新", data_count)
+            if not has_table and engine_md.has_table(table_name):
+                alter_table_2_myisam(engine_md, [table_name])
+                build_primary_key(table_name)
         else:
-            logger.info("更新 wind_future_daily 结束 0 条记录被更新")
+            logger.info("更新 wind_future_daily_hk 结束 0 条记录被更新")
         # w.close()
 
 
-def import_wind_future_info_hk():
+def import_wind_future_info():
     """
     更新 香港股指 期货合约列表信息
     香港恒生指数期货，香港国企指数期货合约只有07年2月开始的合约，且无法通过 wset 进行获取
     :return: 
     """
-    logger.info("更新 wind_future_info 开始")
+    table_name = "wind_future_info_hk"
+    has_table = engine_md.has_table(table_name)
+    param_list = [
+        ("ipo_date", Date),
+        ("sec_name", String(50)),
+        ("sec_englishname", String(50)),
+        ("exch_eng", String(50)),
+        ("lasttrade_date", Date),
+        ("lastdelivery_date", Date),
+        ("dlmonth", String(50)),
+        ("lprice", Date),
+        ("sccode", String(50)),
+        ("margin", Date),
+        ("punit", String(50)),
+        ("changelt", Date),
+        ("mfprice", Date),
+        ("contractmultiplier", DOUBLE),
+        ("ftmargins", String(100)),
+        ("trade_code", String(50)),
+    ]
+    wind_indictor_str = ",".join([key for key, _ in param_list])
+    dtype = {key: val for key, val in param_list}
+    dtype['wind_code'] = String(20)
+    logger.info("更新 wind_future_info_hk 开始")
     # 获取已存在合约列表
-    sql_str = 'select wind_code, ipo_date from wind_future_info'
-    engine = get_db_engine()
-    with get_db_session(engine) as session:
+    sql_str = 'select wind_code, ipo_date from wind_future_info_hk'
+    with with_db_session(engine_md) as session:
         table = session.execute(sql_str)
         wind_code_ipo_date_dic = dict(table.fetchall())
 
     # 通过wind获取合约列表
     # w.start()
-    rest = WindRest(WIND_REST_URL)  # 初始化服务器接口，用于下载万得数据
+    # 初始化服务器接口，用于下载万得数据
     # future_sectorid_dic_list = [
     #     {'subject_name': 'CFE 沪深300', 'regex': r"IF\d{4}\.CFE",
     #      'sectorid': 'a599010102000000', 'date_establish': '2010-4-16'},
@@ -384,42 +493,44 @@ def import_wind_future_info_hk():
     # future_info_df = wss_cache(w, wind_code_list,
     #                            "ipo_date,sec_name,sec_englishname,exch_eng,lasttrade_date,lastdelivery_date,dlmonth,lprice,sccode,margin,punit,changelt,mfprice,contractmultiplier,ftmargins,trade_code")
     if len(wind_code_list) > 0:
-        future_info_df = rest.wss(wind_code_list,
-                                  "ipo_date,sec_name,sec_englishname,exch_eng,lasttrade_date,lastdelivery_date,dlmonth,lprice,sccode,margin,punit,changelt,mfprice,contractmultiplier,ftmargins,trade_code")
-
+        future_info_df = invoker.wss(wind_code_list,wind_indictor_str)
         future_info_df['MFPRICE'] = future_info_df['MFPRICE'].apply(mfprice_2_num)
 
         future_info_df.rename(columns={c: str.lower(c) for c in future_info_df.columns}, inplace=True)
         future_info_df.index.rename('wind_code', inplace=True)
         future_info_df = future_info_df[~(future_info_df['ipo_date'].isna() | future_info_df['lasttrade_date'].isna())]
+        future_info_df.reset_index(inplace=True)
         future_info_count = future_info_df.shape[0]
-        future_info_df.to_sql('wind_future_info', engine, if_exists='append',
-                              dtype={
-                                  'wind_code': String(20),
-                                  'trade_code': String(20),
-                                  'sec_name': String(50),
-                                  'sec_englishname': String(50),
-                                  'exch_eng': String(50),
-                                  'ipo_date': Date,
-                                  'lasttrade_date': Date,
-                                  'lastdelivery_date': Date,
-                                  'dlmonth': String(20),
-                                  'lprice': Float,
-                                  'sccode': String(20),
-                                  'margin': Float,
-                                  'punit': String(20),
-                                  'changelt': Float,
-                                  'mfprice': Float,
-                                  'contractmultiplier': Float,
-                                  'ftmargins': String(100),
-                              })
-        logger.info("更新 wind_future_info 结束 %d 条记录被更新", future_info_count)
-        # w.close()
+        # future_info_df.to_sql('wind_future_info_hk', engine_md, if_exists='append',
+        #                       dtype={
+        #                           'wind_code': String(20),
+        #                           'trade_code': String(20),
+        #                           'sec_name': String(50),
+        #                           'sec_englishname': String(50),
+        #                           'exch_eng': String(50),
+        #                           'ipo_date': Date,
+        #                           'lasttrade_date': Date,
+        #                           'lastdelivery_date': Date,
+        #                           'dlmonth': String(20),
+        #                           'lprice': Float,
+        #                           'sccode': String(20),
+        #                           'margin': Float,
+        #                           'punit': String(20),
+        #                           'changelt': Float,
+        #                           'mfprice': Float,
+        #                           'contractmultiplier': Float,
+        #                           'ftmargins': String(100),
+        #                       })
+        bunch_insert_on_duplicate_update(future_info_df, table_name, engine_md, dtype=dtype)
+        logger.info("更新 wind_future_info_hk 结束 %d 条记录被更新", future_info_count)
+
 
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG, format='%(asctime)s: %(levelname)s [%(name)s] %(message)s')
     # windy_utils.CACHE_ENABLE = False
-    # import_wind_future_info()
-    # import_wind_future_daily()
-    import_wind_future_info_hk()
+    # import_wind_future_info_hk()
+    DEBUG = True
+    wind_code_set = None
+    # import_wind_future_hk_daily()
+    import_wind_future_info()
