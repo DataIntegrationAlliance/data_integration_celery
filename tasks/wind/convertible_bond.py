@@ -17,7 +17,7 @@ from tasks import app
 from tasks.wind import invoker
 from tasks.backend import engine_md
 from tasks.utils.fh_utils import STR_FORMAT_DATE
-from direstinvoker.iwind import UN_AVAILABLE_DATE
+from direstinvoker import UN_AVAILABLE_DATE
 from tasks.backend.orm import build_primary_key
 from sqlalchemy.types import String, Date, Integer
 from tasks.utils.db_utils import alter_table_2_myisam
