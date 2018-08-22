@@ -2,6 +2,7 @@
 """
 Created on 2018/1/17
 @author: MG
+@desc    : 2018-08-22 已经正式运行测试完成，可以正常使用
 """
 import logging
 import pandas as pd
