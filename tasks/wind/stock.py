@@ -2,8 +2,8 @@
 """
 Created on 2017/4/14
 @author: MG
+@desc    : 2018-08-21 已经正式运行测试完成，可以正常使用
 """
-import math
 import pandas as pd
 import logging
 from tasks.backend.orm import build_primary_key
@@ -343,7 +343,7 @@ def add_data_2_ckdvp(col_name, param, wind_code_set: set = None, begin_time=None
                     date_to,
                     param
                 )
-                if data_df is not None or data_df.shape[0] > 0:
+                if data_df is not None and data_df.shape[0] > 0:
                     # 对我们的表格进行规范整理,整理我们的列名，索引更改
                     data_df['key'] = col_name
                     data_df['param'] = param
@@ -390,7 +390,7 @@ def add_data_2_ckdvp(col_name, param, wind_code_set: set = None, begin_time=None
 
 
 if __name__ == "__main__":
-    DEBUG = True
+    # DEBUG = True
     # import_wind_stock_info(refresh=False)
     # 更新每日股票数据
     import_stock_daily()

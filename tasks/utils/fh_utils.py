@@ -148,9 +148,10 @@ def try_n_times(times=3, sleep_time=3, logger: logging.Logger=None):
     return wrap_func
 
 
-def date_2_str(dt):
+def date_2_str(dt, format=STR_FORMAT_DATE):
+    """将日期类型转换为字符串"""
     if dt is not None and type(dt) in (date, datetime, Timestamp):
-        dt_str = dt.strftime(STR_FORMAT_DATE)
+        dt_str = dt.strftime(format)
     else:
         dt_str = dt
     return dt_str

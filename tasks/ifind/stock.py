@@ -2,21 +2,19 @@
 """
 Created on 2018/1/17
 @author: MG
+@desc    : 2018-08-21 已经正式运行测试完成，可以正常使用
 """
 
 import logging
-import math
 from datetime import date, datetime, timedelta
 import pandas as pd
 from tasks.backend.orm import build_primary_key
 from tasks.ifind import invoker
-from direstinvoker.ifind import APIError
 from tasks.utils.fh_utils import get_last, get_first, date_2_str, STR_FORMAT_DATE, str_2_date
 from sqlalchemy.types import String, Date, Integer
 from sqlalchemy.dialects.mysql import DOUBLE
 from tasks.utils.fh_utils import unzip_join
-from tasks.utils.db_utils import with_db_session, add_col_2_table, bunch_insert_on_duplicate_update, \
-    alter_table_2_myisam
+from tasks.utils.db_utils import with_db_session, add_col_2_table, bunch_insert_on_duplicate_update, alter_table_2_myisam
 from tasks.backend import engine_md
 from tasks.merge.code_mapping import update_from_info_table
 from tasks import app
@@ -27,6 +25,7 @@ DATE_BASE = datetime.strptime('1990-01-01', STR_FORMAT_DATE).date()
 ONE_DAY = timedelta(days=1)
 # 标示每天几点以后下载当日行情数据
 BASE_LINE_HOUR = 20
+TRIAL = False
 
 
 def get_stock_code_set(date_fetch):
@@ -156,7 +155,7 @@ def import_stock_daily_ds(ths_code_set: set = None, begin_time=None):
             ) tt
             WHERE date_frm <= if(ths_delist_date_stock<end_date, ths_delist_date_stock, end_date) 
             ORDER BY ths_code"""
-        logger.warning('ifind_stock_daily_ds 不存在，仅使用 ifind_stock_info 表进行计算日期范围')
+        logger.warning('%s 不存在，仅使用 ifind_stock_info 表进行计算日期范围', table_name)
     with with_db_session(engine_md) as session:
         # 获取每只股票需要获取日线数据的日期区间
         table = session.execute(sql_str)
@@ -166,6 +165,14 @@ def import_stock_daily_ds(ths_code_set: set = None, begin_time=None):
             ths_code: (date_from if begin_time is None else min([date_from, begin_time]), date_to)
             for ths_code, date_from, date_to in table.fetchall() if
             ths_code_set is None or ths_code in ths_code_set}
+
+    if TRIAL:
+        date_from_min = date.today() - timedelta(days=(365 * 5))
+        # 试用账号只能获取近5年数据
+        code_date_range_dic = {
+            ths_code: (max([date_from, date_from_min]), date_to)
+            for ths_code, (date_from, date_to) in code_date_range_dic.items() if date_from_min <= date_to}
+
     # 设置 dtype
     dtype = {key: val for key, _, val in indicator_param_list}
     dtype['ths_code'] = String(20)
@@ -182,13 +189,13 @@ def import_stock_daily_ds(ths_code_set: set = None, begin_time=None):
                 'Days:Tradedays,Fill:Previous,Interval:D',
                 begin_time, end_time
             )
-            if data_df is not None or data_df.shape[0] > 0:
+            if data_df is not None and data_df.shape[0] > 0:
                 data_count += data_df.shape[0]
                 data_df_list.append(data_df)
             # 大于阀值有开始插入
             if data_count >= 10000:
                 data_df_all = pd.concat(data_df_list)
-                # data_df_all.to_sql('ifind_stock_daily_ds', engine_md, if_exists='append', index=False, dtype=dtype)
+                # data_df_all.to_sql(table_name, engine_md, if_exists='append', index=False, dtype=dtype)
                 data_count = bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md, dtype)
                 tot_data_count += data_count
                 data_df_list, data_count = [], 0
@@ -203,11 +210,11 @@ def import_stock_daily_ds(ths_code_set: set = None, begin_time=None):
             data_count = bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md, dtype)
             tot_data_count += data_count
 
-        if has_table and engine_md.has_table(table_name):
+        if not has_table and engine_md.has_table(table_name):
             alter_table_2_myisam(engine_md, [table_name])
             build_primary_key([table_name])
 
-        logging.info("更新 ifind_stock_daily 完成 新增数据 %d 条", tot_data_count)
+        logging.info("更新 %s 完成 新增数据 %d 条", table_name, tot_data_count)
 
 
 @app.task
@@ -285,6 +292,14 @@ def import_stock_daily_his(ths_code_set: set = None, begin_time=None):
             ths_code: (date_from if begin_time is None else min([date_from, begin_time]), date_to)
             for ths_code, date_from, date_to in table.fetchall() if
             ths_code_set is None or ths_code in ths_code_set}
+
+    if TRIAL:
+        date_from_min = date.today() - timedelta(days=(365 * 5))
+        # 试用账号只能获取近5年数据
+        code_date_range_dic = {
+            ths_code: (max([date_from, date_from_min]), date_to)
+            for ths_code, (date_from, date_to) in code_date_range_dic.items() if date_from_min <= date_to}
+
     # 设置 dtype
     dtype = {key: val for key, _, val in indicator_param_list}
     dtype['ths_code'] = String(20)
@@ -300,7 +315,7 @@ def import_stock_daily_his(ths_code_set: set = None, begin_time=None):
                 'Interval:D,CPS:1,baseDate:1900-01-01,Currency:YSHB,fill:Previous',
                 begin_time, end_time
             )
-            if data_df is not None or data_df.shape[0] > 0:
+            if data_df is not None and data_df.shape[0] > 0:
                 data_count += data_df.shape[0]
                 data_df_list.append(data_df)
             # 大于阀值有开始插入
@@ -308,6 +323,10 @@ def import_stock_daily_his(ths_code_set: set = None, begin_time=None):
                 data_count = save_ifind_stock_daily_his(data_df_list, dtype)
                 tot_data_count += data_count
                 data_df_list, data_count = [], 0
+
+            # 仅调试使用
+            if DEBUG and len(data_df_list) > 1:
+                break
     finally:
         if data_count > 0:
             data_count = save_ifind_stock_daily_his(data_df_list, dtype)
@@ -441,7 +460,7 @@ def add_data_2_ckdvp(json_indicator, json_param, ths_code_set: set = None, begin
                 'Days:Tradedays,Fill:Previous,Interval:D',
                 begin_time, end_time
             )
-            if data_df is not None or data_df.shape[0] > 0:
+            if data_df is not None and data_df.shape[0] > 0:
                 data_df['key'] = json_indicator
                 data_df['param'] = json_param
                 data_df.rename(columns={json_indicator: 'value'}, inplace=True)
@@ -484,14 +503,16 @@ def add_data_2_ckdvp(json_indicator, json_param, ths_code_set: set = None, begin
 
 
 if __name__ == "__main__":
-    DEBUG = True
+    # DEBUG = True
+    TRIAL = True
     ths_code = None  # '600006.SH,600009.SH'
+    refresh = False
     # 股票基本信息数据加载
-    import_stock_info(ths_code)
-    # 股票日K数据加载
-    # ths_code_set = None  # {'600006.SH', '600009.SH'}
-    # import_stock_daily_ds(ths_code_set)
+    # import_stock_info(ths_code, refresh=refresh)
+    ths_code_set = None  # {'600006.SH', '600009.SH'}
     # 股票日K历史数据加载
-    # import_stock_daily_his(ths_code_set)
+    import_stock_daily_his(ths_code_set)
+    # 股票日K数据加载
+    import_stock_daily_ds(ths_code_set)
     # 添加新字段
     # add_new_col_data('ths_pe_ttm_stock', '101', ths_code_set=ths_code_set)
