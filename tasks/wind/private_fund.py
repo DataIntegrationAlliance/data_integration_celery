@@ -6,6 +6,7 @@ Created on Fri Feb 17 10:17:38 2017
 """
 import pandas as pd
 import logging
+import math
 # from logging.handlers import RotatingFileHandler
 from tasks import app
 from tasks.backend.orm import build_primary_key
@@ -26,7 +27,7 @@ logger = logging.getLogger()
 
 
 @app.task
-def wind_fund_info_import(table_name, get_df=False):
+def import_private_fund_info(table_name, get_df=False):
     # 初始化服务器接口，用于下载万得数据
     # table_name = 'fund_info'
     has_table = engine_md.has_table(table_name)
@@ -117,7 +118,7 @@ def wind_fund_info_import(table_name, get_df=False):
 
 
 @app.task
-def import_wind_fund_info():
+def import_wind_private_fund_info():
     # 更新 基金信息
     table_name = 'wind_fund_info'
     # 初始化服务器接口，用于下载万得数据
@@ -354,7 +355,7 @@ def update_trade_date_latest(wind_code_trade_date_latest):
 
 
 @app.task
-def update_wind_fund_nav(get_df=False, wind_code_list=None):
+def update_private_fund_nav(get_df=False, wind_code_list=None):
     table_name = 'wind_fund_nav'
     # 初始化数据下载端口
     # 初始化数据库engine
@@ -543,7 +544,7 @@ def import_wind_fund_nav_to_nav():
 
 
 @app.task
-def import_wind_fund_nav_daily(wind_code_list=None):
+def import_private_fund_nav_daily(wind_code_list=None):
     table_name = 'wind_fund_nav_daily'
     # 初始化数据下载端口
     # 初始化数据库engine
@@ -739,10 +740,10 @@ if __name__ == '__main__':
     table_name = "fund_info"
     # 调用wind接口更新基金净值
     # update_wind_fund_nav(get_df=False)  # , wind_code_list=['XT1513361.XT']
-    wind_fund_info_import(table_name, get_df=False)
+    import_wind_private_fund_info(table_name, get_df=False)
     import_wind_fund_nav_to_nav()
     wind_code_list = ['XT1513361.XT']
-    update_wind_fund_nav()  # , wind_code_list=['XT1513361.XT']
+    update_private_fund_nav()  # , wind_code_list=['XT1513361.XT']
     DEBUG = True
-    import_wind_fund_info()
+    import_private_fund_info()
     col_name = None
