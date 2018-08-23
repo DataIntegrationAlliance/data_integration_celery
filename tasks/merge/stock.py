@@ -9,9 +9,8 @@
 """
 import pandas as pd
 import logging
-
+from tasks import app
 from direstinvoker.utils.fh_utils import date_2_str
-
 from tasks import bunch_insert_on_duplicate_update, alter_table_2_myisam, build_primary_key
 from tasks.backend import engine_md
 from tasks.utils.db_utils import with_db_session
@@ -22,6 +21,7 @@ from sqlalchemy.dialects.mysql import DOUBLE
 logger = logging.getLogger()
 
 
+@app.task
 def merge_stock_info():
     """
     合并 wind，ifind 数据到对应名称的表中
@@ -74,6 +74,7 @@ def merge_stock_info():
     return data_df
 
 
+@app.task
 def merge_stock_daily(date_from=None):
     """
     合并 wind，ifind 数据到对应名称的表中
