@@ -118,7 +118,7 @@ def import_private_fund_info(table_name, get_df=False):
 
 
 @app.task
-def import_wind_private_fund_info():
+def import_private_fund_info():
     # 更新 基金信息
     table_name = 'wind_fund_info'
     # 初始化服务器接口，用于下载万得数据
@@ -740,7 +740,7 @@ if __name__ == '__main__':
     table_name = "fund_info"
     # 调用wind接口更新基金净值
     # update_wind_fund_nav(get_df=False)  # , wind_code_list=['XT1513361.XT']
-    import_wind_private_fund_info(table_name, get_df=False)
+    import_private_fund_info(table_name, get_df=False)
     import_wind_fund_nav_to_nav()
     wind_code_list = ['XT1513361.XT']
     update_private_fund_nav()  # , wind_code_list=['XT1513361.XT']
