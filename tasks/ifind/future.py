@@ -2,12 +2,13 @@
 """
 Created on 2017/5/2
 @author: MG
+@desc    : 2018-08-23 his 函数 已经正式运行测试完成，可以正常使用，其他函数稍后验证
 """
 import logging
-from sqlalchemy.exc import ProgrammingError
 from datetime import datetime, date, timedelta
-from tasks.utils.db_utils import with_db_session
+from tasks.utils.db_utils import with_db_session, bunch_insert_on_duplicate_update, alter_table_2_myisam
 from tasks.backend import engine_md
+from tasks.backend.orm import build_primary_key
 from tasks.ifind import invoker
 from tasks import app
 from direstinvoker import APIError
@@ -16,21 +17,14 @@ from sqlalchemy.types import String, Date, Integer
 import re
 import pandas as pd
 from tasks.utils.fh_utils import STR_FORMAT_DATE, unzip_join
+
+DEBUG = False
+TRIAL = True
 logger = logging.getLogger()
 RE_PATTERN_MFPRICE = re.compile(r'\d*\.*\d*')
 ONE_DAY = timedelta(days=1)
 # 标示每天几点以后下载当日行情数据
 BASE_LINE_HOUR = 16
-
-
-# def mfprice_2_num(input_str):
-#     if input_str is None:
-#         return 0
-#     m = RE_PATTERN_MFPRICE.search(input_str)
-#     if m is not None:
-#         return m.group()
-#     else:
-#         return 0
 
 
 def get_date_since(wind_code_ipo_date_dic, regex_str, date_establish):
@@ -54,6 +48,7 @@ def get_date_since(wind_code_ipo_date_dic, regex_str, date_establish):
 
 def import_variety_info():
     """保存期货交易所品种信息，一次性数据导入，以后基本上不需要使用了"""
+    table_name = 'ifind_variety_info'
     exchange_list = [
         '上海期货交易所',
         '大连商品交易所',
@@ -68,6 +63,12 @@ def import_variety_info():
         '马来西亚衍生品交易所（BMD）',
         '新加坡证券交易所（SGX）',
     ]
+    # 设置 dtype
+    dtype = {
+        'exchange': String(20),
+        'ID': String(20),
+        'SECURITY_NAME': String(20),
+    }
     data_df_list = []
     data_count = len(exchange_list)
     try:
@@ -79,12 +80,8 @@ def import_variety_info():
     finally:
         if len(data_df_list) > 0:
             tot_data_df = pd.concat(data_df_list)
-            tot_data_df.to_sql('ifind_variety_info', engine_md, index=False, if_exists='append', dtype={
-                'exchange': String(20),
-                'ID': String(20),
-                'SECURITY_NAME': String(20),
-            })
-            tot_data_count = tot_data_df.shape[0]
+            # tot_data_df.to_sql('ifind_variety_info', engine_md, index=False, if_exists='append', dtype=dtype)
+            tot_data_count = bunch_insert_on_duplicate_update(tot_data_df, table_name, engine_md, dtype=dtype)
         else:
             tot_data_count = 0
 
@@ -94,10 +91,11 @@ def import_variety_info():
 @app.task
 def import_future_info():
     """更新期货合约列表信息"""
-    logger.info("更新 ifind_future_info 开始")
+    table_name = 'ifind_future_info'
+    logger.info("更新 %s 开始", table_name)
     # 获取已存在合约列表
     try:
-        sql_str = 'select ths_code, ths_start_trade_date_future from ifind_future_info'
+        sql_str = 'SELECT ths_code, ths_start_trade_date_future FROM {table_name}'.format(table_name=table_name)
         with with_db_session(engine_md) as session:
             table = session.execute(sql_str)
             code_ipo_date_dic = dict(table.fetchall())
@@ -204,7 +202,8 @@ def import_future_info():
             # w.wset("sectorconstituent","date=2017-05-02;sectorid=a599010205000000")
             # future_info_df = rest.wset("sectorconstituent", "date=%s;sectorid=%s" % (date_since_str, sector_id))
             try:
-                future_info_df = invoker.THS_DataPool('block', '%s;%s' % (date_since_str, sector_id), 'date:Y,thscode:Y,security_name:Y')
+                future_info_df = invoker.THS_DataPool('block', '%s;%s' % (date_since_str, sector_id),
+                                                      'date:Y,thscode:Y,security_name:Y')
             except APIError:
                 logger.exception('THS_DataPool %s 获取失败', '%s;%s' % (date_since_str, sector_id))
                 break
@@ -219,18 +218,22 @@ def import_future_info():
                 if date_since > date_yestoday:
                     date_since = date_yestoday
 
+        if DEBUG:
+            break
+
     # 获取合约列表
     code_list = [wc for wc in code_set if wc not in code_ipo_date_dic]
     # 获取合约基本信息
     if len(code_list) > 0:
         future_info_df = invoker.THS_BasicData(code_list, json_indicator, json_param)
         if future_info_df is None or future_info_df.shape[0] == 0:
-            future_info_count = 0
-            logger.warning("更新 ifind_future_info 结束 %d 条记录被更新", future_info_count)
+            data_count = 0
+            logger.warning("更新 %s 结束 %d 条记录被更新", table_name, data_count)
         else:
-            future_info_count = future_info_df.shape[0]
-            future_info_df.to_sql('ifind_future_info', engine_md, if_exists='append', index=False, dtype=dtype)
-            logger.info("更新 ifind_future_info 结束 %d 条记录被更新", future_info_count)
+            data_count = future_info_df.shape[0]
+            # future_info_df.to_sql(table_name, engine_md, if_exists='append', index=False, dtype=dtype)
+            data_count = bunch_insert_on_duplicate_update(future_info_df, table_name, engine_md, dtype)
+            logger.info("更新 %s 结束 %d 条记录被更新", table_name, data_count)
 
 
 def save_future_daily_df_list(data_df_list):
@@ -268,229 +271,130 @@ def save_future_daily_df_list(data_df_list):
 
 
 @app.task
-def import_future_daily():
+def import_future_daily_his(ths_code_set: set = None, begin_time=None):
     """
     更新期货合约日级别行情信息
-    :return: 
+    :param ths_code_set:
+    :param begin_time:
+    :return:
     """
-    logger.info("更新 ifind_future_daily 开始")
-    date_ending = date.today() - ONE_DAY if datetime.now().hour < BASE_LINE_HOUR else date.today()
-    # 16 点以后 下载当天收盘数据，16点以前只下载前一天的数据
-    # 对于 date_to 距离今年超过1年的数据不再下载：发现有部分历史过于久远的数据已经无法补全，
-    # 如：AL0202.SHF AL9902.SHF CU0202.SHF
-    # TODO: ths_ksjyr_future 字段需要替换为 ths_contract_listed_date_future 更加合理
-    sql_str = """select ths_code, date_frm, if(lasttrade_date<end_date, lasttrade_date, end_date) date_to
-        FROM
-        (
-        select fi.ths_code, ifnull(trade_date_max_1, ths_start_trade_date_future) date_frm, 
-            ths_last_td_date_future lasttrade_date,
-                if(hour(now())<16, subdate(curdate(),1), curdate()) end_date
-            from ifind_future_info fi left outer join
-            (select ths_code, adddate(max(time),1) trade_date_max_1 from ifind_future_daily group by ths_code) wfd
-            on fi.ths_code = wfd.ths_code
-        ) tt
-        where date_frm <= if(lasttrade_date<end_date, lasttrade_date, end_date) 
-        and subdate(curdate(), 360) < if(lasttrade_date<end_date, lasttrade_date, end_date) 
-        order by ths_code"""
+    table_name = 'ifind_future_daily'
+    logger.info("更新 %s 开始", table_name)
+    has_table = engine_md.has_table(table_name)
+    indicator_param_list = [
+        ('preClose', String(20)),
+        ('open', DOUBLE),
+        ('high', DOUBLE),
+        ('low', DOUBLE),
+        ('close', DOUBLE),
+        ('volume', DOUBLE),
+        ('amount', DOUBLE),
+        ('avgPrice', DOUBLE),
+        ('change', DOUBLE),
+        ('changeRatio', DOUBLE),
+        ('preSettlement', DOUBLE),
+        ('settlement', DOUBLE),
+        ('change_settlement', DOUBLE),
+        ('chg_settlement', DOUBLE),
+        ('openInterest', DOUBLE),
+        ('positionChange', DOUBLE),
+        ('amplitude', DOUBLE),
+    ]
+    json_indicator = ','.join([key for key, _ in indicator_param_list])
+    if has_table:
+        # 16 点以后 下载当天收盘数据，16点以前只下载前一天的数据
+        # 对于 date_to 距离今年超过1年的数据不再下载：发现有部分历史过于久远的数据已经无法补全，
+        # 如：AL0202.SHF AL9902.SHF CU0202.SHF
+        # TODO: ths_ksjyr_future 字段需要替换为 ths_contract_listed_date_future 更加合理
+        sql_str = """SELECT ths_code, date_frm, 
+                if(lasttrade_date<end_date, lasttrade_date, end_date) date_to
+            FROM
+            (
+            SELECT fi.ths_code, ifnull(trade_date_max_1, ths_start_trade_date_future) date_frm, 
+                ths_last_td_date_future lasttrade_date,
+                    if(hour(now())<16, subdate(curdate(),1), curdate()) end_date
+                FROM ifind_future_info fi LEFT OUTER JOIN
+                (SELECT ths_code, adddate(max(time),1) trade_date_max_1 FROM {table_name} GROUP BY ths_code) wfd
+                ON fi.ths_code = wfd.ths_code
+            ) tt
+            WHERE date_frm <= if(lasttrade_date<end_date, lasttrade_date, end_date) 
+            AND subdate(curdate(), 360) < if(lasttrade_date<end_date, lasttrade_date, end_date) 
+            ORDER BY ths_code""".format(table_name=table_name)
+    else:
+        sql_str = """SELECT ths_code, date_frm, if(lasttrade_date<end_date, lasttrade_date, end_date) date_to
+            FROM 
+            (
+            SELECT fi.ths_code, ths_start_trade_date_future date_frm, 
+                ths_last_td_date_future lasttrade_date,
+                    if(hour(now())<16, subdate(curdate(),1), curdate()) end_date
+                FROM ifind_future_info fi
+            ) tt"""
+        logger.warning('%s 不存在，仅使用 %s 表进行计算日期范围', table_name)
     future_date_dic = {}
     with with_db_session(engine_md) as session:
-        try:
-            table = session.execute(sql_str)
-        except ProgrammingError:
-            logger.exception('获取历史数据最新交易日期失败，尝试仅适用 ifind_future_info 表进行计算')
-            sql_str = """select ths_code, date_frm, if(lasttrade_date<end_date, lasttrade_date, end_date) date_to
-                from 
-                (
-                select fi.ths_code, ths_start_trade_date_future date_frm, 
-                    ths_last_td_date_future lasttrade_date,
-                        if(hour(now())<16, subdate(curdate(),1), curdate()) end_date
-                    from ifind_future_info fi
-                ) tt"""
-            table = session.execute(sql_str)
-        # 整理 日期范围数据
-        for ths_code, date_frm, lasttrade_date in table.fetchall():
-            if date_frm is None:
-                continue
-            if isinstance(date_frm, str):
-                date_frm = datetime.strptime(date_frm, STR_FORMAT_DATE).date()
-            if isinstance(lasttrade_date, str):
-                lasttrade_date = datetime.strptime(lasttrade_date, STR_FORMAT_DATE).date()
-            date_to = date_ending if date_ending < lasttrade_date else lasttrade_date
-            if date_frm > date_to:
-                continue
-            future_date_dic[ths_code] = (date_frm, date_to)
+        # 获取每只股票需要获取日线数据的日期区间
+        table = session.execute(sql_str)
+        # 获取每只股票需要获取日线数据的日期区间
+        code_date_range_dic = {
+            ths_code: (date_from if begin_time is None else min([date_from, begin_time]), date_to)
+            for ths_code, date_from, date_to in table.fetchall() if
+            ths_code_set is None or ths_code in ths_code_set}
 
-    data_df_list, data_count = [], 0
-    data_len = len(future_date_dic)
+    if TRIAL:
+        date_from_min = date.today() - timedelta(days=(365 * 5))
+        # 试用账号只能获取近5年数据
+        code_date_range_dic = {
+            ths_code: (max([date_from, date_from_min]), date_to)
+            for ths_code, (date_from, date_to) in code_date_range_dic.items() if date_from_min <= date_to}
+
+    # 设置 dtype
+    dtype = {key: val for key, val in indicator_param_list}
+    dtype['ths_code'] = String(20)
+    dtype['time'] = Date
+
+    data_df_list, data_count, tot_data_count, code_count = [], 0, 0, len(code_date_range_dic)
     try:
-        logger.info("%d future instrument will be handled", data_len)
-        for data_num, (ths_code, (date_frm, date_to)) in enumerate(future_date_dic.items()):
-            if date_frm > date_to:
-                continue
-            # TODO: 试用账号仅能获取近5年数据，正式账号时将此语句剔除
-            if date_frm <= (date.today() - timedelta(days=(365 * 5))):
-                continue
-            date_frm_str = date_frm.strftime(STR_FORMAT_DATE)
-            date_to_str = date_to.strftime(STR_FORMAT_DATE)
-            logger.info('%d/%d) get %s between %s and %s', data_num, data_len, ths_code, date_frm_str, date_to_str)
-            try:
-                data_df_tmp = invoker.THS_HistoryQuotes(
-                    ths_code,
-                    'preClose,open,high,low,close,avgPrice,change,changeRatio,volume,amount,preSettlement,settlement,change_settlement,chg_settlement,openInterest,positionChange,amplitude',
-                    'Interval:D,CPS:1,baseDate:1900-01-01,Currency:YSHB,fill:Previous', date_frm_str, date_to_str)
-            except APIError as exp:
-                logger.exception("%d/%d) %s 执行异常", data_num, data_len, ths_code)
+        logger.info("%d future instrument will be handled", code_count)
+        for num, (ths_code, (begin_time, end_time)) in enumerate(code_date_range_dic.items(), start=1):
+            logger.debug('%d/%d) %s [%s - %s]', num, code_count, ths_code, begin_time, end_time)
+            data_df = invoker.THS_HistoryQuotes(
+                ths_code, json_indicator,
+                'Interval:D,CPS:1,baseDate:1900-01-01,Currency:YSHB,fill:Previous', begin_time, end_time)
+            if data_df is not None and data_df.shape[0] > 0:
+                data_count += data_df.shape[0]
+                data_df_list.append(data_df)
+            # 大于阀值有开始插入
+            if data_count >= 10000:
+                data_df_all = pd.concat(data_df_list)
+                # data_df_all.to_sql(table_name, engine_md, if_exists='append', index=False, dtype=dtype)
+                data_count = bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md, dtype)
+                tot_data_count += data_count
+                data_df_list, data_count = [], 0
+
+            # 仅调试使用
+            if DEBUG and len(data_df_list) > 1:
                 break
-            if data_df_tmp is not None or data_df_tmp.shape[0] > 0:
-                data_df_list.append(data_df_tmp)
-                data_count += data_df_tmp.shape[0]
-                if data_count >= 10000:
-                    save_future_daily_df_list(data_df_list)
-                    data_df_list, data_count = [], 0
-            # if len(data_df_list) >= 5:
-            #     break
     finally:
-        save_future_daily_df_list(data_df_list)
+        if data_count > 0:
+            data_df_all = pd.concat(data_df_list)
+            # data_df_all.to_sql(table_name, engine_md, if_exists='append', index=False, dtype=dtype)
+            data_count = bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md, dtype)
+            tot_data_count += data_count
 
+        if not has_table and engine_md.has_table(table_name):
+            alter_table_2_myisam(engine_md, [table_name])
+            build_primary_key([table_name])
 
-# def import_wind_future_info_hk():
-#     """
-#     更新 香港股指 期货合约列表信息
-#     香港恒生指数期货，香港国企指数期货合约只有07年2月开始的合约，且无法通过 wset 进行获取
-#     :return:
-#     """
-#     logger.info("更新 wind_future_info 开始")
-#     # 获取已存在合约列表
-#     sql_str = 'select wind_code, ipo_date from wind_future_info'
-#     engine = get_db_engine()
-#     with get_db_session(engine) as session:
-#         table = session.execute(sql_str)
-#         wind_code_ipo_date_dic = dict(table.fetchall())
-#
-#     # 通过wind获取合约列表
-#     # w.start()
-#     rest = WindRest(WIND_REST_URL)  # 初始化服务器接口，用于下载万得数据
-#     # future_sectorid_dic_list = [
-#     #     {'subject_name': 'CFE 沪深300', 'regex': r"IF\d{4}\.CFE",
-#     #      'sectorid': 'a599010102000000', 'date_establish': '2010-4-16'},
-#     #     {'subject_name': 'CFE 上证50', 'regex': r"IH\d{4}\.CFE",
-#     #      'sectorid': '1000014871000000', 'date_establish': '2015-4-16'},
-#     #     {'subject_name': 'CFE 中证500', 'regex': r"IC\d{4}\.CFE",
-#     #      'sectorid': '1000014872000000', 'date_establish': '2015-4-16'},
-#     #     {'subject_name': 'SHFE 黄金', 'regex': r"AU\d{4}\.SHF",
-#     #      'sectorid': 'a599010205000000', 'date_establish': '2008-01-09'},
-#     #     {'subject_name': 'SHFE 沪银', 'regex': r"AG\d{4}\.SHF",
-#     #      'sectorid': '1000006502000000', 'date_establish': '2012-05-10'},
-#     #     {'subject_name': 'SHFE 螺纹钢', 'regex': r"RB\d{4}\.SHF",
-#     #      'sectorid': 'a599010206000000', 'date_establish': '2009-03-27'},
-#     #     {'subject_name': 'SHFE 热卷', 'regex': r"HC\d{4}\.SHF",
-#     #      'sectorid': '1000011455000000', 'date_establish': '2014-03-21'},
-#     #     {'subject_name': 'DCE 焦炭', 'regex': r"J\d{4}\.SHF",
-#     #      'sectorid': '1000002976000000', 'date_establish': '2011-04-15'},
-#     #     {'subject_name': 'DCE 焦煤', 'regex': r"JM\d{4}\.SHF",
-#     #      'sectorid': '1000009338000000', 'date_establish': '2013-03-22'},
-#     #     {'subject_name': '铁矿石', 'regex': r"I\d{4}\.SHF",
-#     #      'sectorid': '1000006502000000', 'date_establish': '2013-10-18'},
-#     #     {'subject_name': '天然橡胶', 'regex': r"RU\d{4}\.SHF",
-#     #      'sectorid': 'a599010208000000', 'date_establish': '1995-06-01'},
-#     #     {'subject_name': '铜', 'regex': r"CU\d{4}\.SHF",
-#     #      'sectorid': 'a599010202000000', 'date_establish': '1995-05-01'},
-#     #     {'subject_name': '铝', 'regex': r"AL\d{4}\.SHF",
-#     #      'sectorid': 'a599010203000000', 'date_establish': '1995-05-01'},
-#     #     {'subject_name': '锌', 'regex': r"ZN\d{4}\.SHF",
-#     #      'sectorid': 'a599010204000000', 'date_establish': '2007-03-26'},
-#     #     {'subject_name': '铅', 'regex': r"PB\d{4}\.SHF",
-#     #      'sectorid': '1000002892000000', 'date_establish': '2011-03-24'},
-#     #     {'subject_name': '镍', 'regex': r"NI\d{4}\.SHF",
-#     #      'sectorid': '1000011457000000', 'date_establish': '2015-03-27'},
-#     #     {'subject_name': '锡', 'regex': r"SN\d{4}\.SHF",
-#     #      'sectorid': '1000011458000000', 'date_establish': '2015-03-27'},
-#     #     {'subject_name': '白糖', 'regex': r"SR\d{4}\.CZC",
-#     #      'sectorid': 'a599010405000000', 'date_establish': '2006-01-06'},
-#     #     {'subject_name': '棉花', 'regex': r"CF\d{4}\.CZC",
-#     #      'sectorid': 'a599010404000000', 'date_establish': '2004-06-01'},
-#     #     {'subject_name': '棉花', 'regex': r"CF\d{4}\.CZC",
-#     #      'sectorid': 'a599010404000000', 'date_establish': '2004-06-01'},
-#     # ]
-#     # wind_code_set = set()
-#     # ndays_per_update = 60
-#     # # 获取历史期货合约列表信息
-#     # for future_sectorid_dic in future_sectorid_dic_list:
-#     #     subject_name = future_sectorid_dic['subject_name']
-#     #     sector_id = future_sectorid_dic['sectorid']
-#     #     regex_str = future_sectorid_dic['regex']
-#     #     date_establish = datetime.strptime(future_sectorid_dic['date_establish'], STR_FORMAT_DATE).date()
-#     #     date_since = get_date_since(wind_code_ipo_date_dic, regex_str, date_establish)
-#     #     date_yestoday = date.today() - timedelta(days=1)
-#     #     while date_since <= date_yestoday:
-#     #         date_since_str = date_since.strftime(STR_FORMAT_DATE)
-#     #         # w.wset("sectorconstituent","date=2017-05-02;sectorid=a599010205000000")
-#     #         # future_info_df = wset_cache(w, "sectorconstituent", "date=%s;sectorid=%s" % (date_since_str, sector_id))
-#     #         future_info_df = rest.wset("sectorconstituent", "date=%s;sectorid=%s" % (date_since_str, sector_id))
-#     #         wind_code_set |= set(future_info_df['wind_code'])
-#     #         # future_info_df = future_info_df[['wind_code', 'sec_name']]
-#     #         # future_info_dic_list = future_info_df.to_dict(orient='records')
-#     #         # for future_info_dic in future_info_dic_list:
-#     #         #     wind_code = future_info_dic['wind_code']
-#     #         #     if wind_code not in wind_code_future_info_dic:
-#     #         #         wind_code_future_info_dic[wind_code] = future_info_dic
-#     #         if date_since >= date_yestoday:
-#     #             break
-#     #         else:
-#     #             date_since += timedelta(days=ndays_per_update)
-#     #             if date_since > date_yestoday:
-#     #                 date_since = date_yestoday
-#
-#     # 获取合约列表
-#     # 手动生成合约列表
-#     # 香港恒生指数期货，香港国企指数期货合约只有07年2月开始的合约，且无法通过 wset 进行获取
-#     wind_code_list = ['%s%02d%02d.HK' % (name, year, month)
-#                       for name, year, month in itertools.product(['HSIF', 'HHIF'], range(7,19), range(1,13))
-#                       if not(year==7 and month==1)]
-#
-#     # 获取合约基本信息
-#     # w.wss("AU1706.SHF,AG1612.SHF,AU0806.SHF", "ipo_date,sec_name,sec_englishname,exch_eng,lasttrade_date,lastdelivery_date,dlmonth,lprice,sccode,margin,punit,changelt,mfprice,contractmultiplier,ftmargins,trade_code")
-#     # future_info_df = wss_cache(w, wind_code_list,
-#     #                            "ipo_date,sec_name,sec_englishname,exch_eng,lasttrade_date,lastdelivery_date,dlmonth,lprice,sccode,margin,punit,changelt,mfprice,contractmultiplier,ftmargins,trade_code")
-#     if len(wind_code_list) > 0:
-#         future_info_df = rest.wss(wind_code_list,
-#                                   "ipo_date,sec_name,sec_englishname,exch_eng,lasttrade_date,lastdelivery_date,dlmonth,lprice,sccode,margin,punit,changelt,mfprice,contractmultiplier,ftmargins,trade_code")
-#
-#         future_info_df['MFPRICE'] = future_info_df['MFPRICE'].apply(mfprice_2_num)
-#
-#         future_info_df.rename(columns={c: str.lower(c) for c in future_info_df.columns}, inplace=True)
-#         future_info_df.index.rename('wind_code', inplace=True)
-#         future_info_df = future_info_df[~(future_info_df['ipo_date'].isna() | future_info_df['lasttrade_date'].isna())]
-#         future_info_count = future_info_df.shape[0]
-#         future_info_df.to_sql('wind_future_info', engine, if_exists='append',
-#                               dtype={
-#                                   'wind_code': String(20),
-#                                   'trade_code': String(20),
-#                                   'sec_name': String(50),
-#                                   'sec_englishname': String(50),
-#                                   'exch_eng': String(50),
-#                                   'ipo_date': Date,
-#                                   'lasttrade_date': Date,
-#                                   'lastdelivery_date': Date,
-#                                   'dlmonth': String(20),
-#                                   'lprice': Float,
-#                                   'sccode': String(20),
-#                                   'margin': Float,
-#                                   'punit': String(20),
-#                                   'changelt': Float,
-#                                   'mfprice': Float,
-#                                   'contractmultiplier': Float,
-#                                   'ftmargins': String(100),
-#                               })
-#         logger.info("更新 wind_future_info 结束 %d 条记录被更新", future_info_count)
-#         # w.close()
+        logging.info("更新 %s 完成 新增数据 %d 条", table_name, tot_data_count)
 
 
 if __name__ == "__main__":
+    TRIAL = True
+    # DEBUG = True
     # 保存期货交易所品种信息，一次性数据导入，以后基本上不需要使用了
     # import_variety_info()
     # 导入期货基础信息数据
     # import_future_info()
     # 导入期货历史行情数据
-    import_future_daily()
+    import_future_daily_his()
     # import_future_info_hk()
