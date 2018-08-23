@@ -42,6 +42,7 @@ def fill_wind_index_daily_col():
             logger.debug('%d data importing for %s', data_df.shape[0], wind_code)
             data_df['WIND_CODE'] = wind_code
             data_df.index.rename('TRADE_DATE', inplace=True)
+            # data_df.rename(columns={c: str.lower(c) for c in data_df.columns}, inplace=True)
             data_df.reset_index(inplace=True)
             data_list = list(data_df.T.to_dict().values())
             sql_str = """
@@ -52,6 +53,7 @@ def fill_wind_index_daily_col():
             session.execute(sql_str, params=data_list)
 
 
+@app.task
 def import_wind_index_daily_first(wind_codes):
     """
     首次导入某指数使用
@@ -86,22 +88,16 @@ def import_wind_index_daily_first(wind_codes):
         index_df.rename(columns={'index': 'trade_date'}, inplace=True)
         index_df.trade_date = pd.to_datetime(index_df.trade_date)
         index_df.trade_date = index_df.trade_date.map(lambda x: x.date())
+        index_df.rename(columns={c: str.lower(c) for c in index_df},inplace=True)
         index_df['wind_code'] = code
         # index_df['index_name'] = index_name
-        index_df.set_index(['wind_code', 'trade_date'], inplace=True)
-        # 仅仅调试时使用
-        if DEBUG and len(index_df) > 4000:
-            break
-        # index_df.to_sql(table_name, engine_md, if_exists='append', index_label=['wind_code', 'trade_date'],
-        #                 dtype={
-        #                 'wind_code': String(20),
-        #                 'trade_date': Date,
-        #             })
+        # index_df.set_index(['wind_code', 'trade_date'], inplace=True)
         bunch_insert_on_duplicate_update(index_df, table_name, engine_md, dtype=dtype)
         logger.info('Success import %s with %d data' % (code, index_df.shape[0]))
         if not has_table and engine_md.has_table(table_name):
             alter_table_2_myisam(engine_md, [table_name])
             build_primary_key([table_name])
+
 
 
 @app.task
