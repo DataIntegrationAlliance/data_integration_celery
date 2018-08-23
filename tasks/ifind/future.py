@@ -10,7 +10,7 @@ from tasks.utils.db_utils import with_db_session
 from tasks.backend import engine_md
 from tasks.ifind import invoker
 from tasks import app
-from direstinvoker.ifind import APIError
+from direstinvoker import APIError
 from sqlalchemy.dialects.mysql import DOUBLE
 from sqlalchemy.types import String, Date, Integer
 import re

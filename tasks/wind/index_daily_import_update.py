@@ -4,7 +4,7 @@ Created on Thu Apr  6 11:11:26 2017
 
 @author: Yupeng Guo
 """
-from direstinvoker.iwind import APIError
+from direstinvoker import APIError
 import pandas as pd
 from tasks import app
 from tasks.utils.fh_utils import get_last, get_first, str_2_date, date_2_str, get_cache_file_path

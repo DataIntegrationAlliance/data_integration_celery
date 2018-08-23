@@ -3,11 +3,9 @@
 Created on 2017/12/5
 @author: MG
 """
-from datetime import date, datetime, timedelta
-import math
+import logging
 import pandas as pd
-import numpy as np
-from direstinvoker.utils.fh_utils import get_first, get_last
+from datetime import date, datetime, timedelta
 from tasks import app
 from tasks.backend.orm import build_primary_key
 from tasks.merge.code_mapping import update_from_info_table
@@ -16,9 +14,9 @@ from tasks.wind import invoker, bunch_insert_on_duplicate_update
 from tasks.backend import engine_md
 from tasks.utils.db_utils import with_db_session
 from tasks.utils.fh_utils import STR_FORMAT_DATE
-from direstinvoker.ifind import APIError, UN_AVAILABLE_DATE
-import logging
-from sqlalchemy.types import String, Date, Float, Integer
+from direstinvoker import APIError, UN_AVAILABLE_DATE
+from sqlalchemy.types import String, Date, Integer, Text
+
 DEBUG = False
 logger = logging.getLogger()
 DATE_BASE = datetime.strptime('1998-01-01', STR_FORMAT_DATE).date()
@@ -70,14 +68,16 @@ def import_pub_fund_info(first_time=False):
         data_set = get_wind_code_set(fetch_date)
         if data_set is not None:
             wind_code_set |= data_set
-        if DEBUG and fetch_date > 6:
+        if DEBUG and len(wind_code_set) > 6:
             break
-
-    with with_db_session(engine_md) as session:
-        sql_str = "select wind_code from {table_name }".format(table_name=table_name)
-        table = session.execute(sql_str)
-        wind_code_set_existed = {content[0] for content in table.fetchall()}
-    wind_code_set -= wind_code_set_existed
+    if has_table:
+        with with_db_session(engine_md) as session:
+            sql_str = "select wind_code from %s" % table_name
+            table = session.execute(sql_str)
+            wind_code_set_existed = {content[0] for content in table.fetchall()}
+        wind_code_set -= wind_code_set_existed
+    else:
+        wind_code_set = wind_code_set
     # 获取股票对应上市日期，及摘牌日期
     # w.wss("300005.SZ,300372.SZ,000003.SZ", "ipo_date,trade_code,mkt,exch_city,exch_eng")
     wind_code_list = list(wind_code_set)
@@ -86,47 +86,38 @@ def import_pub_fund_info(first_time=False):
     # loop_count = math.ceil(float(wind_code_count) / seg_count)
     data_info_df_list = []
     fund_info_field_col_name_list = [
-        ('FULL_FULLNAME', String(50)),
-        ('FULL_EXCHANGESHORTNAME', String(30)),
-        ('FULL_BENCHMARK', String(30)),
-        ('FULL_SETUPDATE', Date),
-        ('FULL_MATURITYDATE', Date),
-        ('FULL_FUNDMANAGER', String(30)),
-        ('FULL_PREDFUNDMANAGER', String(30)),
-        ('FULL_MGRCOMP', String(30)),
-        ('FULL_CUSTODIANBANK', String(30)),
-        ('FULL_TYPE', String(30)),
-        ('FULL_FIRSTINVESTTYPE', String(30)),
-        ('FULL_INVESTTYPE', String(30)),
-        ('FULL_STRUCTREDFUNDOENOT', String(20)),
+        ('FUND_FULLNAME', String(200)),
+        ('FUND_EXCHANGESHORTNAME', String(50)),
+        ('FUND_BENCHMARK', String(200)),
+        ('FUND_SETUPDATE', Date),
+        ('FUND_MATURITYDATE', Date),
+        ('FUND_FUNDMANAGER', String(500)),
+        ('FUND_FUNDMANAGER', String(50)),
+        ('FUND_MGRCOMP', String(200)),
+        ('FUND_CUSTODIANBANK', String(50)),
+        ('FUND_TYPE', String(50)),
+        ('FUND_FIRSTINVESTTYPE', String(50)),
+        ('FUND_INVESTTYPE', String(50)),
+        ('FUND_STRUCTUREDFUNDORNOT', String(50)),
+        ('FUND_BENCHINDEXCODE', String(50)),
     ]
     col_name_dic = {col_name.upper(): col_name.lower() for col_name, _ in fund_info_field_col_name_list}
-    col_name_list = [col_name.lower() for col_name in col_name_dic.keys()]
-    dtype = {key.lower(): val for key, val in col_name_list}
+    # col_name_list = ",".join([col_name.lower() for col_name in col_name_dic.keys()])
+    dtype = {key.lower(): val for key, val in fund_info_field_col_name_list}
     dtype['wind_code'] = String(20)
-    # fund_info_field_col_name_dic = {'fund_fullname': "full_name",
-    #                                 'fund_exchangeshortname': "short_name",
-    #                                 'fund_benchmark': "bench_mark",
-    #                                 'fund_benchindexcode': "bench_index_code",
-    #                                 'fund_setupdate': "setup_date",
-    #                                 'fund_maturitydate': "maturity_date",
-    #                                 'fund_fundmanager': "fund_fundmanager",
-    #                                 'fund_predfundmanager': "fund_predfundmanager",
-    #                                 'fund_mgrcomp': "fund_mgrcomp",
-    #                                 'fund_custodianbank': "custodian_bank",
-    #                                 'fund_type': "fund_type",
-    #                                 'fund_firstinvesttype': "invest_type_level1",
-    #                                 'fund_investtype': "invest_type",
-    #                                 'fund_structuredfundornot': "structured_fund_or_not",
-    #                                 'fund_investstyle': "invest_style",
-    #                                 }
+    dtype['invest_type_level1'] = String(50)
     for n in range(0, wind_code_count, seg_count):
         sub_list = wind_code_list[n:(n + seg_count)]
         # 尝试将 stock_code_list_sub 直接传递给wss，是否可行
-        # w.wss("000309.OF", "fund_fullname,fund_exchangeshortname,fund_benchmark,fund_benchindexcode,fund_setupdate,fund_maturitydate,fund_fundmanager,fund_mgrcomp,fund_custodianbank,fund_type,fund_firstinvesttype,fund_investtype,fund_structuredfundornot,fund_investstyle")
-        field_str = ",".join(col_name_dic.keys())
+        # w.wss("000309.OF", "fund_fullname, fund_exchangeshortname,fund_benchmark,fund_benchindexcode,fund_setupdate,
+        # fund_maturitydate,fund_fundmanager,fund_mgrcomp,fund_custodianbank,fund_type,fund_firstinvesttype,
+        # fund_investtype,fund_structuredfundornot,
+        # fund_investstyle")   structuredfundornot
+        field_str = ",".join(col_name_dic.values())
         stock_info_df = invoker.wss(sub_list, field_str)
         data_info_df_list.append(stock_info_df)
+        if DEBUG and len(data_info_df_list) > 1000:
+            break
     if len(data_info_df_list) == 0:
         logger.info("wind_pub_fund_info 没有数据可以导入")
         return
@@ -154,10 +145,10 @@ def import_pub_fund_daily():
     has_table = engine_md.has_table(table_name)
     if has_table:
         sql_str = """
-        SELECT wind_code, date_frm, if(maturity_date<end_date, maturity_date, end_date) date_to
+        SELECT wind_code, date_frm, if(fund_maturitydate<end_date, fund_maturitydate, end_date) date_to
             FROM
             (
-            SELECT info.wind_code, ifnull(nav_date, ipo_date) date_frm, maturity_date,
+            SELECT info.wind_code, ifnull(nav_date, fund_setupdate) date_frm, fund_maturitydate,
             if(hour(now())<16, subdate(curdate(),1), curdate()) end_date
             FROM 
                 wind_pub_fund_info info 
@@ -165,19 +156,19 @@ def import_pub_fund_daily():
                 (SELECT wind_code, adddate(max(nav_date),1) nav_date FROM {table_name} GROUP BY wind_code) daily
             ON info.wind_code = daily.wind_code
             ) tt
-            WHERE date_frm <= if(maturity_date<end_date, maturity_date, end_date) 
-            ORDER BY wind_code""".format(table_name=table_name)
+            WHERE date_frm <= if(fund_maturitydate<end_date, fund_maturitydate, end_date) 
+            ORDER BY wind_code;""".format(table_name=table_name)
     else:
         logger.warning('wind_pub_fund_daily 不存在，仅使用 wind_pub_fund_info 表进行计算日期范围')
         sql_str = """
-            SELECT wind_code, date_frm, if(maturity_date<end_date, maturity_date, end_date) date_to
+            SELECT wind_code, date_frm, if(fund_maturitydate<end_date, fund_maturitydate, end_date) date_to
             FROM
               (
-                SELECT info.wind_code, setup_date date_frm, maturity_date,
+                SELECT info.wind_code, fund_setupdate date_frm, fund_maturitydate,
                 if(hour(now())<16, subdate(curdate(),1), curdate()) end_date
                 FROM wind_pub_fund_info info 
               ) tt
-            WHERE date_frm <= if(maturity_date<end_date, maturity_date, end_date) 
+            WHERE date_frm <= if(fund_maturitydate<end_date, fund_maturitydate, end_date) 
             ORDER BY wind_code
         """
     # with with_db_session(engine_md) as session:
@@ -214,14 +205,15 @@ def import_pub_fund_daily():
 
     logger.info('%d pub fund will been import into wind_pub_fund_daily', wind_code_date_count)
     # 获取股票量价等行情数据
-    field_col_name_dic = [
+    field_col_name_list = [
         ('NAV_date', Date),
         ('NAV_acc', String(20)),
         ('netasset_total', String(20)),
     ]
-    wind_indictor_str = ",".join(key.lower() for key, _ in field_col_name_dic)
-    upper_col_2_name_dic = {name.upper(): name.lower() for name, _ in field_col_name_dic.items()}
-    dtype = {key.lower(): val for key, val in field_col_name_dic}
+    wind_indictor_str = ",".join(key.lower() for key, _ in field_col_name_list)
+    upper_col_2_name_dic = {name.upper(): name.lower() for name, _ in field_col_name_list}
+    dtype = {key.lower(): val for key, val in field_col_name_list}
+    dtype['wind_code'] = String(20)
     try:
         data_tot = 0
         for data_num, (wind_code, (date_from, date_to)) in enumerate(trade_date_latest_dic.items()):
@@ -261,6 +253,7 @@ def import_pub_fund_daily():
                 logger.warning('%d/%d) %s has no ohlc data during %s %s', data_num, wind_code_date_count, wind_code,
                                date_from, date_to)
                 continue
+            # 对数据进行 清理，整理，整合
             data_df = data_df.drop_duplicates().dropna()
             data_df.rename(columns=upper_col_2_name_dic, inplace=True)
             logger.info('%d/%d) %d data of %s between %s and %s', data_num, wind_code_date_count, data_df.shape[0],
@@ -272,7 +265,11 @@ def import_pub_fund_daily():
             if data_tot > 10000:
                 bunch_insert_on_duplicate_update(data_df, table_name, engine_md, dtype=dtype)
                 data_df_list = []
+
                 data_tot = 0
+            # 仅仅调试时使用
+            # if DEBUG and len(data_df) > 2000:
+            #     break
 
     finally:
         # 导入数据库
@@ -288,5 +285,5 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG, format='%(asctime)s: %(levelname)s [%(name)s:%(funcName)s] %(message)s')
     DEBUG = True
     wind_code_set = None
-    import_pub_fund_info(first_time=True)
-    # import_pub_fund_daily()
+    # import_pub_fund_info(first_time=True)
+    import_pub_fund_daily()
