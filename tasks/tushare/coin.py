@@ -356,6 +356,11 @@ def import_coinbar_on_freq_daily(freq, code_set=None, base_begin_time=None):
                                       end_date=end_time_str)
             except Exception as exp:
                 if len(exp.args) >= 1 and exp.args[0] == '系统内部错误':
+                    trade_date_latest_list.append({
+                        'exchange': exchange,
+                        'exchange_pair': exchange_pair,
+                        'trade_date_latest': '2020-02-02',
+                    })
                     logger.warning(
                         "coinbar(exchange='%s', symbol='%s', freq='%s', start_date='%s', end_date='%s') 系统内部错误",
                         exchange, exchange_pair, freq, begin_time_str, end_time_str)
