@@ -10,7 +10,7 @@ from datetime import date, datetime, timedelta
 import pandas as pd
 from sqlalchemy.exc import ProgrammingError
 from tasks.ifind import invoker
-from direstinvoker.ifind import APIError
+from direstinvoker import APIError
 from tasks.utils.fh_utils import get_last, get_first, date_2_str, STR_FORMAT_DATE, str_2_date
 from sqlalchemy.types import String, Date, Integer, Text
 from sqlalchemy.dialects.mysql import DOUBLE

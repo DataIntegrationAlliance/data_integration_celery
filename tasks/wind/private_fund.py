@@ -15,7 +15,7 @@ from tasks.utils.db_utils import alter_table_2_myisam
 from tasks.utils.db_utils import bunch_insert_on_duplicate_update
 from tasks.wind import invoker
 from sqlalchemy.dialects.mysql import DOUBLE
-from direstinvoker.ifind import APIError
+from direstinvoker import APIError
 from sqlalchemy.types import String, Date
 from datetime import datetime, date, timedelta
 from tasks.utils.db_utils import with_db_session
