@@ -5,14 +5,9 @@ Created on 2017/4/20
 @desc    : 2018-08-21 已经正式运行测试完成，可以正常使用
 """
 from datetime import date, datetime, timedelta
-import pandas as pd
-import numpy as np
-from direstinvoker import UN_AVAILABLE_DATE
-from sqlalchemy.types import Date
-from tasks.backend.orm import build_primary_key
 from tasks.backend import engine_md
-from tasks.utils.fh_utils import STR_FORMAT_DATE, date_2_str, str_2_date
-from tasks.utils.db_utils import with_db_session, bunch_insert_on_duplicate_update, alter_table_2_myisam
+from tasks.utils.fh_utils import STR_FORMAT_DATE
+from tasks.utils.db_utils import with_db_session, alter_table_2_myisam
 from tasks.wind import invoker
 
 import logging
