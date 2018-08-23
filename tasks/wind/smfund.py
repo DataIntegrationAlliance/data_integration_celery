@@ -6,7 +6,7 @@ Created on Fri Mar 31 10:52:30 2017
 
 """
 import pandas as pd
-from direstinvoker.iwind import APIError
+from direstinvoker import APIError
 from tasks import app
 from tasks.backend.orm import build_primary_key
 from datetime import datetime, date, timedelta

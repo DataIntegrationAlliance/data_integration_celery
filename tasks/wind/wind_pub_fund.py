@@ -16,7 +16,7 @@ from tasks.wind import invoker, bunch_insert_on_duplicate_update
 from tasks.backend import engine_md
 from tasks.utils.db_utils import with_db_session
 from tasks.utils.fh_utils import STR_FORMAT_DATE
-from direstinvoker.ifind import APIError, UN_AVAILABLE_DATE
+from direstinvoker import APIError, UN_AVAILABLE_DATE
 import logging
 from sqlalchemy.types import String, Date, Float, Integer
 DEBUG = False

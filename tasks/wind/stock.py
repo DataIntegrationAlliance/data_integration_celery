@@ -9,7 +9,7 @@ import logging
 from tasks.backend.orm import build_primary_key
 from datetime import date, datetime, timedelta
 from tasks.wind import invoker
-from direstinvoker.ifind import APIError
+from direstinvoker import APIError
 from tasks.utils.fh_utils import STR_FORMAT_DATE, split_chunk
 from tasks import app
 from sqlalchemy.types import String, Date, Integer

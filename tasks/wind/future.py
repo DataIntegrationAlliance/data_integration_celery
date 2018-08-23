@@ -7,7 +7,7 @@ import logging
 import re, itertools
 import pandas as pd
 from datetime import datetime, date, timedelta
-from direstinvoker.ifind import APIError
+from direstinvoker import APIError
 from sqlalchemy.dialects.mysql import DOUBLE
 
 from tasks import app
