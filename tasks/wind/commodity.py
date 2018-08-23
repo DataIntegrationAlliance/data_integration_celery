@@ -6,8 +6,8 @@ Created on 2017/4/14
 import pandas as pd
 import logging
 from datetime import date, datetime, timedelta
-from direstinvoker.utils.fh_utils import str_2_date, date_2_str
-from tasks.wind import invoker, APIError
+from tasks.wind import invoker
+from direstinvoker import APIError
 from tasks.utils.fh_utils import STR_FORMAT_DATE, split_chunk
 from tasks import app
 from sqlalchemy.types import String, Date, Integer, Text
@@ -263,6 +263,7 @@ def build_commodity_info():
         logger.info('%s 表 `key` 主键设置完成', table_name)
 
 
+@app.task
 def import_edb(wind_code_set=None):
     """
     通过wind接口获取并导入EDB数据
