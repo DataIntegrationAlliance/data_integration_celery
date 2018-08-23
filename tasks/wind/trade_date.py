@@ -7,7 +7,7 @@ Created on 2017/4/20
 from datetime import date, datetime, timedelta
 import pandas as pd
 import numpy as np
-from direstinvoker.iwind import UN_AVAILABLE_DATE
+from direstinvoker import UN_AVAILABLE_DATE
 from sqlalchemy.types import Date
 from tasks.backend.orm import build_primary_key
 from tasks.backend import engine_md
