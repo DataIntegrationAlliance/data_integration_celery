@@ -391,7 +391,7 @@ def add_data_2_ckdvp(col_name, param, wind_code_set: set = None, begin_time=None
 
 if __name__ == "__main__":
     # DEBUG = True
-    # import_wind_stock_info(refresh=False)
+    import_wind_stock_info(refresh=False)
     # 更新每日股票数据
     import_stock_daily()
     # import_stock_daily_wch()
