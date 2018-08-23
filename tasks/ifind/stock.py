@@ -124,7 +124,7 @@ def import_stock_daily_ds(ths_code_set: set = None, begin_time=None):
     indicator_param_list = [
         ('ths_af_stock', '', DOUBLE),
         ('ths_up_and_down_status_stock', '', String(10)),
-        ('ths_trading_status_stock', '', String(80)),
+        ('ths_trading_status_stock', '', String(120)),
         ('ths_suspen_reason_stock', '', String(80)),
         ('ths_last_td_date_stock', '', Date),
     ]

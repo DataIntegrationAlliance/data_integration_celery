@@ -6,8 +6,8 @@ Created on 2017/4/14
 import pandas as pd
 import logging
 from datetime import date, datetime, timedelta
-from direstinvoker.utils.fh_utils import str_2_date, date_2_str
-from tasks.wind import invoker, APIError
+from tasks.wind import invoker
+from direstinvoker import APIError
 from tasks.utils.fh_utils import STR_FORMAT_DATE, split_chunk
 from tasks import app
 from sqlalchemy.types import String, Date, Integer, Text
@@ -83,6 +83,25 @@ def build_commodity_info():
         ["S5704774", "rb_price_fz", "福州螺纹钢均价", "2007-04-24", None, 'HRB400 20mm'],
         ["S5704784", "rb_price_ty", "太原螺纹钢均价", "2007-04-24", None, 'HRB400 20mm'],
         ["S5704788", "rb_price_cd", "成都螺纹钢均价", "2007-04-24", None, 'HRB400 20mm'],
+        # 钢坯价格
+        ["S0143493", "square_billet_ts", "唐山方坯价格", "2007-01-31", None, '单位：元/吨'],
+        ["S0143492", "square_billet_sd", "山东方坯价格", "2007-01-31", None, '单位：元/吨'],
+        ["S0143491", "square_billet_js", "江苏方坯价格", "2007-01-31", None, '单位：元/吨'],
+        ["S0143494", "square_billet_sx", "山西方坯价格", "2007-01-31", None, '单位：元/吨'],
+        ["S0143504", "square_billet_MnSi_ts", "唐山MnSi方坯价格", "2007-01-31", None, '单位：元/吨,20MnSi'],
+        #货币供应
+        ["M0001380", "M0", "M0", "1990-12-31", None, '中国人民银行，单位：亿元'],
+        ["M0001381", "M0_yoy", "M0_yoy", "1990-12-31", None, '中国人民银行'],
+        ["M0001382", "M1", "M1", "1990-12-31", None, '中国人民银行，单位：亿元'],
+        ["M0001383", "M1_yoy", "M1_yoy", "1990-12-31", None, '中国人民银行'],
+        ["M0001384", "M2", "M2", "1990-12-31", None, '中国人民银行，单位：亿元'],
+        ["M0001385", "M2_yoy", "M2_yoy", "1990-12-31", None, '中国人民银行'],
+        ["M0001386", "net_cash_release", "当月现金净投放", "1996-01-31", None, '中国人民银行'],
+        ["M0010131", "money_multiplier", "货币乘数", "1997-12-31", None, '中国人民银行'],
+        ["M0060451", "M0_yoy_tail_raising_factor", "M0同比翘尾因素", "2003-01-31", None, '中国人民银行'],
+        ["M0060452", "M1_yoy_tail_raising_factor", "M1同比翘尾因素", "2003-01-31", None, '中国人民银行'],
+        ["M0060453", "M2_yoy_tail_raising_factor", "M2同比翘尾因素", "2003-01-31", None, '中国人民银行'],
+
 
         #外汇市场
         ["M0067855", "us2rmb", "美元兑人民币即期汇率", "1994-01-04", None, '中国货币网'],
@@ -98,17 +117,107 @@ def build_commodity_info():
         ["M1001859", "SHIBOR_6M", "SHIBOR_6M", "2006-10-08", None, '全国银行间同业拆借中心'],
         ["M1001860", "SHIBOR_9M", "SHIBOR_9M", "2006-10-08", None, '全国银行间同业拆借中心'],
         ["M1001861", "SHIBOR_1Y", "SHIBOR_1Y", "2006-10-08", None, '全国银行间同业拆借中心'],
+        #票据贴现利率
+        ["M0061577", "direct_discount_rate_pearl_river_delta_6m", "珠三角票据直贴利率", "2007-03-16", None, '中国货币网'],
+        ["M0061578", "direct_discount_rate_yangze_river_delta_6m", "长三角票据直贴利率", "2007-03-16", None, '中国货币网'],
+        ["M0061575", "direct_discount_rate_midwestern_6m", "中西部票据直贴利率", "2007-03-16", None, '中国货币网'],
+        ["M0061576", "direct_discount_rate_bohai_rim_6m", "环渤海票据直贴利率", "2007-03-16", None, '中国货币网'],
+        ["M0061579", "rediscount_rate_6m", "票据转贴利率", "2007-03-16", None, '中国货币网'],
+        #温州民间借贷利率
+        ["M5447740", "wzpfi_1m", "温州民间融资综合利率1个月", "2013-01-04", None, '温州金融办'],
+        ["M5447741", "wzpfi_3m", "温州民间融资综合利率3个月", "2013-01-04", None, '温州金融办'],
+        ["M5447742", "wzpfi_6m", "温州民间融资综合利率6个月", "2013-01-04", None, '温州金融办'],
+        ["M5447743", "wzpfi_1y", "温州民间融资综合利率1年", "2013-01-04", None, '温州金融办'],
+        #中企债AAA
+        ["M1000368", "china_bond_corporate_bond_yield_1y_AAA", "1年期中债企业债到期收益率", "2006-03-01", None, '债券交易中心'],
+        ["M1004552", "china_bond_corporate_bond_yield_3m_AAA", "3月期中债企业债到期收益率", "2006-03-01", None, '债券交易中心'],
+        ["M1006941", "china_bond_corporate_bond_yield_1m_AAA", "1月期中债企业债到期收益率", "2006-03-01", None, '债券交易中心'],
+        ["M1000370", "china_bond_corporate_bond_yield_3y_AAA", "3年期中债企业债到期收益率", "2006-03-01", None, '债券交易中心'],
+        ["M1000372", "china_bond_corporate_bond_yield_5y_AAA", "5年期中债企业债到期收益率", "2006-03-01", None, '债券交易中心'],
+        ["M1000376", "china_bond_corporate_bond_yield_10y_AAA", "10年期中债企业债到期收益率", "2006-03-01", None, '债券交易中心'],
+        ["M1000373", "china_bond_corporate_bond_yield_6y_AAA", "6年期中债企业债到期收益率", "2006-03-01", None, '债券交易中心'],
+        # 中企债AAA-
+        ["M1005088", "china_bond_corporate_bond_yield_1y_AAA-", "1年期中债企业债到期收益率_AAA-", "2008-08-21", None, '债券交易中心'],
+        ["M1005086", "china_bond_corporate_bond_yield_3m_AAA-", "3月期中债企业债到期收益率_AAA-", "2012-02-21", None, '债券交易中心'],
+        ["M1006944", "china_bond_corporate_bond_yield_1m_AAA-", "1月期中债企业债到期收益率_AAA-", "2013-05-03", None, '债券交易中心'],
+        ["M1005090", "china_bond_corporate_bond_yield_3y_AAA-", "3年期中债企业债到期收益率_AAA-", "2008-08-21", None, '债券交易中心'],
+        ["M1005092", "china_bond_corporate_bond_yield_5y_AAA-", "5年期中债企业债到期收益率_AAA-", "2008-08-21", None, '债券交易中心'],
+        ["M1005096", "china_bond_corporate_bond_yield_10y_AAA-", "10年期中债企业债到期收益率_AAA-", "2008-08-21", None, '债券交易中心'],
+        ["M1005093", "china_bond_corporate_bond_yield_6y_AAA-", "6年期中债企业债到期收益率_AAA-", "2008-08-21", None, '债券交易中心'],
+
+        # 中企债AA+
+        ["S0059843", "china_bond_corporate_bond_yield_1y_AA+", "1年期中债企业债到期收益率_AA+", "2007-10-11", None, '债券交易中心'],
+        ["M1004554", "china_bond_corporate_bond_yield_3m_AA+", "3月期中债企业债到期收益率_AA+", "2007-10-11", None, '债券交易中心'],
+        ["M1006947", "china_bond_corporate_bond_yield_1m_AA+", "1月期中债企业债到期收益率_AA+", "2007-10-11", None, '债券交易中心'],
+        ["S0059845", "china_bond_corporate_bond_yield_3y_AA+", "3年期中债企业债到期收益率_AA+", "2007-10-11", None, '债券交易中心'],
+        ["S0059846", "china_bond_corporate_bond_yield_5y_AA+", "5年期中债企业债到期收益率_AA+", "2007-10-11", None, '债券交易中心'],
+        ["S0059848", "china_bond_corporate_bond_yield_10y_AA+", "10年期中债企业债到期收益率_AA+", "2007-10-11", None, '债券交易中心'],
+        ["M0057983", "china_bond_corporate_bond_yield_6y_AA+", "6年期中债企业债到期收益率_AA+", "2007-10-11", None, '债券交易中心'],
+        # 中企债AA
+        ["S0059761", "china_bond_corporate_bond_yield_1y_AA", "1年期中债企业债到期收益率_AA", "2007-05-25", None, '债券交易中心'],
+        ["M1004556", "china_bond_corporate_bond_yield_3m_AA", "3月期中债企业债到期收益率_AA", "2007-05-25", None, '债券交易中心'],
+        ["M1006950", "china_bond_corporate_bond_yield_1m_AA", "1月期中债企业债到期收益率_AA", "2007-05-25", None, '债券交易中心'],
+        ["S0059763", "china_bond_corporate_bond_yield_3y_AA", "3年期中债企业债到期收益率_AA", "2007-05-25", None, '债券交易中心'],
+        ["S0059764", "china_bond_corporate_bond_yield_5y_AA", "5年期中债企业债到期收益率_AA", "2007-05-25", None, '债券交易中心'],
+        ["S0059766", "china_bond_corporate_bond_yield_10y_AA", "10年期中债企业债到期收益率_AA", "2007-05-25", None, '债券交易中心'],
+        ["M0057978", "china_bond_corporate_bond_yield_6y_AA", "6年期中债企业债到期收益率_AA", "2007-05-25", None, '债券交易中心'],
+        # 中企债AA-
+        ["M1005118", "china_bond_corporate_bond_yield_1y_AA-", "1年期中债企业债到期收益率_AA-", "2008-08-21", None, '债券交易中心'],
+        ["M1005116", "china_bond_corporate_bond_yield_3m_AA-", "3月期中债企业债到期收益率_AA-", "2012-02-21", None, '债券交易中心'],
+        ["M1006953", "china_bond_corporate_bond_yield_1m_AA-", "1月期中债企业债到期收益率_AA-", "2013-05-03", None, '债券交易中心'],
+        ["M1005120", "china_bond_corporate_bond_yield_3y_AA-", "3年期中债企业债到期收益率_AA-", "2008-08-21", None, '债券交易中心'],
+        ["M1005122", "china_bond_corporate_bond_yield_5y_AA-", "5年期中债企业债到期收益率_AA-", "2008-08-21", None, '债券交易中心'],
+        ["M1005123", "china_bond_corporate_bond_yield_10y_AA-", "10年期中债企业债到期收益率_AA-", "2008-08-21", None, '债券交易中心'],
+        ["M1005126", "china_bond_corporate_bond_yield_6y_AA-", "6年期中债企业债到期收益率_AA-","2008-08-21", None, '债券交易中心'],
+
+        # 中企债A+
+        ["S0059890", "china_bond_corporate_bond_yield_1y_A+", "1年期中债企业债到期收益率_A+", "2008-01-07", None, '债券交易中心'],
+        ["M1004560", "china_bond_corporate_bond_yield_3m_A+", "3月期中债企业债到期收益率_A+", "2008-01-07", None, '债券交易中心'],
+        ["M1006956", "china_bond_corporate_bond_yield_1m_A+", "1月期中债企业债到期收益率_A+", "2008-01-07", None, '债券交易中心'],
+        ["S0059892", "china_bond_corporate_bond_yield_3y_A+", "3年期中债企业债到期收益率_A+", "2008-01-07", None, '债券交易中心'],
+        ["S0059893", "china_bond_corporate_bond_yield_5y_A+", "5年期中债企业债到期收益率_A+", "2008-01-07", None, '债券交易中心'],
+        ["S0059895", "china_bond_corporate_bond_yield_10y_A+", "10年期中债企业债到期收益率_A+", "2008-01-07", None, '债券交易中心'],
+        ["M0057971", "china_bond_corporate_bond_yield_6y_A+", "6年期中债企业债到期收益率_A+", "2008-01-07", None, '债券交易中心'],
+
         #香港同业拆借
         ["M0062945", "HIBOR_N", "HIBOR_N", "2006-01-03", None, '香港同业拆借市场'],
         ["M0062946", "HIBOR_1W", "HIBOR_1W", "2006-01-03", None, '香港同业拆借市场'],
         ["M0062947", "HIBOR_2W", "HIBOR_2W", "2006-01-03", None, '香港同业拆借市场'],
-        ["M0062948", "HIBOR_1M", "HIBOR_1M", "2002-03-04", None, '香港同业拆借市场'],
+        ["M0062948", "HIBOR_1M", "HIBOR_1M", "2002-03-"
+                                             "04", None, '香港同业拆借市场'],
         ["M0062949", "HIBOR_2M", "HIBOR_2M", "2002-03-04", None, '香港同业拆借市场'],
         ["M0062950", "HIBOR_3M", "HIBOR_3M", "2002-03-04", None, '香港同业拆借市场'],
         ["M0062953", "HIBOR_6M", "HIBOR_6M", "2002-03-04", None, '香港同业拆借市场'],
         ["M0062959", "HIBOR_12M", "HIBOR_12M", "2002-03-04", None, '香港同业拆借市场'],
         #伦敦同业
-        
+
+        #中国GDP 宏观数据
+        #CPI
+        ["M0000612", "CPI", "CPI", "1990-01-31", None, 'CPI同比'],
+        ["M0000616", "CPI_food", "CPI食品", "1994-01-31", None, '食品CPI同比'],
+        ["M0000613", "CPI_nofood", "CPI非食品", "2001-01-31", None, '非食品CPI同比'],
+        ["M0085932", "CPI_core", "核心CPI", "2013-01-31", None, '不包括食品和能源CPI同比'],
+        # PPI
+        ["M0001227", "PPI_industrial_yoy", "工业品PPI当月同比", "1996-10-31", None, '全部工业品当月同比'],
+        ["M0049160", "PPI_industrial_mom", "工业品PPI当月环比", "2002-01-31", None, '全部工业品当月环比'],
+        ["M0001244", "PPI_industrial_cumulative_yoy", "工业品PPI累计同比", "1996-10-31", None, '全部工业品累计同比'],
+        ["M0001228", "PPI_means_production_yoy", "生产资料PPI当月同比", "1996-10-31", None, '生产资料PPI当月同比'],
+        ["M0001232", "PPI_means_subsistence_yoy", "生活资料PPI当月同比", "1996-10-31", None, "生活资料PPI当月同比"],
+
+
+        #美国国债收益率
+        ["G0000886", "yield_on_us_treasury_bonds_1y", "一年期美国国债收益率", "1970-08-20", None, '美联储'],
+        ["G0000891", "yield_on_us_treasury_bonds_10y", "十年期美国国债收益率", "1970-08-20", None, '美联储'],
+        ["G0000884", "yield_on_us_treasury_bonds_3m", "三月期美国国债收益率", "1982-01-04", None, '美联储'],
+        ["G0005428", "yield_on_us_treasury_bonds_tips_3m", "10年期美国国债收益率_通胀指数国债", "1982-01-04", None, '美联储'],
+        # 中国国债收益率
+        ["M1004964", "yield_on_cn_treasury_bonds_1y", "一年期中国国债收益率", "2011-01-07", None, '中国货币网'],
+        ["M1004965", "yield_on_cn_treasury_bonds_3y", "三年期中国国债收益率", "2011-01-07", None, '中国货币网'],
+        ["M1004966", "yield_on_cn_treasury_bonds_5y", "五年期中国国债收益率", "2011-01-07", None, '中国货币网'],
+        ["M1004967", "yield_on_cn_treasury_bonds_7y", "七年期中国国债收益率", "2011-01-07", None, '中国货币网'],
+        ["M1004968", "yield_on_cn_treasury_bonds_10y", "十年期中国国债收益率", "2011-01-07", None, '中国货币网'],
+        ["M1004969", "yield_on_cn_treasury_bonds_20y", "二十年期中国国债收益率", "2011-01-07", None, '中国货币网'],
+        ["M1004970", "yield_on_cn_treasury_bonds_30y", "三十年期中国国债收益率", "2011-01-07", None, '中国货币网'],
 
         #螺纹钢库存
         ["S0181750", "rb_inventory", "螺纹钢库存", "2010-05-21", None, '含上海全部仓库，单位：万吨'],
@@ -117,8 +226,19 @@ def build_commodity_info():
         ["S0110144", "steel_plate_inventory", "中板库存", "2006-03-17", None, '单位：万吨'],
         ["S0110145", "cold_rolled_inventory", "冷轧库存", "2006-03-17", None, '单位：万吨'],
         ["S5708249", "key_steelworks_inventory", "重点钢厂库存", "2009-05-31", None, '单位：万吨'],
+
+
         #上海线螺采购量
         ["S5704503", "line_rb_purchase", "上海线螺采购量", "2004-10-17", None, '单位：吨'],
+
+        #六大电厂库存及日耗
+        ["S5116614", "six_power_consumption", "六大电厂日均耗煤量", "2009-10-01", None, '单位：万吨'],
+        ["S5116621", "six_power_inventory", "六大电厂日均耗煤量", "2009-10-01", None, '单位：万吨'],
+        ["S5116622", "six_power_usable_days", "六大电厂日均耗煤量", "2009-10-01", None, '单位：万吨'],
+        #三峡流量
+        ["S5110944", "sanxia_inflow", "三峡入库流量", "2003-06-01", None, '单位：立方米/秒'],
+        ["S5110945", "sanxia_outflow", "三峡出库流量", "2003-06-01", None, '单位：立方米/秒'],
+
 
     ]
     dtype = {
@@ -143,6 +263,7 @@ def build_commodity_info():
         logger.info('%s 表 `key` 主键设置完成', table_name)
 
 
+@app.task
 def import_edb(wind_code_set=None):
     """
     通过wind接口获取并导入EDB数据

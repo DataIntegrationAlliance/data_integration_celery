@@ -13,7 +13,7 @@ from sqlalchemy.types import String, Date
 from sqlalchemy.dialects.mysql import DOUBLE
 from tasks import app
 from direstinvoker.utils.fh_utils import str_2_date, date_2_str
-from tasks import engine_md
+from tasks.backend import engine_md
 from tasks.ifind import invoker
 from tasks.utils.db_utils import with_db_session, alter_table_2_myisam
 from tasks.utils.db_utils import bunch_insert_on_duplicate_update

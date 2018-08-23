@@ -148,7 +148,7 @@ def import_stock_hk_daily_ds(ths_code_set: set = None, begin_time=None):
     indicator_param_list = [
         ('ths_ss_vol_hks', '', DOUBLE),
         ('ths_ss_amt_d_hks', '', String(10)),
-        ('ths_trading_status_hks', '', String(80)),
+        ('ths_trading_status_hks', '', String(120)),
         ('ths_suspen_reason_hks', '', String(300)),
         ('ths_td_currency_d_hks', '', String(10)),
         ('ths_original_currency_hks', '', String(80)),
