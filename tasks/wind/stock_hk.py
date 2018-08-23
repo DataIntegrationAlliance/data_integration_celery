@@ -209,6 +209,10 @@ def import_stock_daily_hk(wind_code_set=None):
     try:
         for data_num, (wind_code, (date_from, date_to)) in enumerate(stock_date_dic.items()):
             logger.debug('%d/%d) %s [%s - %s]', data_num, data_len, wind_code, date_from, date_to)
+            # if wind_code == '0192!1.HK':
+            #     logger.warning('%s wind 没有这只股票数据', wind_code)
+            #     continue
+
             try:
                 data_df = invoker.wsd(wind_code, wind_indictor_str, date_from, date_to)
             except APIError as exp:
@@ -499,7 +503,7 @@ if __name__ == "__main__":
     # DEBUG = True
     # wind_code_set = {'1680.HK'}
     wind_code_set = None
-    import_stock_info_hk()
+    # import_stock_info_hk()
     import_stock_daily_hk(wind_code_set)
     # import_stock_quertarly_hk()
     # add_new_col_data('ebitdaps', '', wind_code_set=wind_code_set)
