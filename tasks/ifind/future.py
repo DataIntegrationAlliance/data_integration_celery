@@ -8,15 +8,14 @@ from sqlalchemy.exc import ProgrammingError
 from datetime import datetime, date, timedelta
 from tasks.utils.db_utils import with_db_session
 from tasks.backend import engine_md
-from tasks.ifind import invoker, unzip_join
+from tasks.ifind import invoker
 from tasks import app
 from direstinvoker.ifind import APIError
 from sqlalchemy.dialects.mysql import DOUBLE
-from sqlalchemy.types import String, Date, Float, Integer
+from sqlalchemy.types import String, Date, Integer
 import re
-import itertools
 import pandas as pd
-from tasks.utils.fh_utils import STR_FORMAT_DATE
+from tasks.utils.fh_utils import STR_FORMAT_DATE, unzip_join
 logger = logging.getLogger()
 RE_PATTERN_MFPRICE = re.compile(r'\d*\.*\d*')
 ONE_DAY = timedelta(days=1)
