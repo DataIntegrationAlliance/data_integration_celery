@@ -60,7 +60,7 @@ def get_date_since(wind_code_ipo_date_dic, regex_str, date_establish):
 
 
 @app.task
-def import_wind_future_info_hk():
+def import_future_info_hk():
     """
     更新期货合约列表信息
     :return: 
@@ -187,26 +187,6 @@ def import_wind_future_info_hk():
         future_info_df.rename(columns={c: str.lower(c) for c in future_info_df.columns}, inplace=True)
         future_info_df.index.rename('wind_code', inplace=True)
         future_info_df.reset_index(inplace=True)
-        # future_info_df.to_sql('wind_future_info', engine_md, if_exists='append',
-        #                       dtype={
-        #                           'wind_code': String(20),
-        #                           'trade_code': String(20),
-        #                           'sec_name': String(50),
-        #                           'sec_englishname': String(50),
-        #                           'exch_eng': String(50),
-        #                           'ipo_date': Date,
-        #                           'lasttrade_date': Date,
-        #                           'lastdelivery_date': Date,
-        #                           'dlmonth': String(20),
-        #                           'lprice': Float,
-        #                           'sccode': String(20),
-        #                           'margin': Float,
-        #                           'punit': String(20),
-        #                           'changelt': Float,
-        #                           'mfprice': Float,
-        #                           'contractmultiplier': Float,
-        #                           'ftmargins': String(100),
-        #                       })
         data_count = bunch_insert_on_duplicate_update(future_info_df, table_name, engine_md, dtype=dtype)
         logging.info("更新 %s 结束 %d 条信息被更新", table_name, data_count)
         if not has_table and engine_md.has_table(table_name):
@@ -218,7 +198,7 @@ def import_wind_future_info_hk():
 
 
 @app.task
-def import_wind_future_hk_daily():
+def import_future_hk_daily():
     """
     更新期货合约日级别行情信息
     :return: 
@@ -349,23 +329,6 @@ def import_wind_future_hk_daily():
             data_df.rename(columns={'oi': 'position'}, inplace=True)
             data_df.reset_index(inplace=True)
             data_count = data_df.shape[0]
-            # data_df.to_sql('wind_future_daily_hk', engine_md, if_exists='append',
-            #                index_label=['wind_code', 'trade_date'],
-            #                dtype={
-            #                    'wind_code': String(20),
-            #                    'instrument_id': String(20),
-            #                    'trade_date': Date,
-            #                    'open': Float,
-            #                    'high': Float,
-            #                    'low': Float,
-            #                    'close': Float,
-            #                    'volume': Float,
-            #                    'amt': Float,
-            #                    'dealnum': Float,
-            #                    'settle': Float,
-            #                    'position': Float,
-            #                    'st_stock': Float,
-            #                })
             bunch_insert_on_duplicate_update(data_df, table_name, engine_md, dtype=dtype)
             logger.info("更新 wind_future_daily_hk 结束 %d 条记录被更新", data_count)
             if not has_table and engine_md.has_table(table_name):
@@ -373,11 +336,10 @@ def import_wind_future_hk_daily():
                 build_primary_key(table_name)
         else:
             logger.info("更新 wind_future_daily_hk 结束 0 条记录被更新")
-        # w.close()
 
 
 @app.task
-def import_wind_future_info():
+def update_future_info_hk():
     """
     更新 香港股指 期货合约列表信息
     香港恒生指数期货，香港国企指数期货合约只有07年2月开始的合约，且无法通过 wset 进行获取
@@ -506,26 +468,6 @@ def import_wind_future_info():
         future_info_df = future_info_df[~(future_info_df['ipo_date'].isna() | future_info_df['lasttrade_date'].isna())]
         future_info_df.reset_index(inplace=True)
         future_info_count = future_info_df.shape[0]
-        # future_info_df.to_sql('wind_future_info_hk', engine_md, if_exists='append',
-        #                       dtype={
-        #                           'wind_code': String(20),
-        #                           'trade_code': String(20),
-        #                           'sec_name': String(50),
-        #                           'sec_englishname': String(50),
-        #                           'exch_eng': String(50),
-        #                           'ipo_date': Date,
-        #                           'lasttrade_date': Date,
-        #                           'lastdelivery_date': Date,
-        #                           'dlmonth': String(20),
-        #                           'lprice': Float,
-        #                           'sccode': String(20),
-        #                           'margin': Float,
-        #                           'punit': String(20),
-        #                           'changelt': Float,
-        #                           'mfprice': Float,
-        #                           'contractmultiplier': Float,
-        #                           'ftmargins': String(100),
-        #                       })
         bunch_insert_on_duplicate_update(future_info_df, table_name, engine_md, dtype=dtype)
         logger.info("更新 wind_future_info_hk 结束 %d 条记录被更新", future_info_count)
 
@@ -533,8 +475,8 @@ def import_wind_future_info():
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG, format='%(asctime)s: %(levelname)s [%(name)s] %(message)s')
     # windy_utils.CACHE_ENABLE = False
-    # import_wind_future_info_hk()
+    # import_future_info_hk()
     DEBUG = True
     wind_code_set = None
     # import_wind_future_hk_daily()
-    import_wind_future_info()
+    update_future_info_hk()
