@@ -163,7 +163,6 @@ def import_stock_daily(wind_code_set=None):
             WHERE date_frm <= if(delist_date<end_date, delist_date, end_date) 
             ORDER BY wind_code""".format(table_name=table_name)
     else:
-        logger.warning('wind_stock_daily 不存在，仅使用 wind_stock_info 表进行计算日期范围')
         sql_str = """
             SELECT wind_code, date_frm, if(delist_date<end_date, delist_date, end_date) date_to
             FROM
@@ -174,6 +173,7 @@ def import_stock_daily(wind_code_set=None):
               ) tt
             WHERE date_frm <= if(delist_date<end_date, delist_date, end_date) 
             ORDER BY wind_code"""
+        logger.warning('%s 不存在，仅使用 wind_stock_info 表进行计算日期范围', table_name)
 
     with with_db_session(engine_md) as session:
         # 获取每只股票需要获取日线数据的日期区间
