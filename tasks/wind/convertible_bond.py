@@ -6,7 +6,7 @@ Created on 2017/12/5
 另外，信息表里面需要补充“兑付日” redemption_beginning 数据 行情数据兑付日后就没有交易数据更新了。不必每日获取数据
 import tushare as ts
 ts.get_k_data('sz128011')
-
+@desc    : 2018-08-23 已经正式运行测试完成，可以正常使用
 """
 from datetime import date, datetime, timedelta
 import math
@@ -16,8 +16,8 @@ from sqlalchemy.dialects.mysql import DOUBLE
 from tasks import app
 from tasks.wind import invoker
 from tasks.backend import engine_md
-from tasks.utils.fh_utils import STR_FORMAT_DATE
-from direstinvoker import UN_AVAILABLE_DATE
+from tasks.utils.fh_utils import STR_FORMAT_DATE, split_chunk
+from direstinvoker import UN_AVAILABLE_DATE, APIError
 from tasks.backend.orm import build_primary_key
 from sqlalchemy.types import String, Date, Integer
 from tasks.utils.db_utils import alter_table_2_myisam
@@ -51,24 +51,25 @@ def import_cb_info(first_time=False):
     has_table = engine_md.has_table(table_name)
     name_param_list = [
         ('trade_code', DOUBLE),
-        ('full_name', String(45)),
+        ('fullname', String(45)),
         ('sec_name', String(45)),
-        ('issue_announcement_date', Date),
+        ('issue_announcement', Date),
         ('ipo_date', Date),
-        ('start_date', Date),
-        ('end_date', Date),
-        ('conversion_code', DOUBLE),
-        ('is_floating_rate', String(8)),
-        ('is_interest_compensation', String(8)),
-        ('interest_compensation_desc', String(200)),
-        ('interest_compensation', DOUBLE),
+        ('clause_conversion_2_swapsharestartdate', Date),
+        ('clause_conversion_2_swapshareenddate', Date),
+        ('clause_conversion_code', DOUBLE),
+        ('clause_interest_5', String(8)),
+        ('clause_interest_8', String(8)),
+        ('clause_interest_6', String(200)),
+        ('clause_interest_compensationinterest', DOUBLE),
+        ('clause_interest_compensationinterest', DOUBLE),
+        ('issueamount', DOUBLE),
         ('term', DOUBLE),
-        ('underlying_code', DOUBLE),
-        ('underlying_name', DOUBLE),
+        ('underlyingcode', DOUBLE),
+        ('underlyingname', DOUBLE),
         ('redemption_beginning', Date),
     ]
     param = ",".join([key for key, _ in name_param_list])
-    name_param_dic = {col_name.lower(): col_name.upper() for col_name, _ in name_param_list}
     # 设置dtype类型
     dtype = {key: val for key, val in name_param_list}
     dtype['wind_code'] = DOUBLE
@@ -94,42 +95,51 @@ def import_cb_info(first_time=False):
     # 获取股票对应上市日期，及摘牌日期
     # w.wss("300005.SZ,300372.SZ,000003.SZ", "ipo_date,trade_code,mkt,exch_city,exch_eng")
     wind_code_list = list(wind_code_set)
-    wind_code_count = len(wind_code_list)
-    seg_count = 1000
+    # wind_code_count = len(wind_code_list)
+    # seg_count = 1000
     # loop_count = math.ceil(float(wind_code_count) / seg_count)
     data_info_df_list = []
-    for n in range(0, wind_code_count, seg_count):
-        num_start = n * seg_count
-        num_end = (n + 1) * seg_count
-        # num_end = num_end if num_end <= wind_code_count else wind_code_count
-        sub_list = wind_code_list[n:(n + seg_count)]
-        # 尝试将 stock_code_list_sub 直接传递给wss，是否可行
-        stock_info_df = invoker.wss(sub_list, param, "unit=1")
-        data_info_df_list.append(stock_info_df)
-        # 仅仅调试时使用
-        # if DEBUG and len(data_info_df_list) > 5000:
-        #     break
+    try:
+        for sub_list in split_chunk(wind_code_list, 1000):
+            # num_start = n * seg_count
+            # num_end = (n + 1) * seg_count
+            # # num_end = num_end if num_end <= wind_code_count else wind_code_count
+            # sub_list = wind_code_list[n:(n + seg_count)]
+            # 尝试将 stock_code_list_sub 直接传递给wss，是否可行
+            data_df = invoker.wss(sub_list, param, "unit=1")
+            if data_df is not None and data_df.shape[0] > 0:
+                data_info_df_list.append(data_df)
 
-    data_info_all_df = pd.concat(data_info_df_list)
-    data_info_all_df.index.rename('WIND_CODE', inplace=True)
-    logging.info('%s stock data will be import', data_info_all_df.shape[0])
-    data_info_all_df.reset_index(inplace=True)
-    bunch_insert_on_duplicate_update(data_info_all_df, table_name, engine_md, dtype=dtype)
-    logging.info("%d stocks have been in wind_convertible_bond_info", len(data_info_all_df))
-    if not has_table and engine_md.has_table(table_name):
-        alter_table_2_myisam(engine_md, [table_name])
-        build_primary_key([table_name])
-    # 更新 code_mapping 表
-    update_from_info_table(table_name)
+            # 仅仅调试时使用
+            if DEBUG and len(data_info_df_list) > 1:
+                break
+    finally:
+        if len(data_info_df_list) > 0:
+            data_info_all_df = pd.concat(data_info_df_list)
+            data_info_all_df.index.rename('wind_code', inplace=True)
+            data_info_all_df.rename(columns={col: col.lower() for col in data_info_all_df.columns}, inplace=True)
+            logging.info('%s stock data will be import', data_info_all_df.shape[0])
+            data_info_all_df.reset_index(inplace=True)
+            data_count = bunch_insert_on_duplicate_update(data_info_all_df, table_name, engine_md, dtype=dtype)
+            # logging.info("%d stocks have been in %s", len(data_info_all_df), table_name)
+            logging.info("更新 %s 完成 新增数据 %d 条", table_name, data_count)
+            if not has_table and engine_md.has_table(table_name):
+                alter_table_2_myisam(engine_md, [table_name])
+                build_primary_key([table_name])
+            # 更新 code_mapping 表
+            if engine_md.has_table(table_name):
+                update_from_info_table(table_name)
 
 
 @app.task
-def import_cb_daily():
+def import_cb_daily(wind_code_set: set = None, begin_time=None):
     """
     导入可转债日线数据
     需要补充 转股价格
     :return: 
     """
+    table_name = "wind_convertible_bond_daily"
+    has_table = engine_md.has_table(table_name)
     col_name_param_list = [
         ('outstandingbalance', DOUBLE),
         ('clause_conversion2_bondlot', DOUBLE),
@@ -152,86 +162,98 @@ def import_cb_daily():
         ('volume', DOUBLE),
     ]
     wind_indictor_str = ",".join(col_name for col_name, _ in col_name_param_list)
-    logging.info("更新 wind_convertible_bond_daily 开始")
-    table_name = "wind_convertible_bond_daily"
-    has_table = engine_md.has_table(table_name)
+    logging.info("更新 %s 开始", table_name)
 
     if has_table:
         sql_str = """
-            SELECT wind_code, date_frm, if(issue_announcement_date<end_date, issue_announcement_date, end_date) date_to
+            SELECT wind_code, date_frm, if(delist_date<end_date, delist_date, end_date) date_to
             FROM
             (
-            SELECT info.wind_code, ifnull(trade_date, ipo_date) date_frm, issue_announcement_date,
-            if(hour(now())<16, subdate(curdate(),1), curdate()) end_date
+            SELECT info.wind_code, 
+                ifnull(trade_date, ipo_date) date_frm, clause_conversion_2_swapshareenddate delist_date,
+                if(hour(now())<16, subdate(curdate(),1), curdate()) end_date
             FROM 
                 wind_convertible_bond_info info 
             LEFT OUTER JOIN
                 (SELECT wind_code, adddate(max(trade_date),1) trade_date FROM {table_name} GROUP BY wind_code) daily
             ON info.wind_code = daily.wind_code
             ) tt
-            WHERE date_frm <= if(issue_announcement_date<end_date, issue_announcement_date, end_date) 
+            WHERE date_frm <= if(delist_date<end_date, delist_date, end_date) 
             ORDER BY wind_code""".format(table_name=table_name)
     else:
-        logger.warning('wind_convertible_bond_daily 不存在，仅使用 wind_convertible_bond_info 表进行计算日期范围')
+        logger.warning('%s 不存在，仅使用 %s 表进行计算日期范围', table_name)
         sql_str = """
-            SELECT wind_code, date_frm, if(issue_announcement_date<end_date, issue_announcement_date, end_date) date_to
+            SELECT wind_code, date_frm, if(delist_date<end_date, delist_date, end_date) date_to
             FROM
-              (
-                SELECT info.wind_code, ipo_date date_frm, issue_announcement_date,
-                if(hour(now())<16, subdate(curdate(),1), curdate()) end_date
+            (
+                SELECT info.wind_code, 
+                    ipo_date date_frm, clause_conversion_2_swapshareenddate delist_date,
+                    if(hour(now())<16, subdate(curdate(),1), curdate()) end_date
                 FROM wind_convertible_bond_info info 
-              ) tt
-            WHERE date_frm <= if(issue_announcement_date<end_date, issue_announcement_date, end_date) 
+            ) tt
+            WHERE date_frm <= if(delist_date<end_date, delist_date, end_date) 
             ORDER BY wind_code"""
 
     with with_db_session(engine_md) as session:
         # 获取每只股票需要获取日线数据的日期区间
         table = session.execute(sql_str)
         # 计算每只股票需要获取日线数据的日期区间
-        begin_time = None
         # 获取date_from,date_to，将date_from,date_to做为value值
-        stock_date_dic = {
+        code_date_range_dic = {
             wind_code: (date_from if begin_time is None else min([date_from, begin_time]), date_to)
             for wind_code, date_from, date_to in table.fetchall() if
             wind_code_set is None or wind_code in wind_code_set}
+
     # 设置dtype
     dtype = {key: val for key, val in col_name_param_list}
     dtype['wind_code'] = String(20)
-    data_df_list = []
-    data_count = len(stock_date_dic)
-    logger.info('%d stocks will been import into wind_convertible_bond_daily', data_count)
-    # 获取股票量价等行情数据
-    upper_col_2_name_dic = {name.upper(): name for name, _ in col_name_param_list}
+    dtype['trade_date'] = Date
 
+    data_df_list, data_count, tot_data_count, code_count = [], 0, 0, len(code_date_range_dic)
+    # 获取股票量价等行情数据
     try:
-        for data_num, (wind_code, (date_from, date_to)) in enumerate(stock_date_dic.items(), start=1):
-            data_df = invoker.wsd(wind_code, wind_indictor_str, date_from, date_to, "unit=1")
+        for num, (wind_code, (begin_time, end_time)) in enumerate(code_date_range_dic.items(), start=1):
+            logger.debug('%d/%d) %s [%s - %s]', num, code_count, wind_code, begin_time, end_time)
+            try:
+                data_df = invoker.wsd(wind_code, wind_indictor_str, begin_time, end_time, "unit=1")
+            except APIError as exp:
+                if exp.ret_dic.setdefault('error_code', 0) in (
+                        -40520007,  # 没有可用数据
+                        -40521009,  # 数据解码失败。检查输入参数是否正确，如：日期参数注意大小月月末及短二月
+                ):
+                    logger.warning("%d/%d) %s 执行异常 %s", num, code_count, wind_code, exp.ret_dic)
+                    continue
+                else:
+                    logger.exception("%d/%d) %s 执行异常", num, code_count, wind_code)
+                    break
             if data_df is None:
                 logger.warning('%d/%d) %s has no data during %s %s',
-                               data_num, data_count, wind_code, date_from, date_to)
+                               num, code_count, wind_code, begin_time, end_time)
                 continue
-            data_df.rename(columns=upper_col_2_name_dic, inplace=True)
-            data_df = data_df[~data_df['close'].isna()]
-            if data_df.shape[0] == 0:
-                logger.warning('%d/%d) %s has no available data during %s %s',
-                               data_num, data_count, wind_code, date_from, date_to)
-                continue
-            logger.info('%d/%d) %d data of %s between %s and %s',
-                        data_num, data_count, data_df.shape[0], wind_code, date_from, date_to)
-            data_df['wind_code'] = wind_code
-            data_df_list.append(data_df)
-            # 仅调试时使用
-            # if len(data_df_list) > 10:
-            #     break
+            if data_df is not None and data_df.shape[0] > 0:
+                data_df['wind_code'] = wind_code
+                data_df.index.rename('trade_date', inplace=True)
+                data_df.reset_index(inplace=True)
+                data_df.rename(columns={col: col.lower() for col in data_df.columns}, inplace=True)
+                data_df_list.append(data_df)
+                data_count += data_df.shape[0]
+            # 大于阀值有开始插入
+            if data_count >= 10000:
+                data_df_all = pd.concat(data_df_list)
+                data_count = bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md, dtype)
+                logging.info("更新 %s %d 条信息", table_name, data_count)
+                tot_data_count += data_count
+                data_df_list, data_count = [], 0
+
+            # 仅调试使用
+            if DEBUG and len(data_df_list) > 1:
+                break
     finally:
         # 导入数据库
         if len(data_df_list) > 0:
             data_df_all = pd.concat(data_df_list)
-            data_df_all.index.rename('trade_date', inplace=True)
-            data_df_all.reset_index(inplace=True)
-            data_df_all.set_index(['wind_code', 'trade_date'], inplace=True)
-            bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md, dtype=dtype)
-            logging.info("更新 wind_convertible_bond_daily 结束 %d 条信息被更新", data_df_all.shape[0])
+            data_count = bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md, dtype)
+            logging.info("更新 %s 结束 %d 条信息被更新", table_name, data_count)
             if not has_table and engine_md.has_table(table_name):
                 alter_table_2_myisam(engine_md, [table_name])
                 build_primary_key([table_name])
@@ -383,11 +405,14 @@ def fill_col_by_wsd(col_name_dic: dict, table_name, top_n=None):
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.DEBUG, format='%(asctime)s: %(levelname)s [%(name)s:%(funcName)s] %(message)s')
-    DEBUG = True
-    import_cb_info()
+    # logging.basicConfig(level=logging.DEBUG, format='%(asctime)s: %(levelname)s [%(name)s:%(funcName)s] %(message)s')
+    # DEBUG = True
+    # 基本信息数据加载
+    # import_cb_info()
+    # 日K历史数据加载
     import_cb_daily()
-    wind_code_set = None
+    # wind_code_set = None
+
     # 更新 wind_convertible_bond_info 信息
     # col_name_dic = {
     #     'redemption_beginning': 'redemption_beginning',
