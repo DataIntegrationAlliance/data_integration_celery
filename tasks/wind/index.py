@@ -54,7 +54,7 @@ def fill_wind_index_daily_col():
 
 
 @app.task
-def import_wind_index_daily_first(wind_codes):
+def import_index_daily_first(wind_codes):
     """
     首次导入某指数使用
     :param wind_codes: 可以是字符串，也可以是字符串的list 
@@ -101,7 +101,7 @@ def import_wind_index_daily_first(wind_codes):
 
 
 @app.task
-def import_wind_index_daily():
+def import_index_daily():
     """导入指数数据"""
     table_name = "wind_index_daily"
     has_table = engine_md.has_table(table_name)
@@ -257,7 +257,7 @@ def import_wind_index_daily_by_xls(file_path, wind_code, index_name):
 
 
 @app.task
-def import_wind_index_info(wind_codes):
+def import_index_info(wind_codes):
     """
     导入指数信息
     :param wind_codes: 
@@ -315,11 +315,11 @@ if __name__ == '__main__':
                   '399102.SZ',
                   ]
     # wind_codes = ['CES120.CSI']
-    # import_wind_index_info(wind_codes)
-    import_wind_index_daily_first(wind_codes)
+    # import_index_info(wind_codes)
+    import_index_daily_first(wind_codes)
     wind_code_set = None
     # 每日更新指数信息
-    # import_wind_index_daily()
+    # import_index_daily()
     # fill_wind_index_daily_col()
 
     # 每日生成指数导出文件给王淳
