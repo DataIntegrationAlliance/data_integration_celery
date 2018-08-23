@@ -9,7 +9,7 @@ Created on 2017/4/14
 # w.wss("002482.SZ,300343.SZ", "div_cashbeforetax2,div_cashaftertax2,div_stock2,div_capitalization2,div_capitalization,div_stock,div_cashaftertax,div_cashbeforetax,div_cashandstock,div_recorddate,div_exdate,div_paydate,div_trddateshareb,div_preDisclosureDate,div_prelandate,div_smtgdate,div_impdate","rptDate=20151231;currencyType=BB")
 import pandas as pd
 from tasks import app
-from tasks.ifind import invoker
+from tasks.wind import invoker
 from datetime import datetime, date
 from tasks.backend import engine_md
 from tasks.backend.orm import build_primary_key
