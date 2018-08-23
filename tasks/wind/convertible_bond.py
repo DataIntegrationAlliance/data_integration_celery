@@ -385,7 +385,7 @@ def fill_col_by_wsd(col_name_dic: dict, table_name, top_n=None):
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG, format='%(asctime)s: %(levelname)s [%(name)s:%(funcName)s] %(message)s')
     DEBUG = True
-    # import_cb_info()
+    import_cb_info()
     import_cb_daily()
     wind_code_set = None
     # 更新 wind_convertible_bond_info 信息
