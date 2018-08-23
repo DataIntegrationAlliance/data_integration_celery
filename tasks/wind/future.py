@@ -2,6 +2,7 @@
 """
 Created on 2017/5/2
 @author: MG
+@desc    : 2018-08-23 info daily 已经正式运行测试完成，可以正常使用
 """
 import logging
 import re, itertools
@@ -60,17 +61,17 @@ def get_date_since(wind_code_ipo_date_dic, regex_str, date_establish):
 
 
 @app.task
-def import_future_info_hk():
+def import_future_info():
     """
     更新期货合约列表信息
     :return: 
     """
-    table_name = "wind_future_info_hk"
+    table_name = "wind_future_info"
     has_table = engine_md.has_table(table_name)
-    logger.info("更新 wind_future_info_hk 开始")
+    logger.info("更新 %s 开始", table_name)
     # 获取已存在合约列表
     if has_table:
-        sql_str = 'select wind_code, ipo_date from wind_future_info_hk'
+        sql_str = 'select wind_code, ipo_date from {table_name}'.format(table_name=table_name)
         with with_db_session(engine_md) as session:
             table = session.execute(sql_str)
             wind_code_ipo_date_dic = dict(table.fetchall())
@@ -156,16 +157,8 @@ def import_future_info_hk():
         date_yestoday = date.today() - timedelta(days=1)
         while date_since <= date_yestoday:
             date_since_str = date_since.strftime(STR_FORMAT_DATE)
-            # w.wset("sectorconstituent","date=2017-05-02;sectorid=a599010205000000")
-            # future_info_df = wset_cache(w, "sectorconstituent", "date=%s;sectorid=%s" % (date_since_str, sector_id))
             future_info_df = invoker.wset("sectorconstituent", "date=%s;sectorid=%s" % (date_since_str, sector_id))
             wind_code_set |= set(future_info_df['wind_code'])
-            # future_info_df = future_info_df[['wind_code', 'sec_name']]
-            # future_info_dic_list = future_info_df.to_dict(orient='records')
-            # for future_info_dic in future_info_dic_list:
-            #     wind_code = future_info_dic['wind_code']
-            #     if wind_code not in wind_code_future_info_dic:
-            #         wind_code_future_info_dic[wind_code] = future_info_dic
             if date_since >= date_yestoday:
                 break
             else:
@@ -177,8 +170,6 @@ def import_future_info_hk():
     wind_code_list = [wc for wc in wind_code_set if wc not in wind_code_ipo_date_dic]
     # 获取合约基本信息
     # w.wss("AU1706.SHF,AG1612.SHF,AU0806.SHF", "ipo_date,sec_name,sec_englishname,exch_eng,lasttrade_date,lastdelivery_date,dlmonth,lprice,sccode,margin,punit,changelt,mfprice,contractmultiplier,ftmargins,trade_code")
-    # future_info_df = wss_cache(w, wind_code_list,
-    #                            "ipo_date,sec_name,sec_englishname,exch_eng,lasttrade_date,lastdelivery_date,dlmonth,lprice,sccode,margin,punit,changelt,mfprice,contractmultiplier,ftmargins,trade_code")
     if len(wind_code_list) > 0:
         future_info_df = invoker.wss(wind_code_list, wind_indictor_str)
         future_info_df['MFPRICE'] = future_info_df['MFPRICE'].apply(mfprice_2_num)
@@ -198,25 +189,15 @@ def import_future_info_hk():
 
 
 @app.task
-def import_future_hk_daily():
+def import_future_daily(wind_code_set=None, begin_time=None):
     """
     更新期货合约日级别行情信息
     :return: 
     """
-    logger.info("更新 wind_future_daily_hk 开始")
-    table_name = "wind_future_daily_hk"
+    table_name = "wind_future_daily"
+    logger.info("更新 %s 开始", table_name)
     has_table = engine_md.has_table(table_name)
-    date_ending = date.today() - ONE_DAY if datetime.now().hour < BASE_LINE_HOUR else date.today()
-    # w.wsd("AG1612.SHF", "open,high,low,close,volume,amt,dealnum,settle,oi,st_stock", "2016-11-01", "2016-12-21", "")
-    # sql_str = """select fi.wind_code, ifnull(trade_date_max_1, ipo_date) date_frm,
-    # lasttrade_date
-    # from wind_future_info_hk fi left outer join
-    # (select wind_code, adddate(max(trade_date),1) trade_date_max_1 from wind_future_daily_hk group by wind_code) wfd
-    # on fi.wind_code = wfd.wind_code"""
-    # 16 点以后 下载当天收盘数据，16点以前只下载前一天的数据
-    # 对于 date_to 距离今年超过1年的数据不再下载：发现有部分历史过于久远的数据已经无法补全，
-    # 如：AL0202.SHF AL9902.SHF CU0202.SHF
-    col_param_list = [
+    param_list = [
         ("open", DOUBLE),
         ("high", DOUBLE),
         ("low", DOUBLE),
@@ -231,9 +212,8 @@ def import_future_hk_daily():
         ('instrument_id', String(20)),
         ('trade_date', Date,)
     ]
-    wind_indictor_str = ",".join([key for key, _ in col_param_list[:10]])
-    dtype = {key: value for key, value in col_param_list}
-    dtype["wind_code"] = String(20)
+    wind_indictor_str = ",".join([key for key, _ in param_list[:10]])
+
     if has_table:
         sql_str = """
             select wind_code, date_frm, if(lasttrade_date<end_date, lasttrade_date, end_date) date_to
@@ -242,14 +222,14 @@ def import_future_hk_daily():
             select fi.wind_code, ifnull(trade_date_max_1, ipo_date) date_frm, 
                 lasttrade_date,
                 if(hour(now())<16, subdate(curdate(),1), curdate()) end_date
-            from wind_future_info_hk fi 
+            from wind_future_info fi 
             left outer join
-                (select wind_code, adddate(max(trade_date),1) trade_date_max_1 from wind_future_daily_hk group by wind_code) wfd
+                (select wind_code, adddate(max(trade_date),1) trade_date_max_1 from {table_name} group by wind_code) wfd
             on fi.wind_code = wfd.wind_code
             ) tt
             where date_frm <= if(lasttrade_date<end_date, lasttrade_date, end_date) 
             and subdate(curdate(), 360) < if(lasttrade_date<end_date, lasttrade_date, end_date) 
-            order by wind_code"""
+            order by wind_code""".format(table_name=table_name)
     else:
         sql_str = """
             SELECT wind_code, date_frm,
@@ -258,38 +238,31 @@ def import_future_hk_daily():
             (
                 SELECT info.wind_code,ipo_date date_frm, lasttrade_date,
                 if(hour(now())<16, subdate(curdate(),1), curdate()) end_date
-                FROM wind_future_info_hk info
+                FROM wind_future_info info
             ) tt
             WHERE date_frm <= if(lasttrade_date<end_date, lasttrade_date, end_date)
             ORDER BY wind_code;
          """
-    future_date_dic = {}
+        logger.warning('%s 不存在，仅使用 wind_future_info 表进行计算日期范围', table_name)
+
     with with_db_session(engine_md) as session:
         table = session.execute(sql_str)
-        begin_time = None
         # 获取date_from,date_to，将date_from,date_to做为value值
         future_date_dic = {
             wind_code: (date_from if begin_time is None else min([date_from, begin_time]), date_to)
             for wind_code, date_from, date_to in table.fetchall() if
             wind_code_set is None or wind_code in wind_code_set}
-        # for wind_code, date_frm, lasttrade_date in table.fetchall():
-        #     if date_frm is None:
-        #         continue
-        #     if isinstance(date_frm, str):
-        #         date_frm = datetime.strptime(date_frm, STR_FORMAT_DATE).date()
-        #     if isinstance(lasttrade_date, str):
-        #         lasttrade_date = datetime.strptime(lasttrade_date, STR_FORMAT_DATE).date()
-        #     date_to = date_ending if date_ending < lasttrade_date else lasttrade_date
-        #     if date_frm > date_to:
-        #         continue
-        #     future_date_dic[wind_code] = (date_frm, date_to)
+
+    # 设置 dtype
+    dtype = {key: val for key, val in param_list}
+    dtype['wind_code'] = String(20)
+    dtype['trade_date'] = Date
+
     data_df_list = []
-    # w.start()
-    # 初始化服务器接口，用于下载万得数据
     data_len = len(future_date_dic)
     try:
         logger.info("%d future instrument will be handled", data_len)
-        for data_num, (wind_code, (date_frm, date_to)) in enumerate(future_date_dic.items()):
+        for num, (wind_code, (date_frm, date_to)) in enumerate(future_date_dic.items()):
             # 暂时只处理 RU 期货合约信息
             # if wind_code.find('RU') == -1:
             #     continue
@@ -297,13 +270,13 @@ def import_future_hk_daily():
                 continue
             date_frm_str = date_frm.strftime(STR_FORMAT_DATE)
             date_to_str = date_to.strftime(STR_FORMAT_DATE)
-            logger.info('%d/%d) get %s between %s and %s', data_num, data_len, wind_code, date_frm_str, date_to_str)
-            # data_df_tmp = wsd_cache(w, wind_code, "open,high,low,close,volume,amt,dealnum,settle,oi,st_stock",
+            logger.info('%d/%d) get %s between %s and %s', num, data_len, wind_code, date_frm_str, date_to_str)
+            # data_df = wsd_cache(w, wind_code, "open,high,low,close,volume,amt,dealnum,settle,oi,st_stock",
             #                         date_frm, date_to, "")
             try:
-                data_df_tmp = invoker.wsd(wind_code, wind_indictor_str, date_frm_str, date_to_str, "")
+                data_df = invoker.wsd(wind_code, wind_indictor_str, date_frm_str, date_to_str, "")
             except APIError as exp:
-                logger.exception("%d/%d) %s 执行异常", data_num, data_len, wind_code)
+                logger.exception("%d/%d) %s 执行异常", num, data_len, wind_code)
                 if exp.ret_dic.setdefault('error_code', 0) in (
                         -40520007,  # 没有可用数据
                         -40521009,  # 数据解码失败。检查输入参数是否正确，如：日期参数注意大小月月末及短二月
@@ -311,31 +284,33 @@ def import_future_hk_daily():
                     continue
                 else:
                     break
-            data_df_tmp['wind_code'] = wind_code
-            data_df_list.append(data_df_tmp)
+            if data_df is None:
+                logger.warning('%d/%d) %s has no data during %s %s', num, data_len, wind_code, date_frm_str, date_to)
+                continue
+            logger.info('%d/%d) %d data of %s between %s and %s', num, data_len, data_df.shape[0], wind_code, date_frm_str,
+                        date_to)
+            data_df['wind_code'] = wind_code
+            data_df.index.rename('trade_date', inplace=True)
+            data_df.reset_index(inplace=True)
+            data_df.rename(columns={c: str.lower(c) for c in data_df.columns}, inplace=True)
+            data_df.rename(columns={'oi': 'position'}, inplace=True)
+            data_df['instrument_id'] = wind_code.split('.')[0]
+            data_df_list.append(data_df)
             # 仅仅调试时使用
-            if DEBUG and len(data_df_list) >= 3:
+            if DEBUG and len(data_df_list) >= 1:
                 break
     finally:
         data_df_count = len(data_df_list)
         if data_df_count > 0:
             logger.info('merge data with %d df', data_df_count)
             data_df = pd.concat(data_df_list)
-            data_df.index.rename('trade_date', inplace=True)
-            data_df = data_df.reset_index()
-            data_df['instrument_id'] = data_df['wind_code'].apply(lambda x: x.split('.')[0])
-            data_df = data_df.set_index(['wind_code', 'trade_date'])
-            data_df.rename(columns={c: str.lower(c) for c in data_df.columns}, inplace=True)
-            data_df.rename(columns={'oi': 'position'}, inplace=True)
-            data_df.reset_index(inplace=True)
-            data_count = data_df.shape[0]
-            bunch_insert_on_duplicate_update(data_df, table_name, engine_md, dtype=dtype)
-            logger.info("更新 wind_future_daily_hk 结束 %d 条记录被更新", data_count)
+            data_count = bunch_insert_on_duplicate_update(data_df, table_name, engine_md, dtype=dtype)
+            logger.info("更新 %s 结束 %d 条记录被更新", table_name, data_count)
             if not has_table and engine_md.has_table(table_name):
                 alter_table_2_myisam(engine_md, [table_name])
                 build_primary_key(table_name)
         else:
-            logger.info("更新 wind_future_daily_hk 结束 0 条记录被更新")
+            logger.info("更新 %s 结束 0 条记录被更新", table_name)
 
 
 @app.task
@@ -473,10 +448,8 @@ def update_future_info_hk():
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.DEBUG, format='%(asctime)s: %(levelname)s [%(name)s] %(message)s')
-    # windy_utils.CACHE_ENABLE = False
-    # import_future_info_hk()
     DEBUG = True
     wind_code_set = None
-    # import_wind_future_hk_daily()
-    update_future_info_hk()
+    # import_future_info_hk()
+    import_future_daily(wind_code_set)
+    # update_future_info_hk()
