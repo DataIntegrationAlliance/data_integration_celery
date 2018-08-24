@@ -231,6 +231,9 @@ def import_stock_daily_hk(wind_code_set=None, begin_time=None):
             logger.info('%d/%d) %d data of %s between %s and %s', data_num, data_len, data_df.shape[0], wind_code,
                         date_from, date_to)
             data_df['wind_code'] = wind_code
+            data_df.index.rename('trade_date', inplace=True)
+            data_df.reset_index(inplace=True)
+            data_df.rename(columns=col_name_dic, inplace=True)
             data_df_list.append(data_df)
             # 仅供调试使用
             if DEBUG and len(data_df_list) > 1:
@@ -239,9 +242,7 @@ def import_stock_daily_hk(wind_code_set=None, begin_time=None):
         # 导入数据库 创建
         if len(data_df_list) > 0:
             data_df_all = pd.concat(data_df_list)
-            data_df_all.index.rename('trade_date', inplace=True)
-            data_df_all.reset_index(inplace=True)
-            data_df_all.rename(columns=col_name_dic, inplace=True)
+
             data_count = bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md, dtype=dtype)
             logging.info("更新 %s 结束 %d 条信息被更新", table_name, data_count)
             if not has_table and engine_md.has_table(table_name):
@@ -306,7 +307,7 @@ def import_stock_quertarly_hk(wind_code_set=None):
         ('ebit', String(20)),
         ('ebit2', String(20)),
         ('ebit2_ttm', String(20)),
-        ('surpluscapitalps', String(10)),
+        ('surpluscapitalps', String(20)),
         ('undistributedps', String(20)),
         ('stm_issuingdate', Date),
     ]
@@ -333,6 +334,8 @@ def import_stock_quertarly_hk(wind_code_set=None):
             logger.info('%d) %d data of %s between %s and %s', stock_num, data_df.shape[0], wind_code, date_from,
                         date_to)
             data_df['wind_code'] = wind_code
+            data_df.index.rename('trade_date', inplace=True)
+            data_df.reset_index(inplace=True)
             data_df_list.append(data_df)
             # 仅供调试使用
             if DEBUG and len(data_df_list) > 5:
@@ -341,9 +344,7 @@ def import_stock_quertarly_hk(wind_code_set=None):
         # 导入数据库
         if len(data_df_list) > 0:
             data_df_all = pd.concat(data_df_list)
-            data_df_all.index.rename('trade_date', inplace=True)
-            data_df_all.reset_index(inplace=True)
-            data_df_all.set_index(['wind_code', 'trade_date'], inplace=True)
+
             # data_df_all.to_sql('wind_stock_quertarly_hk', engine_md, if_exists='append')
             bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md, dtype=dtype)
             logging.info("更新 wind_stock_quertarly_hk 结束 %d 条信息被更新", data_df_all.shape[0])
