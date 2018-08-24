@@ -25,81 +25,6 @@ ONE_DAY = timedelta(days=1)
 BASE_LINE_HOUR = 16
 
 
-# 初始化服务器接口，用于下载万得数据
-
-
-def fill_wind_index_daily_col():
-    with with_db_session(engine_md) as session:
-        sql_str = "select wind_code, min(trade_date), max(trade_date) from wind_index_daily group by wind_code"
-        table = session.execute(sql_str)
-        wind_date_dic = {content[0]: (content[1], content[2]) for content in table.fetchall()}
-        for wind_code, date_pair in wind_date_dic.items():
-            logger.debug('invoke wsd for %s between %s and %s', wind_code, date_pair[0], date_pair[1])
-            data_df = invoker.wsd(wind_code, "turn,free_turn", date_pair[0], date_pair[1], "")
-            data_df.dropna(inplace=True)
-            if data_df.shape[0] == 0:
-                continue
-            logger.debug('%d data importing for %s', data_df.shape[0], wind_code)
-            data_df['WIND_CODE'] = wind_code
-            data_df.index.rename('TRADE_DATE', inplace=True)
-            # data_df.rename(columns={c: str.lower(c) for c in data_df.columns}, inplace=True)
-            data_df.reset_index(inplace=True)
-            data_list = list(data_df.T.to_dict().values())
-            sql_str = """
-                update wind_index_daily
-                set turn=:TURN, free_turn=:FREE_TURN
-                where wind_code= :WIND_CODE
-                and trade_date = :TRADE_DATE"""
-            session.execute(sql_str, params=data_list)
-
-
-@app.task
-def import_index_daily_first(wind_codes):
-    """
-    首次导入某指数使用
-    :param wind_codes: 可以是字符串，也可以是字符串的list 
-    :return: 
-    """
-    table_name = 'wind_index_daily'
-    has_table = engine_md.has_table(table_name)
-    col_name_param_list = [
-        ('open', String(20)),
-        ('high', String(20)),
-        ('low', String(20)),
-        ('close', String(20)),
-        ('volume', String(20)),
-        ('amt', String(20)),
-        ('turn', String(20)),
-        ('free_turn', String(20)),
-    ]
-    wind_indictor_str = ",".join([key for key, _ in col_name_param_list])
-    # 设置dtype类型
-    dtype = {key: val for key, val in col_name_param_list}
-    dtype['wind_code'] = String(20)
-    # dtype['trade_date'] = Date,
-    # yestday = date.today() - timedelta(days=1)
-    date_ending = date.today() - ONE_DAY if datetime.now().hour < BASE_LINE_HOUR else date.today()
-    info = invoker.wss(wind_codes, "basedate,sec_name")
-    for code in info.index:
-        begin_date = str_2_date(info.loc[code, 'BASEDATE'])
-        # index_name = info.loc[code, 'SEC_NAME']
-        index_df = invoker.wsd(code, wind_indictor_str, begin_date, date_ending)
-        index_df.reset_index(inplace=True)
-        index_df.rename(columns={'index': 'trade_date'}, inplace=True)
-        index_df.trade_date = pd.to_datetime(index_df.trade_date)
-        index_df.trade_date = index_df.trade_date.map(lambda x: x.date())
-        index_df.rename(columns={c: str.lower(c) for c in index_df},inplace=True)
-        index_df['wind_code'] = code
-        # index_df['index_name'] = index_name
-        # index_df.set_index(['wind_code', 'trade_date'], inplace=True)
-        bunch_insert_on_duplicate_update(index_df, table_name, engine_md, dtype=dtype)
-        logger.info('Success import %s with %d data' % (code, index_df.shape[0]))
-        if not has_table and engine_md.has_table(table_name):
-            alter_table_2_myisam(engine_md, [table_name])
-            build_primary_key([table_name])
-
-
-
 @app.task
 def import_index_daily():
     """导入指数数据"""
@@ -209,51 +134,9 @@ def import_index_daily():
         if not has_table and engine_md.has_table(table_name):
             alter_table_2_myisam(engine_md, [table_name])
             build_primary_key([table_name])
-
-
-def import_wind_index_daily_by_xls(file_path, wind_code, index_name):
-    """
-    将历史数据净值文件导入数据库
-    1990年前的数据，wind端口无法导出，但可以通过wind终端导出文件后再导入数据库
-    :param file_path: 
-    :param wind_code: 
-    :param index_name: 
-    :return: 
-    """
-    table_name = "wind_index_daily"
-    has_table = engine_md.has_table(table_name)
-    data_df = pd.read_excel(file_path)
-    data_df.rename(columns={
-        "日期": "trade_date",
-        "开盘价(元)": "open",
-        "最高价(元)": "high",
-        "最低价(元)": "low",
-        "收盘价(元)": "close",
-        "成交额(百万)": "amt",
-        "成交量(股)": "volume",
-    }, inplace=True)
-    data_df["wind_code"] = wind_code
-    data_df['index_name'] = index_name
-    data_df.set_index(['wind_code', 'trade_date'], inplace=True)
-    # 删除历史数据
-    with with_db_session(engine_md) as session:
-        # 获取市场有效交易日数据
-        sql_str = "delete from wind_index_daily where wind_code = :wind_code"
-        table = session.execute(sql_str, params={"wind_code": wind_code})
-    # 导入历史数据
-    # data_df.to_sql('wind_index_daily', engine_md, if_exists='append', index_label=['wind_code', 'trade_date'],
-    #             dtype={
-    #                 'wind_code': String(20),
-    #                 'trade_date': Date,
-    #             })
-    bunch_insert_on_duplicate_update(data_df, table_name, engine_md, dtype={
-        'wind_code': String(20),
-        'trade_date': Date,
-    })
-    if not has_table and engine_md.has_table(table_name):
-        alter_table_2_myisam(engine_md, [table_name])
-        build_primary_key([table_name])
-    logger.info("%s %s %d 条数据被导入", wind_code, index_name, data_df.shape[0])
+        # 仅仅调试时使用
+        # if DEBUG and data_num >= 2:
+        #     break
 
 
 @app.task
@@ -316,16 +199,9 @@ if __name__ == '__main__':
                   ]
     # wind_codes = ['CES120.CSI']
     # import_index_info(wind_codes)
-    import_index_daily_first(wind_codes)
     wind_code_set = None
     # 每日更新指数信息
-    # import_index_daily()
-    # fill_wind_index_daily_col()
-
+    import_index_daily()
     # 每日生成指数导出文件给王淳
     wind_code_list = ['HSI.HI', 'HSCEI.HI']
-    # export_index_daily(wind_code_list)
-
-    # file_path = r'd:\Downloads\CES120.xlsx'
     wind_code = "CES120.CSI"
-    # import_wind_index_daily_by_xls(file_path, wind_code, index_name)
