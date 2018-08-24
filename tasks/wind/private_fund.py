@@ -54,18 +54,18 @@ def import_private_fund_info(table_name, get_df=False):
         ('FUND_EXISTINGYEAR', String(500)),
         ('FUND_PTMYEAR', String(30)),
         ('FUND_TYPE', String(20)),
-        ('FUND_FUNDMANAGER', String(500))
+        ('FUND_FUNDMANAGER', String(500)),
+        ('SEC_NAME',String(2000)),
+        ('STRATEGY_TYPE', String(200)),
+        ('TRADE_DATE_LATEST', String(200)),
     ]
     col_name_dic = {col_name.upper(): col_name.lower() for col_name, _ in param_list}
     # 获取列表名
     col_name_list = [col_name.lower() for col_name in col_name_dic.keys()]
-    param_str = ",".join(col_name_list)
+    param_str = ",".join(col_name_list[:8])
     # 设置dtype类型
     dtype = {key.lower(): val for key, val in param_list}
     dtype['wind_code'] = String(20)
-    dtype['sec_name'] = String(200)
-    dtype['strategy_type'] = String(200)
-    dtype['trade_date_latest'] = String(200)
     for i in types.keys():
         temp = invoker.wset("sectorconstituent", "date=%s;sectorid=%s" % (today, str(types[i])))
         temp['strategy_type'] = i
@@ -118,7 +118,7 @@ def import_private_fund_info(table_name, get_df=False):
 
 
 @app.task
-def import_private_fund_info():
+def import_private_wind_fund_info():
     # 更新 基金信息
     table_name = 'wind_fund_info'
     # 初始化服务器接口，用于下载万得数据
@@ -280,23 +280,6 @@ def update_wind_fund_info_by_code_list(wind_code_list, strategy_type):
     fund_info_df = get_fund_info_df_by_wind(wind_code_list, col_name)
     fund_info_df['strategy_type'] = strategy_type
     save_fund_info(fund_info_df, col_type=None)
-
-
-@app.task
-def fill_fund_info_strategy_data(wind_code_list, strategy_type, rank=4):
-    update_wind_fund_info_by_code_list(wind_code_list, strategy_type)
-    sql_str_wind_code_in = "'" + "', '".join(wind_code_list) + "'"
-
-    with with_db_session(engine_md) as session:
-        sql_str = "update fund_info set rank=:rank where wind_code in (%s)" % sql_str_wind_code_in
-        session.execute(sql_str, params={'rank': rank})
-        sql_str = "select wind_code, fund_setupdate from fund_info where wind_code in (%s)" % sql_str_wind_code_in
-        param_list = [{'wind_code': content[0],
-                       'stg_code': strategy_type,
-                       'trade_date': content[1],
-                       'stg_pct': 100} for content in session.execute(sql_str).fetchall()]
-        sql_str = 'insert into fund_stg_pct(wind_code, stg_code, trade_date, stg_pct) values (:wind_code, :stg_code, :trade_date, :stg_pct)'
-        session.execute(sql_str, params=param_list)
 
 
 def fund_nav_df_2_sql(table_name, fund_nav_df, engine_md, is_append=True):
