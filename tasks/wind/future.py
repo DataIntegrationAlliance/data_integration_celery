@@ -9,12 +9,10 @@ import pandas as pd
 from datetime import datetime, date, timedelta
 from direstinvoker import APIError
 from sqlalchemy.dialects.mysql import DOUBLE
-
 from tasks import app
 from tasks.wind import invoker
 from tasks.utils.db_utils import with_db_session
-from tasks.backend import engine_md
-from sqlalchemy.types import String, Date, Float
+from sqlalchemy.types import String, Date
 from tasks.utils.fh_utils import STR_FORMAT_DATE, date_2_str, str_2_date
 from tasks.backend.orm import build_primary_key
 from tasks.merge.code_mapping import update_from_info_table
