@@ -8,17 +8,18 @@
 @desc    : 加载wind 一致预期EPS数据
 """
 import logging
-import math
-import pandas as pd
-from datetime import datetime, date, timedelta
 from datetime import date, datetime, timedelta
 import pandas as pd
-import numpy as np
-from config_fh import get_db_engine, get_db_session, STR_FORMAT_DATE, UN_AVAILABLE_DATE, WIND_REST_URL
-from fh_tools.windy_utils_rest import WindRest, APIError
-from fh_tools.fh_utils import get_last, get_first, date_2_str, str_2_date
-import logging
-from sqlalchemy.types import String, Date, Float, Integer
+
+from tasks import app
+from tasks.wind import invoker
+from tasks.backend import engine_md
+from tasks.backend.orm import build_primary_key
+from tasks.utils.db_utils import with_db_session, add_col_2_table, alter_table_2_myisam, \
+    bunch_insert_on_duplicate_update
+from tasks.utils.fh_utils import STR_FORMAT_DATE, split_chunk, get_last, get_first, date_2_str, str_2_date
+from direstinvoker import APIError, UN_AVAILABLE_DATE
+from sqlalchemy.types import String, Date
 from sqlalchemy.dialects.mysql import DOUBLE
 
 logger = logging.getLogger()
@@ -26,11 +27,6 @@ DATE_BASE = datetime.strptime('2006-02-28', STR_FORMAT_DATE).date()
 ONE_DAY = timedelta(days=1)
 # 标示每天几点以后下载当日行情数据
 BASE_LINE_HOUR = 16
-
-w = WindRest(WIND_REST_URL)
-
-
-#
 
 
 def get_wind_kv_per_year(wind_code, wind_indictor_str, date_from, date_to, params):
@@ -61,7 +57,7 @@ def get_wind_kv_per_year(wind_code, wind_indictor_str, date_from, date_to, param
     for date_from_sub, date_to_sub in date_pair:
         params_sub = params % {'year': (date_from_sub.year + 1)}
         try:
-            data_df = w.wsd(wind_code, wind_indictor_str, date_from_sub, date_to_sub, params_sub)
+            data_df = invoker.wsd(wind_code, wind_indictor_str, date_from_sub, date_to_sub, params_sub)
         except APIError as exp:
             logger.exception(
                 "%s %s [%s ~ %s] %s 执行异常",
@@ -89,6 +85,7 @@ def get_wind_kv_per_year(wind_code, wind_indictor_str, date_from, date_to, param
     return data_df_tot
 
 
+@app.task
 def import_wind_code_kv(keys: list, wind_code_list=None):
     """
     插入股票相关市场数据。
@@ -98,52 +95,96 @@ def import_wind_code_kv(keys: list, wind_code_list=None):
     :param wind_code_list:
     :return:
     """
+    table_name = "wind_code_kv"
     wind_code_set = set(wind_code_list) if wind_code_list is not None else None
     logging.info("更新 wind_stock_daily 开始")
-    engine = get_db_engine()
+    has_table = engine_md.has_table(table_name)
     # 本次获取数据的截止日期
     date_ending = date.today() - ONE_DAY if datetime.now().hour < BASE_LINE_HOUR else date.today()
-
+    param_list = [
+            ('trade_date', Date),
+            ('key', String(45)),
+            ('value', DOUBLE),
+                       ]
+    dtype = {key: val for key, val in param_list}
+    dtype['wind_code'] = String(20)
     for item_key in keys:
         item_key = item_key.lower()
         # 获取每只股票对应key 的最近一个交易日数据 start_date
         # 如果没有，则使用 DATE_BASE ipo_date 中最大的一个
-        sql_str = """SELECT info.wind_code, ifnull(trade_date_max_1,start_date) start_date, delist_date FROM 
-        (
-        SELECT wind_code, if (ipo_date<%s,date(%s),ipo_date) start_date, delist_date FROM wind_stock_info
-        ) info
-        LEFT JOIN
-        (
-        SELECT wind_code, adddate(max(Trade_date),1) trade_date_max_1 FROM wind_code_kv 
-        WHERE wind_code_kv.key=%s GROUP BY wind_code
-        ) kv
-        ON info.wind_code = kv.wind_code"""
-        date_df = pd.read_sql(sql_str, engine, params=[DATE_BASE, DATE_BASE, item_key], index_col='wind_code')
-
-        with get_db_session(engine) as session:
-            # 获取市场有效交易日数据
-            sql_str = "SELECT trade_date FROM wind_trade_date WHERE trade_date >= :trade_date"
-            table = session.execute(sql_str, params={'trade_date': DATE_BASE})
-            trade_date_sorted_list = [t[0] for t in table.fetchall()]
-            trade_date_sorted_list.sort()
+        # sql_str = """SELECT info.wind_code, ifnull(trade_date_max_1,start_date) start_date, delist_date FROM
+        # (
+        # SELECT wind_code, if (ipo_date<%s,date(%s),ipo_date) start_date, delist_date FROM wind_stock_info
+        # ) info
+        # LEFT JOIN
+        # (
+        # SELECT wind_code, adddate(max(Trade_date),1) trade_date_max_1 FROM wind_code_kv
+        # WHERE wind_code_kv.key=%s GROUP BY wind_code
+        # ) kv
+        # ON info.wind_code = kv.wind_code"""
+        # date_df = pd.read_sql(sql_str, engine_md, params=[DATE_BASE, DATE_BASE, item_key], index_col='wind_code')
+        #
+        # with with_db_session(engine_md) as session:
+        #     # 获取市场有效交易日数据
+        #     sql_str = "SELECT trade_date FROM wind_trade_date WHERE trade_date >= :trade_date"
+        #     table = session.execute(sql_str, params={'trade_date': DATE_BASE})
+        #     trade_date_sorted_list = [t[0] for t in table.fetchall()]
+        #     trade_date_sorted_list.sort()
+        if has_table:
+            sql_str = """
+                       SELECT wind_code, date_frm, if(delist_date<end_date, delist_date, end_date) date_to
+                       FROM
+                       (
+                           SELECT info.wind_code, ifnull(trade_date, ipo_date) date_frm, delist_date,
+                           if(hour(now())<16, subdate(curdate(),1), curdate()) end_date
+                           FROM 
+                               wind_stock_info info 
+                           LEFT OUTER JOIN
+                               (SELECT wind_code, adddate(max(trade_date),1) trade_date FROM {table_name} GROUP BY wind_code) kv
+                           ON info.wind_code = kv.wind_code
+                       ) tt
+                       WHERE date_frm <= if(delist_date<end_date, delist_date, end_date) 
+                       ORDER BY wind_code;""".format(table_name=table_name)
+        else:
+            logger.warning('wind_stock_kv 不存在，仅使用 wind_stock_info 表进行计算日期范围')
+            sql_str = """
+                       SELECT wind_code, date_frm, if(delist_date<end_date, delist_date, end_date) date_to
+                       FROM
+                       (
+                           SELECT info.wind_code, ipo_date date_frm, delist_date,
+                           if(hour(now())<16, subdate(curdate(),1), curdate()) end_date
+                           FROM wind_stock_info info 
+                       ) tt
+                       WHERE date_frm <= if(delist_date<end_date, delist_date, end_date) 
+                       ORDER BY wind_code"""
+        with with_db_session(engine_md) as session:
+            # 获取每只股票需要获取日线数据的日期区间
+            table = session.execute(sql_str)
+            # 计算每只股票需要获取日线数据的日期区间
+            begin_time = None
+            # 获取date_from,date_to，将date_from,date_to做为value值
+            stock_date_dic = {
+                wind_code: (date_from if begin_time is None else min([date_from, begin_time]), date_to)
+                for wind_code, date_from, date_to in table.fetchall() if
+                wind_code_set is None or wind_code in wind_code_set}
 
         data_df_list = []
-        data_len = date_df.shape[0]
+        data_len = len(stock_date_dic)
         logger.info('%d stocks will been import into wind_code_kv', data_len)
         try:
-            for data_num, (wind_code, date_s) in enumerate(date_df.T.items(), start=1):
-                if wind_code_set is not None and wind_code not in wind_code_set:
-                    continue
-                # 获取 date_from
-                date_from, date_delist = date_s['start_date'], date_s['delist_date']
-                # 获取 date_to
-                if date_delist is None:
-                    date_to = date_ending
-                else:
-                    date_to = min([date_delist, date_ending])
-                date_to = get_last(trade_date_sorted_list, lambda x: x <= date_to)
-                if date_from is None or date_to is None or date_from > date_to:
-                    continue
+            for data_num, (wind_code, (date_from,date_to)) in enumerate(stock_date_dic.items(), start=1):
+                # if wind_code_set is not None and wind_code not in wind_code_set:
+                #     continue
+                # # 获取 date_from
+                # date_from, date_delist = date_s['start_date'], date_s['delist_date']
+                # # 获取 date_to
+                # if date_delist is None:
+                #     date_to = date_ending
+                # else:
+                #     date_to = min([date_delist, date_ending])
+                # date_to = get_last(trade_date_sorted_list, lambda x: x <= date_to)
+                # if date_from is None or date_to is None or date_from > date_to:
+                #     continue
                 # 获取股票量价等行情数据
                 wind_indictor_str = item_key
                 data_df = get_wind_kv_per_year(wind_code, wind_indictor_str, date_from, date_to,
@@ -171,28 +212,23 @@ def import_wind_code_kv(keys: list, wind_code_list=None):
                 logger.info('%d/%d) %d data of %s between %s and %s', data_num, data_len, data_df.shape[0], wind_code,
                             date_from, date_to)
                 data_df['wind_code'] = wind_code
+                data_df.index.rename('trade_date', inplace=True)
+                data_df.reset_index(inplace=True)
+                data_df.rename(columns={item_key.upper(): 'value'}, inplace=True)
+                data_df['key'] = item_key
                 data_df_list.append(data_df)
                 # 调试使用
-                # if data_num >= 5:
-                #     break
+                if data_num >= 5:
+                    break
         finally:
             # 导入数据库
             if len(data_df_list) > 0:
                 data_df_all = pd.concat(data_df_list)
-                data_df_all.index.rename('trade_date', inplace=True)
-                data_df_all.reset_index(inplace=True)
-                data_df_all.rename(columns={item_key.upper(): 'value'}, inplace=True)
-                data_df_all['key'] = item_key
-                data_df_all.set_index(['wind_code', 'trade_date', 'key'], inplace=True)
-                data_df_all.to_sql('wind_code_kv', engine, if_exists='append',
-                                   dtype={
-                                       'wind_code': String(20),
-                                       'trade_date': Date,
-                                       'key': String(45),
-                                       'value': DOUBLE,
-                                   }
-                                   )
+                bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md, dtype=dtype)
                 logging.info("更新 wind_stock_daily 结束 %d 条信息被更新", data_df_all.shape[0])
+                if not has_table and engine_md.has_table(table_name):
+                    alter_table_2_myisam(engine_md, [table_name])
+                    build_primary_key([table_name])
 
 
 if __name__ == "__main__":
