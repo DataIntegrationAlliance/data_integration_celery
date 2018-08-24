@@ -4,16 +4,21 @@
 Created on 2017/11/11
 @author: MG
 """
-from config_fh import get_db_engine, get_db_session, STR_FORMAT_DATE, UN_AVAILABLE_DATE, WIND_REST_URL
-from fh_tools.windy_utils_rest import WindRest, APIError
-from fh_tools.fh_utils import str_2_date
 from datetime import date, timedelta
+from tasks.wind import invoker
+from tasks.backend import engine_md
+from direstinvoker import APIError, UN_AVAILABLE_DATE
+from tasks.utils.fh_utils import STR_FORMAT_DATE, split_chunk, str_2_date
+from tasks.utils.db_utils import with_db_session, add_col_2_table, alter_table_2_myisam, \
+    bunch_insert_on_duplicate_update
 import pandas as pd
 import logging
 logger = logging.getLogger()
 
 
 def import_data():
+    table_name = 'wind_edb_monthly'
+    has_table = engine_md.has_tanble(table_name)
     PMI_FIELD_CODE_2_CN_DIC = {
         "M0017126": ("PMI", date(2005, 1, 1)),
         "M0017127": ("PMI:生产", date(2005, 1, 1)),
@@ -53,11 +58,9 @@ def import_data():
         "M0066333": ("PPI:生活资料:环比", date(2011, 1, 1)),
     }
     data_len = len(PMI_FIELD_CODE_2_CN_DIC)
-    w = WindRest(WIND_REST_URL)
     sql_str = """select field_code, max(trade_date) trade_date_max from wind_edb_monthly group by field_code"""
-    engine = get_db_engine()
     # 获取数据库中最大日期
-    with get_db_session(engine) as session:
+    with with_db_session(engine_md) as session:
         table = session.execute(sql_str)
         field_date_dic = {row[0]: row[1] for row in table.fetchall()}
     # 循环更新
@@ -67,7 +70,7 @@ def import_data():
         date_to = date.today() - timedelta(days=1)
         logger.info('%d/%d) %s %s [%s %s]', data_num, data_len, wind_code, field_name, date_from, date_to)
         try:
-            data_df = w.edb(wind_code, date_from, date_to, "Fill=Previous")
+            data_df = invoker.edb(wind_code, date_from, date_to, "Fill=Previous")
         except APIError as exp:
             logger.exception("%d/%d) %s 执行异常", data_num, data_len, wind_code)
             if exp.ret_dic.setdefault('error_code', 0) in (
@@ -87,7 +90,7 @@ def import_data():
         data_df.rename(columns={wind_code.upper(): 'val'}, inplace=True)
         data_df['field_code'] = wind_code
         data_df['field_name'] = field_name
-        data_df.to_sql('wind_edb_monthly', engine, if_exists='append', index=False)
+        data_df.to_sql('wind_edb_monthly', engine_md, if_exists='append', index=False)
 
 
 if __name__ == '__main__':
