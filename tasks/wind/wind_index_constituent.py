@@ -12,18 +12,22 @@ import logging
 from datetime import date, datetime, timedelta
 import pandas as pd
 from collections import OrderedDict
-from config_fh import get_db_engine, get_db_session, STR_FORMAT_DATE, UN_AVAILABLE_DATE, WIND_REST_URL
-from fh_tools.windy_utils_rest import WindRest, APIError
-from fh_tools.fh_utils import get_last_idx, get_first_idx, date_2_str, str_2_date
-from sqlalchemy.types import String, Date, Float, Integer
+from tasks import app
+from tasks.utils.db_utils import with_db_session
+from tasks.backend import engine_md
+from tasks.wind import invoker
+from tasks.utils.fh_utils import STR_FORMAT_DATE, date_2_str, str_2_date
+from direstinvoker import APIError,UN_AVAILABLE_DATE
+from tasks.utils.fh_utils import STR_FORMAT_DATE, date_2_str, str_2_date, get_first_idx,get_last_idx
+from sqlalchemy.types import String, Date, Integer
 from sqlalchemy.dialects.mysql import DOUBLE
 
+DEBUG = False
 logger = logging.getLogger()
 DATE_BASE = datetime.strptime('1980-01-01', STR_FORMAT_DATE).date()
 ONE_DAY = timedelta(days=1)
 # 标示每天几点以后下载当日行情数据
 BASE_LINE_HOUR = 20
-w = WindRest(WIND_REST_URL)
 
 
 def get_trade_date_list_sorted(exch_code='SZSE') -> list:
@@ -32,7 +36,7 @@ def get_trade_date_list_sorted(exch_code='SZSE') -> list:
     :return:
     """
     sql_str = "select trade_date from wind_trade_date_all where exch_code = :exch_code order by trade_date"
-    with get_db_session(engine) as session:
+    with with_db_session(engine_md) as session:
         trade_date_list_sorted = [content[0] for content in
                                   session.execute(sql_str, params={'exch_code': exch_code}).fetchall()]
     return trade_date_list_sorted
@@ -43,7 +47,7 @@ def get_latest_constituent_df(index_code):
     获取最新的交易日日期，及相应的成分股数据
     :return:
     """
-    with get_db_session(engine=engine) as session:
+    with with_db_session(engine_md) as session:
         content = session.execute("select max(trade_date) from wind_index_constituent where index_code = :index_code",
                                   params={"index_code": index_code}).fetchone()
         if content is None:
@@ -52,7 +56,7 @@ def get_latest_constituent_df(index_code):
         date_latest = content[0]
 
     sql_str = "select * from wind_index_constituent where index_code = %s and trade_date = %s"
-    sec_df = pd.read_sql(sql_str, engine, params=[index_code, date_latest])
+    sec_df = pd.read_sql(sql_str, engine_md, params=[index_code, date_latest])
     return date_latest, sec_df
 
 
@@ -66,7 +70,7 @@ def get_sectorconstituent(index_code, index_name, target_date) -> pd.DataFrame:
     """
     target_date_str = date_2_str(target_date)
     logger.info('获取 %s %s %s 板块信息', index_code, index_name, target_date)
-    sec_df = w.wset("indexconstituent", "date=%s;windcode=%s" % (target_date_str, index_code))
+    sec_df = invoker.wset("indexconstituent", "date=%s;windcode=%s" % (target_date_str, index_code))
     if sec_df is not None and sec_df.shape[0] > 0:
         # 发现部分情况下返回数据的日期与 target_date 日期不匹配
         sec_df = sec_df[sec_df['date'].apply(lambda x: str_2_date(x) == target_date)]
@@ -188,6 +192,20 @@ def loop_get_data(idx_start, idx_end, trade_date_list_sorted, date_constituent_d
                                            date_constituent_df_dict, idx_constituent_set_dic)
 
 
+@app.task
+def import_index_constituent_all():
+    param_dic_list = [
+        # 股票指数
+        {"index_name": '沪深300', "index_code": '000300.SH', 'date_start': '2005-04-08', 'method': 'loop'},
+        {"index_name": '中证500', "index_code": '000905.SH', 'date_start': '2007-01-31', 'method': 'loop'},
+        {"index_name": '上证50', "index_code": '000016.SH', 'date_start': '2009-04-01', 'method': 'loop'},
+        {"index_name": '创业板指', "index_code": '399006.SZ', 'date_start': '2010-06-30', 'method': 'loop'},
+        {"index_name": '中小板指', "index_code": '399005.SZ', 'date_start': '2009-09-30', 'method': 'loop'},
+    ]
+
+    for param_dic in param_dic_list:
+        import_index_constituent(**param_dic)
+
 def import_index_constituent(index_code, index_name, date_start, exch_code='SZSE', date_end=None, method='loop'):
     """
     导入 sector_code 板块的成分股
@@ -223,7 +241,7 @@ def import_index_constituent(index_code, index_name, date_start, exch_code='SZSE
         sec_df, _ = get_index_constituent_2_dic(index_code, index_name, date_start, idx_start,
                                                 date_constituent_df_dict, idx_constituent_set_dic)
         # 保存板块数据
-        sec_df.to_sql(table_name, engine, if_exists='append', index=False)
+        sec_df.to_sql(table_name, engine_md, if_exists='append', index=False)
     else:
         date_start = date_latest
         idx_start = get_last_idx(trade_date_list_sorted, lambda x: x <= date_start)
@@ -256,30 +274,19 @@ def import_index_constituent(index_code, index_name, date_start, exch_code='SZSE
     del date_constituent_df_dict[date_start]
     # 其他数据导入数据库
     for num, (date_cur, sec_df) in enumerate(date_constituent_df_dict.items(), start=1):
-        sec_df.to_sql(table_name, engine, if_exists='append', index=False)
+        sec_df.to_sql(table_name, engine_md, if_exists='append', index=False)
+        # bunch_insert_on_duplicate_update()
         logger.info("%d) %s %d 条 %s 成分股数据导入数据库", num, date_cur, sec_df.shape[0], index_name)
 
 
-engine = get_db_engine()
-
 if __name__ == "__main__":
-    # sector_name = 'HSI恒生综合指数成分'
-    # sector_code = 'a003090201000000'
-    # date_str = '2018-02-23'
-    # import_index_constituent(sector_code, sector_name, date_str)
+    sector_name = 'HSI恒生综合指数成分'
+    sector_code = 'a003090201000000'
+    date_str = '2018-02-23'
+    import_index_constituent(sector_code, sector_name, date_str)
 
     logging.basicConfig(level=logging.DEBUG, format='%(asctime)s: %(levelname)s [%(name)s:%(funcName)s] %(message)s')
     logging.getLogger('requests.packages.urllib3.connectionpool').setLevel(logging.WARNING)
     logging.getLogger('urllib3.connectionpool').setLevel(logging.WARNING)
 
-param_dic_list = [
-    # 股票指数
-    {"index_name": '沪深300', "index_code": '000300.SH', 'date_start': '2005-04-08', 'method': 'loop'},
-    {"index_name": '中证500', "index_code": '000905.SH', 'date_start': '2007-01-31', 'method': 'loop'},
-    {"index_name": '上证50', "index_code": '000016.SH', 'date_start': '2009-04-01', 'method': 'loop'},
-    {"index_name": '创业板指', "index_code": '399006.SZ', 'date_start': '2010-06-30', 'method': 'loop'},
-    {"index_name": '中小板指', "index_code": '399005.SZ', 'date_start': '2009-09-30', 'method': 'loop'},
-]
 
-for param_dic in param_dic_list:
-    import_index_constituent(**param_dic)
