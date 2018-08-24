@@ -155,7 +155,7 @@ def import_stock_daily_ds(ths_code_set: set = None, begin_time=None):
             ) tt
             WHERE date_frm <= if(ths_delist_date_stock<end_date, ths_delist_date_stock, end_date) 
             ORDER BY ths_code"""
-        logger.warning('%s 不存在，仅使用 ifind_stock_info 表进行计算日期范围', table_name)
+        logger.warning('%s 不存在，仅使用 %s 表进行计算日期范围', table_name)
     with with_db_session(engine_md) as session:
         # 获取每只股票需要获取日线数据的日期区间
         table = session.execute(sql_str)
@@ -511,7 +511,7 @@ if __name__ == "__main__":
     # import_stock_info(ths_code, refresh=refresh)
     ths_code_set = None  # {'600006.SH', '600009.SH'}
     # 股票日K历史数据加载
-    import_stock_daily_his(ths_code_set)
+    # import_stock_daily_his(ths_code_set)
     # 股票日K数据加载
     import_stock_daily_ds(ths_code_set)
     # 添加新字段

@@ -5,7 +5,7 @@
 @Time    : 2018/8/21 13:56
 @File    : coin.py
 @contact : mmmaaaggg@163.com
-@desc    : 
+@desc    : 2018-08-23 已经正式运行测试完成，可以正常使用
 """
 import pandas as pd
 import tushare as ts
@@ -264,12 +264,20 @@ def import_coinbar():
     freq_list = ['daily', 'week']
     for freq in freq_list:
         import_coinbar_on_freq_daily(freq)
+    # 日内数据 tushare 服务期压力问题，暂停开放
     # freq_list = ['1min', '5min', '15min', '30min', '60min']
     # for freq in freq_list:
     #     import_coinbar_on_freq_min(freq)
 
 
 def import_coinbar_on_freq_daily(freq, code_set=None, base_begin_time=None):
+    """
+    抓取 日级别以上数据[ daily, week ]级别
+    :param freq:
+    :param code_set:
+    :param base_begin_time:
+    :return:
+    """
     if base_begin_time is not None and not isinstance(base_begin_time, date):
         base_begin_time = str_2_date(base_begin_time)
     table_name = 'tushare_coin_md_' + freq
@@ -393,7 +401,7 @@ def import_coinbar_on_freq_daily(freq, code_set=None, base_begin_time=None):
                     result = session.execute(update_trade_date_latest_str, params=trade_date_latest_list)
                     update_count = result.rowcount
                     session.commit()
-                    logger.info('更新 %d 条交易对的最新交易日信息', update_count)
+                    logger.info('更新 %d 条交易对的最新交易 %s 信息', update_count, freq)
                 trade_date_latest_list = []
 
             # 仅调试使用

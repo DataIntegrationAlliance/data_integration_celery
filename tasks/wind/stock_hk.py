@@ -122,11 +122,13 @@ def import_stock_info_hk(refresh=False):
 
 
 @app.task
-def import_stock_daily_hk(wind_code_set=None):
+def import_stock_daily_hk(wind_code_set=None, begin_time=None):
     """
     插入股票日线数据到最近一个工作日-1。
     如果超过 BASE_LINE_HOUR 时间，则获取当日的数据
-    :return: 
+    :param wind_code_set:
+    :param begin_time:
+    :return:
     """
     table_name = 'wind_stock_daily_hk'
     logging.info("更新 %s 开始", table_name)
@@ -193,7 +195,6 @@ def import_stock_daily_hk(wind_code_set=None):
         # 获取每只股票需要获取日线数据的日期区间
         table = session.execute(sql_str)
         # 获取每只股票需要获取日线数据的日期区间
-        begin_time = None
         stock_date_dic = {
             wind_code: (date_from if begin_time is None else min([date_from, begin_time]), date_to)
             for wind_code, date_from, date_to in table.fetchall() if
@@ -252,6 +253,7 @@ def import_stock_daily_hk(wind_code_set=None):
 def import_stock_quertarly_hk(wind_code_set=None):
     """
     插入股票日线数据到最近一个工作日-1
+    :param wind_code_set:
     :return:
     """
     table_name = "wind_stock_quertarly_hk"
