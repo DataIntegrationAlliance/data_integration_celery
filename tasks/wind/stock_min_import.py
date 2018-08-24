@@ -141,8 +141,6 @@ def insert_into_db(data_df_list, engine_md):
         data_df_all = pd.concat(data_df_list)
         data_df_all.index.rename('datetime', inplace=True)
         data_df_all.reset_index(inplace=True)
-        data_df_all.set_index(['wind_code', 'datetime'], inplace=True)
-        data_df_all.reset_index(inplace=True)
         bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md, dtype=dtype)
         logger.info('%d data imported', data_df_all.shape[0])
         if not has_table and engine_md.has_table(table_name):
