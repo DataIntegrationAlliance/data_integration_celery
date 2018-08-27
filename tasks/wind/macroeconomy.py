@@ -24,7 +24,8 @@ ONE_DAY = timedelta(days=1)
 BASE_LINE_HOUR = 16
 
 
-def build_macroeconomy_info():
+@app.task
+def import_macroeconomy_info():
     table_name = 'wind_macroeconomy_info'
     has_table = engine_md.has_table(table_name)
     indicators_dic = [
@@ -56,7 +57,8 @@ def build_macroeconomy_info():
         logger.info('%s 表 `key` 主键设置完成', table_name)
 
 
-def import_edb(wind_code_set=None):
+@app.task
+def import_macroeconom_edb(wind_code_set=None):
     """
     通过wind接口获取并导入EDB数据
     :return:
@@ -166,6 +168,6 @@ def import_edb(wind_code_set=None):
 
 if __name__ == "__main__":
     DEBUG = True
-    build_macroeconomy_info()
+    import_macroeconomy_info()
     # 更新每日股票数据
-    import_edb()
+    import_macroeconom_edb()
