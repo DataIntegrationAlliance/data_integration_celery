@@ -65,14 +65,15 @@ def import_cb_info(first_time=False):
         ('clause_interest_compensationinterest', DOUBLE),
         ('issueamount', DOUBLE),
         ('term', DOUBLE),
-        ('underlyingcode', DOUBLE),
-        ('underlyingname', DOUBLE),
+        ('underlyingcode', String(20)),
+        ('underlyingname', String(20)),
         ('redemption_beginning', Date),
     ]
     param = ",".join([key for key, _ in name_param_list])
     # 设置dtype类型
     dtype = {key: val for key, val in name_param_list}
     dtype['wind_code'] = String(20)
+    #
     if first_time:
         date_since = datetime.strptime('1999-01-01', STR_FORMAT_DATE).date()
         date_list = []
@@ -139,6 +140,7 @@ def import_cb_daily(wind_code_set: set = None, begin_time=None):
     :return: 
     """
     table_name = "wind_convertible_bond_daily"
+    info_table_name = "wind_convertible_bond_info"
     has_table = engine_md.has_table(table_name)
     col_name_param_list = [
         ('outstandingbalance', DOUBLE),
@@ -181,7 +183,7 @@ def import_cb_daily(wind_code_set: set = None, begin_time=None):
             WHERE date_frm <= if(delist_date<end_date, delist_date, end_date) 
             ORDER BY wind_code""".format(table_name=table_name)
     else:
-        logger.warning('%s 不存在，仅使用 %s 表进行计算日期范围', table_name)
+        logger.warning('%s 不存在，仅使用 %s 表进行计算日期范围', table_name, info_table_name)
         sql_str = """
             SELECT wind_code, date_frm, if(delist_date<end_date, delist_date, end_date) date_to
             FROM
@@ -408,9 +410,9 @@ if __name__ == "__main__":
     # logging.basicConfig(level=logging.DEBUG, format='%(asctime)s: %(levelname)s [%(name)s:%(funcName)s] %(message)s')
     #DEBUG = True
     # 基本信息数据加载
-    import_cb_info()
+    #import_cb_info()
     # 日K历史数据加载
-    #import_cb_daily()
+    import_cb_daily()
     # wind_code_set = None
 
     # 更新 wind_convertible_bond_info 信息
