@@ -72,7 +72,7 @@ def import_cb_info(first_time=False):
     param = ",".join([key for key, _ in name_param_list])
     # 设置dtype类型
     dtype = {key: val for key, val in name_param_list}
-    dtype['wind_code'] = DOUBLE
+    dtype['wind_code'] = String(20)
     if first_time:
         date_since = datetime.strptime('1999-01-01', STR_FORMAT_DATE).date()
         date_list = []
@@ -406,11 +406,11 @@ def fill_col_by_wsd(col_name_dic: dict, table_name, top_n=None):
 
 if __name__ == "__main__":
     # logging.basicConfig(level=logging.DEBUG, format='%(asctime)s: %(levelname)s [%(name)s:%(funcName)s] %(message)s')
-    # DEBUG = True
+    #DEBUG = True
     # 基本信息数据加载
-    # import_cb_info()
+    import_cb_info()
     # 日K历史数据加载
-    import_cb_daily()
+    #import_cb_daily()
     # wind_code_set = None
 
     # 更新 wind_convertible_bond_info 信息
