@@ -251,10 +251,11 @@ def import_stock_daily_hk(wind_code_set=None, begin_time=None):
 
 
 @app.task
-def import_stock_quertarly_hk(wind_code_set=None):
+def import_stock_quertarly_hk(wind_code_set=None, begin_time=None):
     """
     插入股票日线数据到最近一个工作日-1
     :param wind_code_set:
+    :param begin_time:
     :return:
     """
     table_name = "wind_stock_quertarly_hk"
@@ -292,7 +293,6 @@ def import_stock_quertarly_hk(wind_code_set=None):
         # 获取每只股票需要获取日线数据的日期区间
         table = session.execute(sql_str)
         # 计算每只股票需要获取日线数据的日期区间
-        begin_time = None
         # 获取date_from,date_to，将date_from,date_to做为value值
         stock_date_dic = {
             wind_code: (date_from if begin_time is None else min([date_from, begin_time]), date_to)
