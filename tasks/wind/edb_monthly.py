@@ -4,21 +4,24 @@
 Created on 2017/11/11
 @author: MG
 """
-from datetime import date, timedelta
+import logging
 from tasks.wind import invoker
 from tasks.backend import engine_md
+from sqlalchemy.types import String, Date
+from datetime import date, timedelta
+from sqlalchemy.dialects.mysql import DOUBLE
+from tasks.backend.orm import build_primary_key
 from direstinvoker import APIError, UN_AVAILABLE_DATE
 from tasks.utils.fh_utils import STR_FORMAT_DATE, split_chunk, str_2_date
 from tasks.utils.db_utils import with_db_session, add_col_2_table, alter_table_2_myisam, \
     bunch_insert_on_duplicate_update
-import pandas as pd
-import logging
+
 logger = logging.getLogger()
 
 
-def import_data():
+def import_edb_monthly():
     table_name = 'wind_edb_monthly'
-    has_table = engine_md.has_tanble(table_name)
+    has_table = engine_md.has_table(table_name)
     PMI_FIELD_CODE_2_CN_DIC = {
         "M0017126": ("PMI", date(2005, 1, 1)),
         "M0017127": ("PMI:生产", date(2005, 1, 1)),
@@ -57,8 +60,29 @@ def import_data():
         "M0001232": ("PPI:生活资料:当月同比", date(1996, 10, 1)),
         "M0066333": ("PPI:生活资料:环比", date(2011, 1, 1)),
     }
+    # 设置表属性类型
+    param_list = [
+        ('field_name', String(45)),
+        ('trade_date', Date),
+        ('val', DOUBLE),
+    ]
+    dtype = {key: val for key, val in param_list}
+    dtype['field_code'] = String(20)
     data_len = len(PMI_FIELD_CODE_2_CN_DIC)
-    sql_str = """select field_code, max(trade_date) trade_date_max from wind_edb_monthly group by field_code"""
+    if has_table:
+        sql_str = """select field_code, max(trade_date) trade_date_max from wind_edb_monthly group by field_code"""
+
+    else:
+        sql_str = """
+                       CREATE TABLE {table_name } (
+                     `field_code` varchar(20) NOT NULL,
+                     `field_name` varchar(45) DEFAULT NULL,
+                     `trade_date` date NOT NULL,
+                     `val` double DEFAULT NULL,
+                     PRIMARY KEY (`field_code`,`trade_date`)
+                   ) ENGINE=MyISAM DEFAULT CHARSET=utf8 COMMENT='保存wind edb 宏观经济数据';   
+
+               """.format(table_name)
     # 获取数据库中最大日期
     with with_db_session(engine_md) as session:
         table = session.execute(sql_str)
@@ -90,9 +114,13 @@ def import_data():
         data_df.rename(columns={wind_code.upper(): 'val'}, inplace=True)
         data_df['field_code'] = wind_code
         data_df['field_name'] = field_name
-        data_df.to_sql('wind_edb_monthly', engine_md, if_exists='append', index=False)
+        # data_df.to_sql('wind_edb_monthly', engine_md, if_exists='append', index=False)
+        bunch_insert_on_duplicate_update(data_df, table_name, engine_md, dtype=dtype)
+        if not has_table and engine_md.has_table(table_name):
+            alter_table_2_myisam(engine_md, [table_name])
+            build_primary_key([table_name])
 
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG, format='%(asctime)s: %(levelname)s [%(name)s:%(funcName)s] %(message)s')
-    import_data()
+    import_edb_monthly()
