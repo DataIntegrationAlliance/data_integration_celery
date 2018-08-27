@@ -3,7 +3,7 @@
 """
 @author  : MG
 @Time    : 2018/6/4 16:58
-@File    : wind_stock_kv.py
+@File    : stock_kv.py
 @contact : mmmaaaggg@163.com
 @desc    : 加载wind 一致预期EPS数据
 """
