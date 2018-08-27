@@ -7,3 +7,4 @@
 @contact : mmmaaaggg@163.com
 @desc    : 
 """
+from tasks.tushare.coin import *

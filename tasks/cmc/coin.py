@@ -10,6 +10,7 @@
 import datetime
 from cryptocmd import CmcScraper
 import pandas as pd
+from tasks import app
 import requests
 from cryptocmd.utils import InvalidCoinCode, get_url_data, extract_data, download_coin_data
 from sqlalchemy.types import String, Date, Integer
@@ -129,6 +130,7 @@ class CmcScraperV1(CmcScraper):
         self.end_date, self.start_date, self.headers, self.rows = extract_data(table)
 
 
+@app.task
 def import_coin_info():
     table_name = "cmc_coin_info"
     logging.info("更新 %s 开始", table_name)
@@ -191,6 +193,7 @@ def rename_by_dic(name, names):
     return name
 
 
+@app.task
 def import_coin_daily(id_set=None, begin_time=None):
     table_name = "cmc_coin_daily"
     info_table_name = "cmc_coin_info"

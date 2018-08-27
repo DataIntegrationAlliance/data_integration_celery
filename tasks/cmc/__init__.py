@@ -7,4 +7,4 @@
 @contact : mmmaaaggg@163.com
 @desc    : 
 """
-
+from tasks.cmc.coin import *

@@ -27,3 +27,5 @@ def add(x, y):
 
 from tasks.task2 import *
 from tasks.ifind import *
+from tasks.cmc import *
+from tasks.tushare import *

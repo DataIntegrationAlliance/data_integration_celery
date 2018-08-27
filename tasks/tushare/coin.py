@@ -9,6 +9,7 @@
 """
 import pandas as pd
 import tushare as ts
+from tasks import app
 from tasks.utils.fh_utils import date_2_str, str_2_date
 from tasks.config import config
 from sqlalchemy.types import String, Date, Integer
@@ -25,6 +26,7 @@ pro = ts.pro_api()
 DATE_FORMAT_STR = '%Y%m%d'
 
 
+@app.task
 def import_exchange_info():
     """
     交易所基本信息
@@ -108,6 +110,7 @@ def import_exchange_info():
             session.execute(create_pk_str)
 
 
+@app.task
 def import_coin_info():
     """获取全球交易币基本信息"""
     table_name = 'tushare_coin_info'
@@ -134,6 +137,7 @@ def import_coin_info():
             session.execute(create_pk_str)
 
 
+@app.task
 def import_coin_pair_info():
     """获取交易对信息"""
     table_name = 'tushare_coin_pair_info'
@@ -259,6 +263,7 @@ def import_coin_pair_info():
                 session.execute(create_pk_str)
 
 
+@app.task
 def import_coinbar():
     """获取行情数据"""
     freq_list = ['daily', 'week']
