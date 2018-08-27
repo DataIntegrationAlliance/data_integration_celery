@@ -70,10 +70,10 @@ def import_trade_date():
             logger.info('%s %d 条交易日数据导入 %s 完成', exchange_code, date_count, table_name)
             if not has_table and engine_md.has_table(table_name):
                 alter_table_2_myisam(engine_md, [table_name])
-                create_pk_str = """ALTER TABLE {TABLE_NAME}
-                CHANGE COLUMN 'KEY' 'KEY' VARCHAR(20) NOT NULL FIRST ,
-                CHANGE COLUMN 'trade_date' 'trade_date' DATA NOT NULL AFTER 'KEY',
-                ADD PRIMARY KEY ('key','trade_date')""".format(table_name=table_name)
+                create_pk_str = """ALTER TABLE {table_name}
+                CHANGE COLUMN `key` `key` VARCHAR(20) NOT NULL FIRST ,
+                CHANGE COLUMN `trade_date` `trade_date` DATA NOT NULL AFTER `key`,
+                ADD PRIMARY KEY (`key`,`trade_date`)""".format(table_name=table_name)
                 with with_db_session(engine_md) as session:
                     session.execute(create_pk_str)
 
