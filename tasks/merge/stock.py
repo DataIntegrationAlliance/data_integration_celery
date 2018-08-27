@@ -200,7 +200,7 @@ def max_up_or_down(data_s: pd.Series, ths_key, wind_key, primary_keys=None, **kw
             msg = '%s = %s; %s = %s; 状态不明' % (ths_key, str(ths_val), wind_key, str(wind_val))
         else:
             msg = '[%s] %s = %s; %s = %s; 状态不明' % (pk_str, ths_key, str(ths_val), wind_key, str(wind_val))
-        logger.debug(msg)
+        # logger.debug(msg)
         ret_code = -2
     elif ret_code_ths is None:
         ret_code = ret_code_wind
