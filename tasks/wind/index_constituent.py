@@ -7,20 +7,18 @@
 @contact : mmmaaaggg@163.com
 @desc    :导入指数成分股及权重
 """
-
 import logging
-from datetime import date, datetime, timedelta
 import pandas as pd
-from collections import OrderedDict
 from tasks import app
-from tasks.utils.db_utils import with_db_session
-from tasks.backend import engine_md
 from tasks.wind import invoker
-from tasks.utils.fh_utils import STR_FORMAT_DATE, date_2_str, str_2_date
-from direstinvoker import APIError,UN_AVAILABLE_DATE
-from tasks.utils.fh_utils import STR_FORMAT_DATE, date_2_str, str_2_date, get_first_idx,get_last_idx
+from tasks.backend import engine_md
+from collections import OrderedDict
+from datetime import date, datetime, timedelta
+from tasks.utils.db_utils import with_db_session, bunch_insert_on_duplicate_update
+from direstinvoker import APIError, UN_AVAILABLE_DATE
+from tasks.utils.fh_utils import STR_FORMAT_DATE, date_2_str, str_2_date, get_first_idx, get_last_idx
 from sqlalchemy.types import String, Date, Integer
-from sqlalchemy.dialects.mysql import DOUBLE
+from sqlalchemy.dialects.mysql import DOUBLE, TEXT
 
 DEBUG = False
 logger = logging.getLogger()
@@ -35,7 +33,7 @@ def get_trade_date_list_sorted(exch_code='SZSE') -> list:
     獲取交易日列表
     :return:
     """
-    sql_str = "select trade_date from wind_trade_date_all where exch_code = :exch_code order by trade_date"
+    sql_str = "select trade_date from wind_trade_date where exch_code = :exch_code order by trade_date"
     with with_db_session(engine_md) as session:
         trade_date_list_sorted = [content[0] for content in
                                   session.execute(sql_str, params={'exch_code': exch_code}).fetchall()]
@@ -47,13 +45,16 @@ def get_latest_constituent_df(index_code):
     获取最新的交易日日期，及相应的成分股数据
     :return:
     """
+    table_name = "wind_index_constituent"
+    has_table = engine_md.has_table(table_name)
+    if not has_table:
+        return None, None
     with with_db_session(engine_md) as session:
-        content = session.execute("select max(trade_date) from wind_index_constituent where index_code = :index_code",
-                                  params={"index_code": index_code}).fetchone()
-        if content is None:
+        date_latest = session.execute(
+            "select max(trade_date) from wind_index_constituent where index_code = :index_code",
+            params={"index_code": index_code}).scalar()
+        if date_latest is None:
             return None, None
-
-        date_latest = content[0]
 
     sql_str = "select * from wind_index_constituent where index_code = %s and trade_date = %s"
     sec_df = pd.read_sql(sql_str, engine_md, params=[index_code, date_latest])
@@ -190,6 +191,9 @@ def loop_get_data(idx_start, idx_end, trade_date_list_sorted, date_constituent_d
         date_curr = trade_date_list_sorted[idx]
         _, _ = get_index_constituent_2_dic(index_code, index_name, date_curr, idx,
                                            date_constituent_df_dict, idx_constituent_set_dic)
+        # 仅仅调试时使用
+        # if DEBUG and idx >= 3516:
+        #     break
 
 
 @app.task
@@ -206,6 +210,7 @@ def import_index_constituent_all():
     for param_dic in param_dic_list:
         import_index_constituent(**param_dic)
 
+
 def import_index_constituent(index_code, index_name, date_start, exch_code='SZSE', date_end=None, method='loop'):
     """
     导入 sector_code 板块的成分股
@@ -217,6 +222,16 @@ def import_index_constituent(index_code, index_name, date_start, exch_code='SZSE
     :return:
     """
     table_name = 'wind_index_constituent'
+    param_list = [
+        ('trade_date', Date),
+        ('weight', DOUBLE),
+        ('stock_name', String(80)),
+        ('index_code', String(20)),
+        ('index_name', String(80)),
+    ]
+    #  sldksldDFGDFGD,Nlfkgldfngldldfngldnzncvxcvnx
+    dtype = {key: val for key, val in param_list}
+    dtype['wind_cod'] = String(20)
     # 根据 exch_code 获取交易日列表
     trade_date_list_sorted = get_trade_date_list_sorted(exch_code)
     if trade_date_list_sorted is None or len(trade_date_list_sorted) == 0:
@@ -235,13 +250,16 @@ def import_index_constituent(index_code, index_name, date_start, exch_code='SZSE
     # 从数据库中获取最近一个交易日的成分股列表，如果为空，则代表新导入数据 date, constituent_df
     date_latest, constituent_df = get_latest_constituent_df(index_code)
     # date_constituent_df_dict[date] = constituent_df
-
+    date_latest = str_2_date(date_latest)
     if date_latest is None or date_latest < date_start:
         idx_start = get_last_idx(trade_date_list_sorted, lambda x: x <= date_start)
         sec_df, _ = get_index_constituent_2_dic(index_code, index_name, date_start, idx_start,
                                                 date_constituent_df_dict, idx_constituent_set_dic)
+        if sec_df is None or sec_df.shape[0] == 0:
+            return
         # 保存板块数据
-        sec_df.to_sql(table_name, engine_md, if_exists='append', index=False)
+        # sec_df.to_sql(table_name, engine_md, if_exists='append', index=False)
+        bunch_insert_on_duplicate_update(sec_df, table_name, engine_md, dtype=dtype)
     else:
         date_start = date_latest
         idx_start = get_last_idx(trade_date_list_sorted, lambda x: x <= date_start)
@@ -257,7 +275,7 @@ def import_index_constituent(index_code, index_name, date_start, exch_code='SZSE
 
     if method == 'loop':
         try:
-            # idx_end = idx_start + 10  # 调试使用
+            idx_end = idx_start + 10  # 调试使用
             loop_get_data(idx_start + 1, idx_end, trade_date_list_sorted, date_constituent_df_dict,
                           idx_constituent_set_dic, index_code, index_name)
         except APIError:
@@ -274,19 +292,21 @@ def import_index_constituent(index_code, index_name, date_start, exch_code='SZSE
     del date_constituent_df_dict[date_start]
     # 其他数据导入数据库
     for num, (date_cur, sec_df) in enumerate(date_constituent_df_dict.items(), start=1):
-        sec_df.to_sql(table_name, engine_md, if_exists='append', index=False)
-        # bunch_insert_on_duplicate_update()
+        # sec_df.to_sql(table_name, engine_md, if_exists='append', index=False)
+        bunch_insert_on_duplicate_update(sec_df, table_name, engine_md, dtype=dtype)
         logger.info("%d) %s %d 条 %s 成分股数据导入数据库", num, date_cur, sec_df.shape[0], index_name)
+        # 仅仅调试时使用
+        # if DEBUG and num >= 4:
+        #     break
 
 
 if __name__ == "__main__":
     sector_name = 'HSI恒生综合指数成分'
     sector_code = 'a003090201000000'
     date_str = '2018-02-23'
+    DEBUG = True
     import_index_constituent(sector_code, sector_name, date_str)
-
+    import_index_constituent_all()
     logging.basicConfig(level=logging.DEBUG, format='%(asctime)s: %(levelname)s [%(name)s:%(funcName)s] %(message)s')
     logging.getLogger('requests.packages.urllib3.connectionpool').setLevel(logging.WARNING)
     logging.getLogger('urllib3.connectionpool').setLevel(logging.WARNING)
-
-
