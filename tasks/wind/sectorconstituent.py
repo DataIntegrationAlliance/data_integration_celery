@@ -3,24 +3,22 @@
 """
 @author  : MG
 @Time    : 2018/2/24 11:01
-@File    : wind_sectorconstituent.py
+@File    : sectorconstituent.py
 @contact : mmmaaaggg@163.com
 @desc    : 导入板块成分股
 """
 
 import logging
-from datetime import date, datetime, timedelta
 import pandas as pd
-
 from tasks import app
 from tasks.backend import engine_md
+from datetime import date, datetime, timedelta
 from tasks.utils.db_utils import with_db_session
 from tasks.utils.fh_utils import STR_FORMAT_DATE, date_2_str, str_2_date, get_last_idx, get_first,get_last
-from direstinvoker import APIError, UN_AVAILABLE_DATE
 from tasks.wind import invoker
 from sqlalchemy.types import String, Date, Float, Integer
 from sqlalchemy.dialects.mysql import DOUBLE
-
+DEBUG = False
 logger = logging.getLogger()
 DATE_BASE = datetime.strptime('1980-01-01', STR_FORMAT_DATE).date()
 ONE_DAY = timedelta(days=1)
@@ -33,7 +31,7 @@ def get_trade_date_list_sorted(exch_code='SZSE') -> list:
     獲取交易日列表
     :return:
     """
-    sql_str = "SELECT trade_date FROM wind_trade_date_all WHERE exch_code = :exch_code ORDER BY trade_date"
+    sql_str = "SELECT trade_date FROM wind_trade_date WHERE exch_code = :exch_code ORDER BY trade_date"
     with with_db_session(engine_md) as session:
         trade_date_list_sorted = [content[0] for content in
                                   session.execute(sql_str, params={'exch_code': exch_code}).fetchall()]
@@ -45,13 +43,17 @@ def get_latest_constituent_df(sector_code):
     获取最新的交易日日期，及相应的成分股数据
     :return:
     """
-    with with_db_session(engine_md) as session:
-        content = session.execute("SELECT max(trade_date) FROM wind_sectorconstituent WHERE sector_code = :sector_code",
-                                  params={"sector_code": sector_code}).fetchone()
-        if content is None:
-            return None, None
+    table_name = "wind_sectorconstituent"
+    has_table =engine_md.has_table(table_name)
+    if not has_table:
+        return None, None
 
-        date_latest = content[0]
+    sql_str = 'SELECT max(trade_date) FROM wind_sectorconstituent WHERE sector_code = :sector_code'
+
+    with with_db_session(engine_md) as session:
+        date_latest = session.execute(sql_str, params={"sector_code": sector_code}).scalar()
+        if date_latest is None:
+            return None, None
 
     sql_str = "SELECT * FROM wind_sectorconstituent WHERE sector_code = %s AND trade_date = %s"
     sec_df = pd.read_sql(sql_str, engine_md, params=[sector_code, date_latest])
@@ -220,6 +222,7 @@ def import_sectorconstituent_all():
         import_sectorconstituent(**param_dic)
 
 
+@app.task
 def import_sectorconstituent(sector_code, sector_name, date_start, exch_code='SZSE'):
     """
     导入 sector_code 板块的成分股
@@ -271,6 +274,9 @@ def import_sectorconstituent(sector_code, sector_name, date_start, exch_code='SZ
     for num, (date_cur, sec_df) in enumerate(date_constituent_df_dict.items(), start=1):
         sec_df.to_sql("wind_sectorconstituent", engine_md, if_exists='append', index=False)
         logger.info("%d) %s %d 条 %s 成分股数据导入数据库", num, date_cur, sec_df.shape[0], sector_name)
+        # 仅仅调试时使用
+        # if DEBUG and num >= 2:
+        #     break
 
 
 sector_name = 'HSI恒生综合指数成分'
@@ -280,6 +286,7 @@ import_sectorconstituent(sector_code, sector_name, date_str)
 
 
 if __name__ == "__main__":
+    DEBUG = True
     logging.basicConfig(level=logging.DEBUG, format='%(asctime)s: %(levelname)s [%(name)s:%(funcName)s] %(message)s')
     logging.getLogger('requests.packageimport_sectorconstituent_alls.urllib3.connectionpool').setLevel(logging.WARNING)
     logging.getLogger('urllib3.connectionpool').setLevel(logging.WARNING)
