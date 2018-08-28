@@ -360,7 +360,6 @@ def add_data_2_ckdvp(col_name, param, wind_code_set: set = None, begin_time=None
                     # tot_data_df.to_sql(table_name, engine_md, if_exists='append', index=False, dtype=dtype)
                     data_count = bunch_insert_on_duplicate_update(tot_data_df, table_name, engine_md, dtype)
                     tot_data_count += data_count
-                    logging.info("%s 新增数据 %d 条", table_name, data_count)
                     data_df_list, data_count = [], 0
 
                 # 仅调试使用
@@ -396,7 +395,7 @@ if __name__ == "__main__":
     # DEBUG = True
     # import_wind_stock_info(refresh=False)
     # 更新每日股票数据
-    # import_stock_daily()
+    import_stock_daily()
     # import_stock_daily_wch()
-    wind_code_set = None
-    add_new_col_data('ev', '', wind_code_set=wind_code_set)
+    # wind_code_set = None
+    # add_new_col_data('ev', '', wind_code_set=wind_code_set)

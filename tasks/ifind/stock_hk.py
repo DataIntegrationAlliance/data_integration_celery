@@ -124,9 +124,9 @@ def import_stock_hk_info(ths_code=None, refresh=False):
             session.commit()
     dtype = {key: val for key, _, val in indicator_param_list}
     dtype['ths_code'] = String(20)
-    data_count = data_df.shape[0]
+    # data_count = data_df.shape[0]
     # data_df.to_sql(table_name, engine_md, if_exists='append', index=False, dtype=dtype)
-    bunch_insert_on_duplicate_update(data_df, table_name, engine_md, dtype)
+    data_count = bunch_insert_on_duplicate_update(data_df, table_name, engine_md, dtype)
     logging.info("更新 %s 完成 存量数据 %d 条", table_name, data_count)
     if not has_table and engine_md.has_table(table_name):
         alter_table_2_myisam(engine_md, [table_name])
@@ -357,8 +357,9 @@ def save_ifind_stock_hk_daily_his(table_name, data_df_list, dtype):
     if len(data_df_list) > 0:
         tot_data_df = pd.concat(data_df_list)
         # TODO: 需要解决重复数据插入问题，日后改为sql语句插入模式
-        tot_data_df.to_sql(table_name, engine_md, if_exists='append', index=False, dtype=dtype)
-        data_count = tot_data_df.shape[0]
+        # tot_data_df.to_sql(table_name, engine_md, if_exists='append', index=False, dtype=dtype)
+        # data_count = tot_data_df.shape[0]
+        data_count = bunch_insert_on_duplicate_update(tot_data_df, table_name, engine_md, dtype)
         logger.info('保存数据到 %s 成功，包含 %d 条记录', table_name, data_count)
         return data_count
     else:
@@ -487,7 +488,8 @@ def add_data_2_ckdvp(json_indicator, json_param, ths_code_set: set = None, begin
             # 大于阀值有开始插入
             if data_count >= 10000:
                 tot_data_df = pd.concat(data_df_list)
-                tot_data_df.to_sql(table_name, engine_md, if_exists='append', index=False, dtype=dtype)
+                # tot_data_df.to_sql(table_name, engine_md, if_exists='append', index=False, dtype=dtype)
+                data_count = bunch_insert_on_duplicate_update(tot_data_df, table_name, engine_md, dtype)
                 tot_data_count += data_count
                 data_df_list, data_count = [], 0
 
@@ -499,7 +501,8 @@ def add_data_2_ckdvp(json_indicator, json_param, ths_code_set: set = None, begin
     finally:
         if data_count > 0:
             tot_data_df = pd.concat(data_df_list)
-            tot_data_df.to_sql(table_name, engine_md, if_exists='append', index=False, dtype=dtype)
+            # tot_data_df.to_sql(table_name, engine_md, if_exists='append', index=False, dtype=dtype)
+            data_count = bunch_insert_on_duplicate_update(tot_data_df, table_name, engine_md, dtype)
             tot_data_count += data_count
 
         if not has_table and engine_md.has_table(table_name):
@@ -521,13 +524,13 @@ if __name__ == "__main__":
     # DEBUG = True
     TRIAL = True
     # 股票基本信息数据加载
-    # ths_code = None  # '600006.SH,600009.SH'
-    # refresh = False
-    # import_stock_hk_info(ths_code, refresh=refresh)
+    ths_code = None  # '600006.SH,600009.SH'
+    refresh = False
+    import_stock_hk_info(ths_code, refresh=refresh)
 
     ths_code_set = None  # {'600006.SH', '600009.SH'}
     # 股票日K历史数据加载
-    # import_stock_hk_daily_his(ths_code_set)
+    import_stock_hk_daily_his(ths_code_set)
     # 股票日K数据加载
     import_stock_hk_daily_ds(ths_code_set)
     # 添加新字段

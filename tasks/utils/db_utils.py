@@ -186,6 +186,7 @@ def bunch_insert_on_duplicate_update(df: pd.DataFrame, table_name, engine, dtype
         df.to_sql(table_name, engine, if_exists='append', index=False, dtype=dtype)
         insert_count = df.shape[0]
 
+    logger.debug('%s 新增数据 %d 条')
     return insert_count
 
 
