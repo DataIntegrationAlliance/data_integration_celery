@@ -189,6 +189,23 @@ def bunch_insert_on_duplicate_update(df: pd.DataFrame, table_name, engine, dtype
     return insert_count
 
 
+def execute_sql(engine, sql_str, commit=False):
+    """
+    执行给的 sql 语句
+    :param engine:
+    :param sql_str:
+    :param commit:
+    :return:
+    """
+    with with_db_session(engine) as session:
+        rslt = session.execute(sql_str)
+        insert_count = rslt.rowcount
+        if commit:
+            session.commit()
+
+    return insert_count
+
+
 if __name__ == "__main__":
     from sqlalchemy import create_engine
     import numpy as np
