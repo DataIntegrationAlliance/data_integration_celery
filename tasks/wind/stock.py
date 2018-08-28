@@ -357,8 +357,10 @@ def add_data_2_ckdvp(col_name, param, wind_code_set: set = None, begin_time=None
                 # 大于阀值有开始插入
                 if data_count >= 10000:
                     tot_data_df = pd.concat(data_df_list)
-                    tot_data_df.to_sql(table_name, engine_md, if_exists='append', index=False, dtype=dtype)
+                    # tot_data_df.to_sql(table_name, engine_md, if_exists='append', index=False, dtype=dtype)
+                    data_count = bunch_insert_on_duplicate_update(tot_data_df, table_name, engine_md, dtype)
                     tot_data_count += data_count
+                    logging.info("%s 新增数据 %d 条", table_name, data_count)
                     data_df_list, data_count = [], 0
 
                 # 仅调试使用
@@ -369,7 +371,8 @@ def add_data_2_ckdvp(col_name, param, wind_code_set: set = None, begin_time=None
         finally:
             if data_count > 0:
                 tot_data_df = pd.concat(data_df_list)
-                tot_data_df.to_sql(table_name, engine_md, if_exists='append', index=False, dtype=dtype)
+                # tot_data_df.to_sql(table_name, engine_md, if_exists='append', index=False, dtype=dtype)
+                data_count = bunch_insert_on_duplicate_update(tot_data_df, table_name, engine_md, dtype)
                 tot_data_count += data_count
 
             if not has_table and engine_md.has_table(table_name):
@@ -391,9 +394,9 @@ def add_data_2_ckdvp(col_name, param, wind_code_set: set = None, begin_time=None
 
 if __name__ == "__main__":
     # DEBUG = True
-    import_wind_stock_info(refresh=False)
+    # import_wind_stock_info(refresh=False)
     # 更新每日股票数据
-    import_stock_daily()
+    # import_stock_daily()
     # import_stock_daily_wch()
-    # wind_code_set = None
-    # add_new_col_data('ebitdaps', '',wind_code_set=wind_code_set)
+    wind_code_set = None
+    add_new_col_data('ev', '', wind_code_set=wind_code_set)
