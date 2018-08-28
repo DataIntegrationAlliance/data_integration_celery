@@ -38,6 +38,8 @@ def get_date_since(wind_code_ipo_date_dic, regex_str, date_establish):
     date_since = date_establish
     ndays_per_update = 60
     for wind_code, ipo_date in wind_code_ipo_date_dic.items():
+        if ipo_date is None:
+            continue
         m = re.match(regex_str, wind_code)
         if m is not None and date_since < ipo_date:
             date_since = ipo_date
@@ -164,11 +166,11 @@ def import_future_info():
         ('ths_start_trade_date_future', '', Date),
         ('ths_last_td_date_future', '', Date),
         ('ths_last_delivery_date_future', '', Date),
-        ('ths_delivery_month_future', '', Integer),
+        ('ths_delivery_month_future', '', String(10)),
         ('ths_listing_benchmark_price_future', '', DOUBLE),
         ('ths_initial_td_deposit_future', '', DOUBLE),
         ('ths_contract_month_explain_future', '', String(60)),
-        ('ths_td_time_explain_future', '', String(60)),
+        ('ths_td_time_explain_future', '', String(80)),
         ('ths_last_td_date_explian_future', '', String(60)),
         ('ths_delivery_date_explain_future', '', String(60)),
         ('ths_exchange_short_name_future', '', String(20)),
@@ -231,6 +233,7 @@ def import_future_info():
             logger.warning("更新 %s 结束 %d 条记录被更新", table_name, data_count)
         else:
             data_count = future_info_df.shape[0]
+
             # future_info_df.to_sql(table_name, engine_md, if_exists='append', index=False, dtype=dtype)
             data_count = bunch_insert_on_duplicate_update(future_info_df, table_name, engine_md, dtype)
             logger.info("更新 %s 结束 %d 条记录被更新", table_name, data_count)
@@ -370,6 +373,7 @@ def import_future_daily_his(ths_code_set: set = None, begin_time=None):
                 data_count = bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md, dtype)
                 tot_data_count += data_count
                 data_df_list, data_count = [], 0
+                logging.info("%s 新增数据 %d 条", table_name, data_count)
 
             # 仅调试使用
             if DEBUG and len(data_df_list) > 1:
@@ -380,6 +384,7 @@ def import_future_daily_his(ths_code_set: set = None, begin_time=None):
             # data_df_all.to_sql(table_name, engine_md, if_exists='append', index=False, dtype=dtype)
             data_count = bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md, dtype)
             tot_data_count += data_count
+            logging.info("%s 新增数据 %d 条", table_name, data_count)
 
         if not has_table and engine_md.has_table(table_name):
             alter_table_2_myisam(engine_md, [table_name])
@@ -392,9 +397,9 @@ if __name__ == "__main__":
     TRIAL = True
     # DEBUG = True
     # 保存期货交易所品种信息，一次性数据导入，以后基本上不需要使用了
-    # import_variety_info()
+    import_variety_info()
     # 导入期货基础信息数据
-    # import_future_info()
+    import_future_info()
     # 导入期货历史行情数据
     import_future_daily_his()
     # import_future_info_hk()
