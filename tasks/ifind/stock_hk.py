@@ -41,7 +41,6 @@ def get_stock_hk_code_set(date_fetch):
     return set(stock_df['THSCODE'])
 
 
-
 @app.task
 def import_stock_hk_info(ths_code=None, refresh=False):
     """
