@@ -5,7 +5,7 @@
 @Time    : 2018/8/27 9:48
 @File    : coin.py
 @contact : mmmaaaggg@163.com
-@desc    : 
+@desc    : v1 接口将于2018年12月关闭，此后将只能试用pro接口
 """
 import datetime
 from cryptocmd import CmcScraper
@@ -16,16 +16,16 @@ from cryptocmd.utils import InvalidCoinCode, get_url_data, extract_data, downloa
 from sqlalchemy.types import String, Date, Integer
 from sqlalchemy.dialects.mysql import DOUBLE, DATETIME
 from tasks.backend import engine_md
-from tasks.merge.code_mapping import update_from_info_table
-from tasks.utils.db_utils import with_db_session, add_col_2_table, alter_table_2_myisam, \
-    bunch_insert_on_duplicate_update
-from tasks.utils.fh_utils import str_2_date, date_2_str
+from tasks.utils.db_utils import with_db_session, alter_table_2_myisam, bunch_insert_on_duplicate_update, execute_sql
+from tasks.utils.fh_utils import str_2_date, date_2_str, str_2_datetime
+from tasks.config import config
 import logging
 
 DEBUG = False
 logger = logging.getLogger()
 DATE_FORMAT_STR_CMC = '%d-%m-%Y'
 DATE_FORMAT_STR = '%Y-%m-%d'
+DATETIME_FORMAT_STR = '%Y-%m-%dT%H:%M:%S.%fZ'
 
 
 def get_coin_ids(coin_code):
@@ -92,6 +92,7 @@ def download_coin_data_by_id(coin_id, start_date, end_date):
 
 
 class CmcScraperV1(CmcScraper):
+    """扩展原有类，支持根据id进行数据下载"""
 
     def __init__(self, coin_code, coin_id=None, start_date=None, end_date=None, all_time=False):
         """
@@ -132,7 +133,8 @@ class CmcScraperV1(CmcScraper):
 
 @app.task
 def import_coin_info():
-    table_name = "cmc_coin_info"
+    """插入基础信息数据到 cmc_coin_v1_info"""
+    table_name = "cmc_coin_v1_info"
     logging.info("更新 %s 开始", table_name)
     has_table = engine_md.has_table(table_name)
     # url = 'https://api.coinmarketcap.com/v2/listings/'
@@ -195,8 +197,9 @@ def rename_by_dic(name, names):
 
 @app.task
 def import_coin_daily(id_set=None, begin_time=None):
-    table_name = "cmc_coin_daily"
-    info_table_name = "cmc_coin_info"
+    """插入历史数据到 cmc_coin_v1_daily 试用 v1 接口，该接口可能在2018年12月底到期"""
+    table_name = "cmc_coin_v1_daily"
+    info_table_name = "cmc_coin_v1_info"
     logging.info("更新 %s 开始", table_name)
     has_table = engine_md.has_table(table_name)
     if has_table:
@@ -247,12 +250,13 @@ def import_coin_daily(id_set=None, begin_time=None):
     }
     col_names = dtype.keys()
     data_df_list = []
-    data_len = len(stock_date_dic)
+    dic_count = len(stock_date_dic)
+    data_count = 0
     # 获取接口数据
-    logger.info('%d coins will been import into %s', data_len, table_name)
+    logger.info('%d coins will been import into %s', dic_count, table_name)
     try:
-        for data_num, ((coin_id, symbol), (date_from, date_to)) in enumerate(stock_date_dic.items()):
-            logger.debug('%d/%d) %s[%s] [%s - %s]', data_num, data_len, coin_id, symbol, date_from, date_to)
+        for data_num, ((coin_id, symbol), (date_from, date_to)) in enumerate(stock_date_dic.items(), start=1):
+            logger.debug('%d/%d) %s[%s] [%s - %s]', data_num, dic_count, coin_id, symbol, date_from, date_to)
             if date_from is None:
                 scraper = CmcScraperV1(symbol, coin_id)
             else:
@@ -260,38 +264,181 @@ def import_coin_daily(id_set=None, begin_time=None):
                 scraper = CmcScraperV1(symbol, coin_id, start_date=date_from_str)
             data_df = scraper.get_dataframe()
             if data_df is None or data_df.shape[0] == 0:
-                logger.warning('%d/%d) %s has no data during %s %s', data_num, data_len, coin_id, date_from, date_to)
+                logger.warning('%d/%d) %s has no data during %s %s', data_num, dic_count, coin_id, date_from, date_to)
                 continue
             data_df.rename(columns={col_name: rename_by_dic(col_name, col_names) for col_name in data_df.columns},
                            inplace=True)
             data_df.rename(columns={'market cap': 'market_cap'}, inplace=True)
             data_df['market_cap'] = data_df['market_cap'].apply(lambda x: 0 if isinstance(x, str) else x)
-            logger.info('%d/%d) %d data of %s between %s and %s', data_num, data_len, data_df.shape[0], coin_id,
+            logger.info('%d/%d) %d data of %s between %s and %s', data_num, dic_count, data_df.shape[0], coin_id,
                         data_df['date'].min(), data_df['date'].max())
             data_df['id'] = coin_id
             data_df_list.append(data_df)
+            data_count += data_df.shape[0]
             # 仅供调试使用
-            if DEBUG and len(data_df_list) > 1:
+            if DEBUG and len(data_df_list) > 10:
                 break
+
+            if data_count > 10000:
+                data_df_all = pd.concat(data_df_list)
+                data_count = bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md, dtype=dtype)
+                logging.info("%s %d 条信息被更新", table_name, data_count)
+                data_df_list, data_count = [], 0
+
     finally:
         # 导入数据库 创建
         if len(data_df_list) > 0:
             data_df_all = pd.concat(data_df_list)
-
             data_count = bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md, dtype=dtype)
             logging.info("更新 %s 结束 %d 条信息被更新", table_name, data_count)
-            if not has_table and engine_md.has_table(table_name):
-                alter_table_2_myisam(engine_md, [table_name])
-                # build_primary_key([table_name])
-                create_pk_str = """ALTER TABLE {table_name}
-                CHANGE COLUMN `id` `id` VARCHAR(60) NOT NULL FIRST ,
-                CHANGE COLUMN `date` `date` DATE NOT NULL AFTER `id`,
-                ADD PRIMARY KEY (`id`, `date`)""".format(table_name=table_name)
-                with with_db_session(engine_md) as session:
-                    session.execute(create_pk_str)
+
+        if not has_table and engine_md.has_table(table_name):
+            alter_table_2_myisam(engine_md, [table_name])
+            # build_primary_key([table_name])
+            create_pk_str = """ALTER TABLE {table_name}
+            CHANGE COLUMN `id` `id` VARCHAR(60) NOT NULL FIRST ,
+            CHANGE COLUMN `date` `date` DATE NOT NULL AFTER `id`,
+            ADD PRIMARY KEY (`id`, `date`)""".format(table_name=table_name)
+            with with_db_session(engine_md) as session:
+                session.execute(create_pk_str)
+
+
+@app.task
+def import_coin_latest():
+    """插入最新价格数据到 cmc_coin_pro_latest """
+    table_name = 'cmc_coin_pro_latest'
+    has_table = engine_md.has_table(table_name)
+    # 设置 dtype
+    dtype = {
+        'id': Integer,
+        'name': String(60),
+        'slug': String(60),
+        'symbol': String(20),
+        'date_added': DATETIME,
+        'last_updated': DATETIME,
+        'market_cap': DOUBLE,
+        'circulating_supply': DOUBLE,
+        'max_supply': DOUBLE,
+        'num_market_pairs': DOUBLE,
+        'percent_change_1h': DOUBLE,
+        'percent_change_24h': DOUBLE,
+        'percent_change_7d': DOUBLE,
+        'price': DOUBLE,
+        'total_supply': DOUBLE,
+        'volume_24h': DOUBLE,
+        'cmc_rank': DOUBLE,
+    }
+
+    header = {
+        'Content-Type': 'application/json',
+        'X-CMC_PRO_API_KEY': config.CMC_PRO_API_KEY
+    }
+    params = {
+        # 'CMC_PRO_API_KEY': config.CMC_PRO_API_KEY,
+        'limit': 5000,
+        'start': 1
+    }
+    # https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest?sort=market_cap&start=0&limit=10&cryptocurrency_type=tokens&convert=USD,BTC
+    url = "https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest"
+    rsp = requests.get(url=url, params=params, headers=header)
+    if rsp.status_code != 200:
+        logger.error('获取数据异常[%d] %s', rsp.status_code, rsp.content)
+        return
+    ret_dic = rsp.json()
+    data_list = ret_dic['data']
+
+    data_dic_list = []
+    for dic in data_list:
+        data_dic = {}
+        for key, val in dic.items():
+            if key == 'quote':
+                for sub_key, sub_val in val['USD'].items():
+                    data_dic[sub_key] = sub_val
+            else:
+                data_dic[key] = val
+        data_dic_list.append(data_dic)
+
+    data_df = pd.DataFrame(data_dic_list)
+    # 数据整理
+    data_df['date_added'] = data_df['date_added'].apply(lambda x:  str_2_datetime(x, DATETIME_FORMAT_STR))
+    data_df['last_updated'] = data_df['last_updated'].apply(lambda x: str_2_datetime(x, DATETIME_FORMAT_STR))
+    data_count = bunch_insert_on_duplicate_update(data_df, table_name, engine_md, dtype=dtype)
+    logging.info("更新 %s 结束 %d 条信息被更新", table_name, data_count)
+    if not has_table and engine_md.has_table(table_name):
+        alter_table_2_myisam(engine_md, [table_name])
+        # build_primary_key([table_name])
+        create_pk_str = """ALTER TABLE {table_name}
+        CHANGE COLUMN `id` `id` VARCHAR(60) NOT NULL FIRST ,
+        CHANGE COLUMN `last_updated` `last_updated` DATETIME NOT NULL AFTER `id`,
+        ADD PRIMARY KEY (`id`, `last_updated`)""".format(table_name=table_name)
+        execute_sql(engine_md, create_pk_str)
+
+
+def merge_latest():
+    """
+    将 cmc_coin_v1_daily 历史数据 以及 cmc_coin_pro_latest 最新价格数据 合并到 cmc_coin_merged_latest
+    :return:
+    """
+    table_name = 'cmc_coin_merged_latest'
+    logger.info("开始合并数据到 %s 表", table_name)
+    has_table = engine_md.has_table(table_name)
+    create_sql_str = """CREATE TABLE {table_name} (
+      `id` VARCHAR(60) NOT NULL,
+      `date` DATE NOT NULL,
+      `datetime` DATETIME NULL,
+      `name` VARCHAR(60) NULL,
+      `symbol` VARCHAR(20) NULL,
+      `close` DOUBLE NULL,
+      `volume` DOUBLE NULL,
+      `market_cap` DOUBLE NULL,
+      PRIMARY KEY (`id`, `date`))
+    ENGINE = MyISAM""".format(table_name=table_name)
+    with with_db_session(engine_md) as session:
+        if not has_table:
+            session.execute(create_sql_str)
+            logger.info("创建 %s 表", table_name)
+        session.execute('truncate table {table_name}'.format(table_name=table_name))
+        insert_sql_str = """INSERT INTO `{table_name}` 
+            (`id`, `date`, `datetime`, `name`, `symbol`, `close`, `volume`, `market_cap`) 
+            select daily.id, `date`, `date`, `name`, `symbol`, `close`, `volume`, `market_cap` 
+            from cmc_coin_v1_daily daily
+            left join cmc_coin_v1_info info
+            on daily.id = info.id""".format(table_name=table_name)
+        session.execute(insert_sql_str)
+        session.commit()
+        insert_latest_sql_str = """INSERT INTO `{table_name}` 
+            (`id`, `date`, `datetime`, `name`, `symbol`, `close`, `volume`, `market_cap`) 
+            select info.id, date(latest.last_updated), latest.last_updated, 
+                latest.name, latest.symbol, price, volume_24h, market_cap
+            from cmc_coin_pro_latest latest
+            left join
+            (
+                select latest.name, latest.symbol, max(latest.last_updated) last_updated
+                from cmc_coin_pro_latest latest
+                group by latest.name, latest.symbol
+            ) g
+            on latest.name = g.name
+            and latest.symbol = g.symbol
+            and latest.last_updated = g.last_updated
+            left outer join cmc_coin_v1_info info
+            on latest.name = info.name
+            and latest.symbol = info.symbol
+            on duplicate key update
+                `datetime`=values(`datetime`), 
+                `name`=values(`name`), 
+                `symbol`=values(`symbol`), 
+                `close`=values(`close`), 
+                `volume`=values(`volume`), 
+                `market_cap`=values(`market_cap`)""".format(table_name=table_name)
+        session.execute(insert_latest_sql_str)
+        session.commit()
+        data_count = session.execute("select count(*) from {table_name}".format(table_name=table_name)).scalar()
+        logger.info("%d 条记录插入到 %s", data_count, table_name)
 
 
 if __name__ == "__main__":
     DEBUG = True
     # import_coin_info()
-    import_coin_daily()
+    # import_coin_daily()
+    # import_coin_latest()
+    merge_latest()
