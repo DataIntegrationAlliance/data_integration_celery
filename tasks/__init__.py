@@ -9,7 +9,9 @@
 """
 from celery import Celery
 from tasks.config import celery_config
+import logging
 
+logger = logging.getLogger()
 app = Celery('tasks',
              config_source=celery_config,
              # broker='amqp://mg:***@localhost:5672/celery_tasks',
@@ -25,7 +27,27 @@ def add(x, y):
     return x + y
 
 
-from tasks.task2 import *
-from tasks.ifind import *
-from tasks.cmc import *
-from tasks.tushare import *
+try:
+    from tasks.task2 import *
+except ImportError:
+    logger.exception("加载 tasks.task2 失败")
+
+try:
+    from tasks.ifind import *
+except ImportError:
+    logger.exception("加载 tasks.ifind 失败")
+
+try:
+    from tasks.wind import *
+except ImportError:
+    logger.exception("加载 tasks.wind 失败")
+
+try:
+    from tasks.cmc import *
+except ImportError:
+    logger.exception("加载 tasks.cmc 失败")
+
+try:
+    from tasks.tushare import *
+except ImportError:
+    logger.exception("加载 tasks.tushare 失败")
