@@ -7,3 +7,6 @@ sqlalchemy
 mysqlclient
 xlrd
 DIRestInvoker
+bs4
+tushare
+cryptocmd
