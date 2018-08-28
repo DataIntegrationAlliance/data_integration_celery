@@ -333,7 +333,7 @@ def import_future_daily_his(ths_code_set: set = None, begin_time=None):
                 FROM ifind_future_info fi
             ) tt"""
         logger.warning('%s 不存在，仅使用 %s 表进行计算日期范围', table_name)
-    future_date_dic = {}
+
     with with_db_session(engine_md) as session:
         # 获取每只股票需要获取日线数据的日期区间
         table = session.execute(sql_str)
