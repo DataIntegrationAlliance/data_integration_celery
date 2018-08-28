@@ -50,7 +50,7 @@ def get_date_since(wind_code_ipo_date_dic, regex_str, date_establish):
 
 def import_variety_info():
     """保存期货交易所品种信息，一次性数据导入，以后基本上不需要使用了"""
-    table_name = 'ifind_variety_info'
+    table_name = 'ifind_future_variety_info'
     exchange_list = [
         '上海期货交易所',
         '大连商品交易所',
