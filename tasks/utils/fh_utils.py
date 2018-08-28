@@ -165,6 +165,19 @@ def datetime_2_str(dt, format=STR_FORMAT_DATETIME):
     return dt_str
 
 
+def str_2_datetime(datetime_str, format=STR_FORMAT_DATETIME):
+    if datetime_str is not None:
+        if type(datetime_str) == str:
+            date_ret = datetime.strptime(datetime_str, format)
+        elif type(datetime_str) in (Timestamp, datetime):
+            date_ret = datetime_str
+        else:
+            date_ret = datetime_str
+    else:
+        date_ret = datetime_str
+    return date_ret
+
+
 def str_2_bytes(input_str):
     """
     用于将 str 类型转换为 bytes 类型
