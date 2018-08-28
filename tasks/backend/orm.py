@@ -52,6 +52,7 @@ def init(alter_table=False):
 def build_primary_key(table_name_list):
     """
     自动判断表名称，将info、daily表自动增加主键
+    目前支持 wind, ifind, tushare 以及合并后 info 及 daily表
     :param table_name_list:
     :return:
     """
@@ -63,6 +64,7 @@ def build_primary_key(table_name_list):
     with with_db_session(engine_md) as session:
         for num, table_name in enumerate(table_name_list, start=1):
             if table_name.find('ifind_') != -1:
+                # ifind info daily
                 create_ifind_daily_pk_str = """ALTER TABLE %s
                     CHANGE COLUMN `ths_code` `ths_code` VARCHAR(20) NOT NULL FIRST,
                     CHANGE COLUMN `time` `time` DATE NOT NULL AFTER `ths_code`,
@@ -90,6 +92,7 @@ def build_primary_key(table_name_list):
                 else:
                     logger.debug('%d/%d) %s 无需操作', num, table_count, table_name)
             elif table_name.find('wind_') != -1:
+                # wind info daily
                 create_wind_daily_pk_str = """ALTER TABLE %s
                     CHANGE COLUMN `wind_code` `wind_code` VARCHAR(20) NOT NULL FIRST,
                     CHANGE COLUMN `trade_date` `trade_date` DATE NOT NULL AFTER `wind_code`,
@@ -116,7 +119,37 @@ def build_primary_key(table_name_list):
                         logger.info('%d/%d) %s 建立主键 [wind_code]', num, table_count, table_name)
                 else:
                     logger.debug('%d/%d) %s 无需操作', num, table_count, table_name)
+
+            elif table_name.find('tushare_') != -1:
+                # tushare info daily
+                create_wind_daily_pk_str = """ALTER TABLE %s
+                        CHANGE COLUMN `ts_code` `ts_code` VARCHAR(20) NOT NULL FIRST,
+                        CHANGE COLUMN `trade_date` `trade_date` DATE NOT NULL AFTER `ts_code`,
+                        ADD PRIMARY KEY (`ts_code`, `trade_date`)"""
+                create_wind_info_pk_str = """ALTER TABLE %s
+                        CHANGE COLUMN `ts_code` `ts_code` VARCHAR(20) NOT NULL FIRST,
+                        ADD PRIMARY KEY (`ts_code`)"""
+                if table_name.find('_daily') != -1:
+                    col_name = session.execute(query_pk_str,
+                                               params={'schema': config.DB_SCHEMA_MD,
+                                                       'table_name': table_name}).scalar()
+                    if col_name is None:
+                        # 如果没有记录则 创建主键
+                        session.execute(create_wind_daily_pk_str % table_name)
+                        logger.info('%d/%d) %s 建立主键 [ts_code, trade_date]', num, table_count, table_name)
+
+                elif table_name.find('_info') != -1:
+                    col_name = session.execute(query_pk_str,
+                                               params={'schema': config.DB_SCHEMA_MD,
+                                                       'table_name': table_name}).scalar()
+                    if col_name is None:
+                        # 如果没有记录则 创建主键
+                        session.execute(create_wind_info_pk_str % table_name)
+                        logger.info('%d/%d) %s 建立主键 [ts_code]', num, table_count, table_name)
+                else:
+                    logger.debug('%d/%d) %s 无需操作', num, table_count, table_name)
             else:
+                # 合并后的 info daily
                 create_daily_pk_str = """ALTER TABLE %s
                     CHANGE COLUMN `unique_code` `unique_code` VARCHAR(20) NOT NULL FIRST,
                     CHANGE COLUMN `trade_date` `trade_date` DATE NOT NULL AFTER `unique_code`,
