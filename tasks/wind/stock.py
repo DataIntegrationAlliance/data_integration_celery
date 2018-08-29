@@ -96,7 +96,7 @@ def import_wind_stock_info(refresh=False):
     # 对数据表进行规范整理.整合,索引重命名
     stock_info_all_df = pd.concat(stock_info_df_list)
     stock_info_all_df.index.rename('wind_code', inplace=True)
-    logging.info('%s stock data will be import', stock_info_all_df.shape[0])
+    logging.info('%d data will be import', stock_info_all_df.shape[0])
     stock_info_all_df.reset_index(inplace=True)
     # data_list = list(stock_info_all_df.T.to_dict().values())
     # 对wind_stock_info表进行数据插入
