@@ -55,7 +55,7 @@ def import_private_fund_info(table_name, get_df=False):
         ('FUND_PTMYEAR', String(30)),
         ('FUND_TYPE', String(20)),
         ('FUND_FUNDMANAGER', String(500)),
-        ('SEC_NAME',String(2000)),
+        ('SEC_NAME', String(2000)),
         ('STRATEGY_TYPE', String(200)),
         ('TRADE_DATE_LATEST', String(200)),
     ]
@@ -258,12 +258,12 @@ def save_fund_info(fund_info_df, col_type):
     # TODO: 对于存量数据，需要进行定期更新操作
     # wind_fund_info 表中增量数据插入到 fund_info
     sql_str = """
-        insert into fund_info(wind_code, sec_name, strategy_type, fund_setupdate, fund_maturitydate, fund_mgrcomp, 
+        INSERT INTO fund_info(wind_code, sec_name, strategy_type, fund_setupdate, fund_maturitydate, fund_mgrcomp, 
         fund_existingyear, fund_ptmyear, fund_type, fund_fundmanager)
-        select wfi.wind_code, wfi.sec_name, wfi.strategy_type, wfi.fund_setupdate, wfi.fund_maturitydate, wfi.fund_mgrcomp, 
+        SELECT wfi.wind_code, wfi.sec_name, wfi.strategy_type, wfi.fund_setupdate, wfi.fund_maturitydate, wfi.fund_mgrcomp, 
         wfi.fund_existingyear, wfi.fund_ptmyear, wfi.fund_type, wfi.fund_fundmanager
-        from wind_fund_info wfi left outer join fund_info fi on wfi.wind_code=fi.wind_code
-        where fi.wind_code is null"""
+        FROM wind_fund_info wfi LEFT OUTER JOIN fund_info fi ON wfi.wind_code=fi.wind_code
+        WHERE fi.wind_code IS NULL"""
     with with_db_session(engine_md) as session:
         table = session.execute(sql_str)
     logging.info('new data was inserted into fund_info from wind_fund_info table')
@@ -332,7 +332,7 @@ def update_trade_date_latest(wind_code_trade_date_latest):
                   for wind_code, trade_date_latest in wind_code_trade_date_latest.items()]
         with with_db_session(engine_md) as session:
             session.execute(
-                'update fund_info set trade_date_latest = :trade_date_latest where wind_code = :wind_code',
+                'UPDATE fund_info SET trade_date_latest = :trade_date_latest WHERE wind_code = :wind_code',
                 params)
         logger.info('%d 条基金信息记录被更新', len(wind_code_trade_date_latest))
 
@@ -350,23 +350,23 @@ def update_private_fund_nav(get_df=False, wind_code_list=None):
     has_table = engine_md.has_table(table_name)
     if has_table:
         fund_info_df = pd.read_sql_query(
-            """SELECT DISTINCT fi.wind_code as wind_code, 
-               IFNULL(trade_date_from, if(trade_date_latest BETWEEN '1900-01-01' and ADDDATE(CURDATE(), -1), ADDDATE(trade_date_latest,1) , fund_setupdate) ) date_from,
-               if(fund_maturitydate BETWEEN '1900-01-01' and ADDDATE(CURDATE(), -1),fund_maturitydate,ADDDATE(CURDATE(), -1)) date_to 
-               from fund_info fi
+            """SELECT DISTINCT fi.wind_code AS wind_code, 
+               IFNULL(trade_date_from, if(trade_date_latest BETWEEN '1900-01-01' AND ADDDATE(CURDATE(), -1), ADDDATE(trade_date_latest,1) , fund_setupdate) ) date_from,
+               if(fund_maturitydate BETWEEN '1900-01-01' AND ADDDATE(CURDATE(), -1),fund_maturitydate,ADDDATE(CURDATE(), -1)) date_to 
+               FROM fund_info fi
                LEFT JOIN
                (
-               select wind_code, ADDDATE(max(trade_date),1) trade_date_from from wind_fund_nav
+               SELECT wind_code, ADDDATE(max(trade_date),1) trade_date_from FROM wind_fund_nav
                GROUP BY wind_code
                ) wfn
-               on fi.wind_code = wfn.wind_code""", engine_md)
+               ON fi.wind_code = wfn.wind_code""", engine_md)
     else:
 
         logger.warning('wind_fund_nav 不存在，仅使用 fund_info 表进行计算日期范围')
-        fund_info_df = pd.read_sql_query("""SELECT DISTINCT fi.wind_code as wind_code, 
+        fund_info_df = pd.read_sql_query("""SELECT DISTINCT fi.wind_code AS wind_code, 
                      fund_setupdate date_from,
-                    if(fund_maturitydate BETWEEN '1900-01-01' and ADDDATE(CURDATE(), -1),fund_maturitydate,ADDDATE(CURDATE(), -1)) date_to 
-                    from fund_info fi order by wind_code""", engine_md)
+                    if(fund_maturitydate BETWEEN '1900-01-01' AND ADDDATE(CURDATE(), -1),fund_maturitydate,ADDDATE(CURDATE(), -1)) date_to 
+                    FROM fund_info fi ORDER BY wind_code""", engine_md)
     wind_code_date_frm_to_dic = {wind_code: (str_2_date(date_from), str_2_date(date_to)) for
                                  wind_code, date_from, date_to in
                                  zip(fund_info_df['wind_code'], fund_info_df['date_from'], fund_info_df['date_to'])}
@@ -501,20 +501,20 @@ def import_wind_fund_nav_to_nav():
         ) ENGINE=MyISAM DEFAULT CHARSET=utf8""".format(table_name=table_name)
 
     # TODO: 需要对 Group by 子句进行跳转
-    sql_str = """insert into fund_nav(wind_code, nav_date, nav, nav_acc)
-    select wfn.wind_code, wfn.nav_date, wfn.nav, wfn.nav_acc
-    from
+    sql_str = """INSERT INTO fund_nav(wind_code, nav_date, nav, nav_acc)
+    SELECT wfn.wind_code, wfn.nav_date, wfn.nav, wfn.nav_acc
+    FROM
     (
-        select wind_code, nav_date, max(nav) nav, max(nav_acc) nav_acc
-        from wind_fund_nav_daily
-        group by wind_code, nav_date
-    ) as wfn
-    left outer join
+        SELECT wind_code, nav_date, max(nav) nav, max(nav_acc) nav_acc
+        FROM wind_fund_nav_daily
+        GROUP BY wind_code, nav_date
+    ) AS wfn
+    LEFT OUTER JOIN
         fund_nav fn
-    on 
-        wfn.wind_code = fn.wind_code and 
+    ON 
+        wfn.wind_code = fn.wind_code AND 
         wfn.nav_date = fn.nav_date
-    where fn.nav_date is null"""
+    WHERE fn.nav_date IS NULL"""
     with with_db_session(engine_md) as session:
         if not has_table:
             session.execute(create_sql_str)
@@ -547,23 +547,23 @@ def import_private_fund_nav_daily(wind_code_list=None):
     has_table = engine_md.has_table(table_name)
     if has_table:
         fund_info_df = pd.read_sql_query(
-            """SELECT DISTINCT fi.wind_code as wind_code, 
-                IFNULL(fund_setupdate, if(trade_date_latest BETWEEN '1900-01-01' and ADDDATE(CURDATE(), -1), ADDDATE(trade_date_latest,1) , fund_setupdate) ) date_from,
-                if(fund_maturitydate BETWEEN '1900-01-01' and ADDDATE(CURDATE(), -1),fund_maturitydate,ADDDATE(CURDATE(), -1)) date_to 
-                from fund_info fi
+            """SELECT DISTINCT fi.wind_code AS wind_code, 
+                IFNULL(fund_setupdate, if(trade_date_latest BETWEEN '1900-01-01' AND ADDDATE(CURDATE(), -1), ADDDATE(trade_date_latest,1) , fund_setupdate) ) date_from,
+                if(fund_maturitydate BETWEEN '1900-01-01' AND ADDDATE(CURDATE(), -1),fund_maturitydate,ADDDATE(CURDATE(), -1)) date_to 
+                FROM fund_info fi
                 LEFT JOIN
                 (
-                select wind_code, ADDDATE(max(trade_date),1) trade_date_from from wind_fund_nav_daily
+                SELECT wind_code, ADDDATE(max(trade_date),1) trade_date_from FROM wind_fund_nav_daily
                 GROUP BY wind_code
                 ) wfn
-                on fi.wind_code = wfn.wind_code""",
+                ON fi.wind_code = wfn.wind_code""",
             engine_md)
     else:
         fund_info_df = pd.read_sql_query(
-            """SELECT DISTINCT fi.wind_code as wind_code, 
-                IFNULL(fund_setupdate, if(trade_date_latest BETWEEN '1900-01-01' and ADDDATE(CURDATE(), -1), ADDDATE(trade_date_latest,1) , fund_setupdate) ) date_from,
-                if(fund_maturitydate BETWEEN '1900-01-01' and ADDDATE(CURDATE(), -1),fund_maturitydate,ADDDATE(CURDATE(), -1)) date_to 
-                from fund_info fi
+            """SELECT DISTINCT fi.wind_code AS wind_code, 
+                IFNULL(fund_setupdate, if(trade_date_latest BETWEEN '1900-01-01' AND ADDDATE(CURDATE(), -1), ADDDATE(trade_date_latest,1) , fund_setupdate) ) date_from,
+                if(fund_maturitydate BETWEEN '1900-01-01' AND ADDDATE(CURDATE(), -1),fund_maturitydate,ADDDATE(CURDATE(), -1)) date_to 
+                FROM fund_info fi
                 ORDER BY wind_code;""",
             engine_md)
 
@@ -686,18 +686,18 @@ def clean_fund_nav(date_str):
     :param date_str:
     :return:
     """
-    sql_str = """select fn_before.wind_code, fn_before.nav_date nav_date_before, fn_after.nav_date nav_date_after, fn_before.nav_acc nav_acc_before, fn_after.nav_acc nav_acc_after, fn_after.nav_acc / fn_before.nav_acc nav_acc_pct
-from
+    sql_str = """SELECT fn_before.wind_code, fn_before.nav_date nav_date_before, fn_after.nav_date nav_date_after, fn_before.nav_acc nav_acc_before, fn_after.nav_acc nav_acc_after, fn_after.nav_acc / fn_before.nav_acc nav_acc_pct
+FROM
 fund_nav fn_before,
 fund_nav fn_after,
 (
-select wind_code, max(if(nav_date<%s, nav_date, null)) nav_date_before, min(if(nav_date>=%s, nav_date, null)) nav_date_after
-from fund_nav group by wind_code
-having nav_date_before is not null and nav_date_after is not null
+SELECT wind_code, max(if(nav_date<%s, nav_date, NULL)) nav_date_before, min(if(nav_date>=%s, nav_date, NULL)) nav_date_after
+FROM fund_nav GROUP BY wind_code
+HAVING nav_date_before IS NOT NULL AND nav_date_after IS NOT NULL
 ) fn_date
-where fn_before.nav_date = fn_date.nav_date_before and fn_before.wind_code = fn_date.wind_code
-and fn_after.nav_date = fn_date.nav_date_after and fn_after.wind_code = fn_date.wind_code
-and fn_after.nav_acc / fn_before.nav_acc < 0.5
+WHERE fn_before.nav_date = fn_date.nav_date_before AND fn_before.wind_code = fn_date.wind_code
+AND fn_after.nav_date = fn_date.nav_date_after AND fn_after.wind_code = fn_date.wind_code
+AND fn_after.nav_acc / fn_before.nav_acc < 0.5
     """
     data_df = pd.read_sql(sql_str, engine_md, params=[date_str, date_str])
     data_count = data_df.shape[0]
@@ -711,7 +711,7 @@ and fn_after.nav_acc / fn_before.nav_acc < 0.5
             wind_code = content['wind_code']
             nav_date_before = content['nav_date_before']
             logger.info('update wind_code=%s nav_date<=%s', wind_code, nav_date_before)
-            sql_str = "update fund_nav set nav = nav/100, nav_acc = nav_acc/100 where wind_code = :wind_code and nav_date <= :nav_date"
+            sql_str = "UPDATE fund_nav SET nav = nav/100, nav_acc = nav_acc/100 WHERE wind_code = :wind_code AND nav_date <= :nav_date"
             session.execute(sql_str, params={'wind_code': wind_code, 'nav_date': nav_date_before})
 
 
