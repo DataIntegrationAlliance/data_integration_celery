@@ -99,7 +99,7 @@ def import_stock_info_hk(refresh=False):
     stock_info_all_df = pd.concat(stock_info_df_list)
     stock_info_all_df.index.rename('wind_code', inplace=True)
     stock_info_all_df.rename(columns=rename_col_dic, inplace=True)
-    logging.info('%s stock data will be import', stock_info_all_df.shape[0])
+    logging.info('%d data will be import', stock_info_all_df.shape[0])
     stock_info_all_df.reset_index(inplace=True)
 
     # data_list = list(stock_info_all_df.T.to_dict().values())
