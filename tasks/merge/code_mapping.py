@@ -62,44 +62,51 @@ def update_from_ifind_fund(table_name, cap_type):
             logger.debug('从 %s 表中更新 code_mapping 记录 %d 条', table_name, rslt.rowcount)
             session.commit()
     else:
+        if table_name.find('pub') != -1:
+            # pub_fund
+            full_name = 'ths_fund_full_name_fund'
+        else:
+            # private_fund
+            full_name = 'ths_product_full_name_sp'
+
         # 补充已存在 wind_code 的记录的 ths_code 字段
         update_sql_str = """update code_mapping code_m, 
             (
                 select concat('i.', ths_code) unique_code, ths_code,
                     substring(ths_code, locate('.', ths_code) + 1, length(ths_code)) market, 
-                    '{cap_type}' type
+                    '{cap_type}' type, wind_code
                 from (
-                    select info.ths_code, info.ths_product_full_name_sp sec_name 
+                    select info.ths_code, info.{full_name} full_name 
                     from {table_name} info
                     left join code_mapping cm
                     on cm.ths_code = info.ths_code 
                     where cm.ths_code is null
                     ) ifi
                 inner join {wind_table_name} wfi
-                on ifi.sec_name = wfi.sec_name
+                on ifi.full_name = wfi.fund_fullname
             ) t
             set code_m.unique_code = t.unique_code, 
                 code_m.ths_code = t.ths_code, 
                 code_m.market = t.market, 
                 code_m.type = t.type
             where code_m.wind_code = t.wind_code""".format(
-            table_name=table_name, cap_type=cap_type, wind_table_name=wind_table_name)
+            table_name=table_name, cap_type=cap_type, wind_table_name=wind_table_name, full_name=full_name)
         # 插入新增 ths_code
         insert_sql_str = """insert into code_mapping(unique_code, ths_code, market, type) 
             select concat('i.', ths_code) unique_code, ths_code, 
                 substring(ths_code, locate('.', ths_code) + 1, length(ths_code)) market, 
                 '{cap_type}' type 
             from (
-                select info.ths_code, info.ths_product_full_name_sp sec_name 
+                select info.ths_code, info.{full_name} full_name 
                 from {table_name} info
                 left join code_mapping cm
                 on cm.ths_code = info.ths_code 
                 where cm.ths_code is null
             ) ifi
             left join {wind_table_name} wfi
-            on ifi.sec_name = wfi.sec_name
+            on ifi.full_name = wfi.fund_fullname
             where wfi.wind_code is null""".format(
-            table_name=table_name, cap_type=cap_type, wind_table_name=wind_table_name)
+            table_name=table_name, cap_type=cap_type, wind_table_name=wind_table_name, full_name=full_name)
 
         with with_db_session(engine_md) as session:
             rslt = session.execute(update_sql_str)
@@ -159,6 +166,7 @@ def update_from_wind_fund(table_name, cap_type):
                 code_m.market = t.market, 
                 code_m.type = t.type
             where code_m.ths_code = t.ths_code""".format(
+
             table_name=table_name, cap_type=cap_type, wind_table_name=wind_table_name)
         # 插入新增 ths_code
         insert_sql_str = """insert into code_mapping(unique_code, wind_code, market, type) 

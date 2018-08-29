@@ -119,7 +119,7 @@ def import_cb_info(first_time=False):
             data_info_all_df = pd.concat(data_info_df_list)
             data_info_all_df.index.rename('wind_code', inplace=True)
             data_info_all_df.rename(columns={col: col.lower() for col in data_info_all_df.columns}, inplace=True)
-            logging.info('%s stock data will be import', data_info_all_df.shape[0])
+            logging.info('%d data will be import', data_info_all_df.shape[0])
             data_info_all_df.reset_index(inplace=True)
             data_count = bunch_insert_on_duplicate_update(data_info_all_df, table_name, engine_md, dtype=dtype)
             # logging.info("%d stocks have been in %s", len(data_info_all_df), table_name)
