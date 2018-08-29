@@ -183,7 +183,7 @@ def import_cb_daily(wind_code_set: set = None, begin_time=None):
             WHERE date_frm <= if(delist_date<end_date, delist_date, end_date) 
             ORDER BY wind_code""".format(table_name=table_name)
     else:
-        logger.warning('%s 不存在，仅使用 %s 表进行计算日期范围', table_name, info_table_name)
+        logger.warning('%s 不存在，仅使用 %s 表进行计算日期范围', table_name,info_table_name )
         sql_str = """
             SELECT wind_code, date_frm, if(delist_date<end_date, delist_date, end_date) date_to
             FROM
