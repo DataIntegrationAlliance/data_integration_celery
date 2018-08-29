@@ -2,6 +2,7 @@
 """
 Created on 2017/4/20
 @author: MG
+@desc    : 2018-08-29 已经正式运行测试完成，可以正常使用
 """
 from datetime import date, datetime, timedelta
 from sqlalchemy.types import String, Date, Integer
