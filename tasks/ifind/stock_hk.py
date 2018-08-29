@@ -355,11 +355,10 @@ def save_ifind_stock_hk_daily_his(table_name, data_df_list, dtype):
     """保存数据到 table_name"""
     if len(data_df_list) > 0:
         tot_data_df = pd.concat(data_df_list)
-        # TODO: 需要解决重复数据插入问题，日后改为sql语句插入模式
         # tot_data_df.to_sql(table_name, engine_md, if_exists='append', index=False, dtype=dtype)
         # data_count = tot_data_df.shape[0]
         data_count = bunch_insert_on_duplicate_update(tot_data_df, table_name, engine_md, dtype)
-        logger.info('保存数据到 %s 成功，包含 %d 条记录', table_name, data_count)
+        # logger.info('保存数据到 %s 成功，包含 %d 条记录', table_name, data_count)
         return data_count
     else:
         return 0
