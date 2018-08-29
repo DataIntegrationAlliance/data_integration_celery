@@ -101,11 +101,11 @@ def import_pub_fund_info(first_time=False):
         ('FUND_STRUCTUREDFUNDORNOT', String(50)),
         ('FUND_BENCHINDEXCODE', String(50)),
     ]
-    col_name_dic = {col_name.upper(): col_name.lower() for col_name, _ in fund_info_field_col_name_list}
+    # col_name_dic = {col_name.upper(): col_name.lower() for col_name, _ in fund_info_field_col_name_list}
     # col_name_list = ",".join([col_name.lower() for col_name in col_name_dic.keys()])
     dtype = {key.lower(): val for key, val in fund_info_field_col_name_list}
     dtype['wind_code'] = String(20)
-    dtype['invest_type_level1'] = String(50)
+    # dtype['invest_type_level1'] = String(50)
     for n in range(0, wind_code_count, seg_count):
         sub_list = wind_code_list[n:(n + seg_count)]
         # 尝试将 stock_code_list_sub 直接传递给wss，是否可行
@@ -113,19 +113,19 @@ def import_pub_fund_info(first_time=False):
         # fund_maturitydate,fund_fundmanager,fund_mgrcomp,fund_custodianbank,fund_type,fund_firstinvesttype,
         # fund_investtype,fund_structuredfundornot,
         # fund_investstyle")   structuredfundornot
-        field_str = ",".join(col_name_dic.values())
+        field_str = ",".join([col_name.lower() for col_name, _ in fund_info_field_col_name_list])
         stock_info_df = invoker.wss(sub_list, field_str)
         data_info_df_list.append(stock_info_df)
         if DEBUG and len(data_info_df_list) > 1000:
             break
     if len(data_info_df_list) == 0:
-        logger.info("wind_pub_fund_info 没有数据可以导入")
+        logger.info("%s 没有数据可以导入", table_name)
         return
     data_info_all_df = pd.concat(data_info_df_list)
     data_info_all_df.index.rename('wind_code', inplace=True)
     data_info_all_df.rename(
-        columns=col_name_dic, inplace=True)
-    logging.info('%s stock data will be import', data_info_all_df.shape[0])
+        columns={col: col.lower() for col in data_info_all_df.columns}, inplace=True)
+    logging.info('%d data will be import', data_info_all_df.shape[0])
     data_info_all_df.reset_index(inplace=True)
     bunch_insert_on_duplicate_update(data_info_all_df, table_name, engine_md, dtype=dtype)
     if not has_table and engine_md.has_table(table_name):
