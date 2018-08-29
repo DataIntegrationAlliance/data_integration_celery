@@ -47,7 +47,11 @@ class ConfigClass(object):
     # ifind settings
     IFIND_REST_URL = "http://localhost:5000/iFind/"
     # wind settings
-    WIND_REST_URL = "http://localhost:5000/wind/"
+    WIND_REST_URL = "http://10.0.5.63:5000/wind/"
+    # Tushare settings
+    TUSHARE_TOKEN = "***"
+    # CMC settings
+    CMC_PRO_API_KEY = "***"
 
     # log settings
     logging_config = dict(
@@ -76,7 +80,7 @@ class ConfigClass(object):
         },
 
         root={
-            'handlers': ['console_handler', 'file_handler'],
+            'handlers': ['console_handler'],  # , 'file_handler'
             'level': logging.DEBUG,
         }
     )
