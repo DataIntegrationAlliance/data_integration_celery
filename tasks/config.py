@@ -40,14 +40,14 @@ class ConfigClass(object):
     # Sql Alchemy settings
     DB_SCHEMA_MD = 'md_integration'
     DB_URL_DIC = {
-        DB_SCHEMA_MD: "mysql://root:041001131@localhost/{DB_SCHEMA_MD}?charset=utf8".format(
+        DB_SCHEMA_MD: "mysql://yby:***@localhost/{DB_SCHEMA_MD}?charset=utf8".format(
             DB_SCHEMA_MD=DB_SCHEMA_MD)
     }
 
     # ifind settings
     IFIND_REST_URL = "http://localhost:5000/iFind/"
     # wind settings
-    WIND_REST_URL = "http://10.0.5.63:5000/wind/"
+    WIND_REST_URL = "http://localhost:5000/wind/"
     # Tushare settings
     TUSHARE_TOKEN = "***"
     # CMC settings
