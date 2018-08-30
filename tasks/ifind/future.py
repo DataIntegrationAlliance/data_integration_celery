@@ -282,6 +282,7 @@ def import_future_daily_his(ths_code_set: set = None, begin_time=None):
     :return:
     """
     table_name = 'ifind_future_daily'
+    info_table_name = 'ifind_future_info'
     logger.info("更新 %s 开始", table_name)
     has_table = engine_md.has_table(table_name)
     indicator_param_list = [
@@ -316,13 +317,13 @@ def import_future_daily_his(ths_code_set: set = None, begin_time=None):
             SELECT fi.ths_code, ifnull(trade_date_max_1, ths_start_trade_date_future) date_frm, 
                 ths_last_td_date_future lasttrade_date,
                     if(hour(now())<16, subdate(curdate(),1), curdate()) end_date
-                FROM ifind_future_info fi LEFT OUTER JOIN
+                FROM {info_table_name} fi LEFT OUTER JOIN
                 (SELECT ths_code, adddate(max(time),1) trade_date_max_1 FROM {table_name} GROUP BY ths_code) wfd
                 ON fi.ths_code = wfd.ths_code
             ) tt
             WHERE date_frm <= if(lasttrade_date<end_date, lasttrade_date, end_date) 
             AND subdate(curdate(), 360) < if(lasttrade_date<end_date, lasttrade_date, end_date) 
-            ORDER BY ths_code""".format(table_name=table_name)
+            ORDER BY ths_code""".format(table_name=table_name, info_table_name=info_table_name)
     else:
         sql_str = """SELECT ths_code, date_frm, if(lasttrade_date<end_date, lasttrade_date, end_date) date_to
             FROM 
@@ -330,9 +331,9 @@ def import_future_daily_his(ths_code_set: set = None, begin_time=None):
             SELECT fi.ths_code, ths_start_trade_date_future date_frm, 
                 ths_last_td_date_future lasttrade_date,
                     if(hour(now())<16, subdate(curdate(),1), curdate()) end_date
-                FROM ifind_future_info fi
-            ) tt"""
-        logger.warning('%s 不存在，仅使用 %s 表进行计算日期范围', table_name)
+                FROM {info_table_name} fi
+            ) tt""".format(info_table_name=info_table_name)
+        logger.warning('%s 不存在，仅使用 %s 表进行计算日期范围', table_name, info_table_name)
 
     with with_db_session(engine_md) as session:
         # 获取每只股票需要获取日线数据的日期区间
