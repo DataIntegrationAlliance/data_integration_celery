@@ -624,8 +624,125 @@ def import_stock_hk_report_date(ths_code_set: set = None, begin_time=None, inter
         logging.info("更新 %s 完成 新增数据 %d 条", table_name, tot_data_count)
 
 
+@app.task
+def import_stock_hk_fin(ths_code_set: set = None, begin_time=None):
+    """
+    通过date_serise接口将历史数据保存到 import_stock_hk_fin
+    该数据作为 为季度获取
+    :param ths_code_set:
+    :param begin_time:
+    :return:
+    """
+    table_name = 'ifind_stock_hk_fin'
+    info_table_name = 'ifind_stock_hk_info'
+    indicator_param_list = [
+        ('ths_cce_hks', '2013,100,OC', DOUBLE),
+        ('ths_total_liab_hks', '2013,100,OC', DOUBLE),
+        ('ths_ebit_ttm_hks', 'OC,101', DOUBLE),
+        ('ths_asset_liab_ratio_hks', '', DOUBLE),
+        ('ths_current_ratio_hks', '', DOUBLE),
+        ('ths_quick_ratio_hks', '', DOUBLE),
+        ('ths_ebit_to_interest_fee_hks', '', DOUBLE),
+        ('ths_roe_avg_by_ths_hks', '', DOUBLE),
+        ('ths_roic_hks', '', DOUBLE),
+        ('ths_np_yoy_hks', '', DOUBLE),
+        ('ths_net_asset_yoy_hks', '', DOUBLE),
+        ('ths_roe_dltd_yoy_hks', '', DOUBLE),
+    ]
+    # ths_cce_hks;ths_total_liab_hks;ths_ebit_ttm_hks
+    # jsonparam='2013,100,OC;2013,100,OC;OC,101'
+    json_indicator, json_param = unzip_join([(key, val) for key, val, _ in indicator_param_list], sep=';')
+    has_table = engine_md.has_table(table_name)
+    if has_table:
+        sql_str = """SELECT ths_code, date_frm, if(ths_stop_listing_date_hks<end_date, ths_stop_listing_date_hks, end_date) date_to
+            FROM
+            (
+                SELECT info.ths_code, ifnull(trade_date_max_1, ths_ipo_date_hks) date_frm, ths_stop_listing_date_hks,
+                if(hour(now())<19, subdate(curdate(),1), curdate()) end_date
+                FROM 
+                    {info_table_name} info 
+                LEFT OUTER JOIN
+                    (SELECT ths_code, adddate(max(time),1) trade_date_max_1 FROM {table_name} GROUP BY ths_code) daily
+                ON info.ths_code = daily.ths_code
+            ) tt
+            WHERE date_frm <= if(ths_stop_listing_date_hks<end_date, ths_stop_listing_date_hks, end_date) 
+            ORDER BY ths_code""".format(table_name=table_name, info_table_name=info_table_name)
+    else:
+        sql_str = """SELECT ths_code, date_frm, if(ths_stop_listing_date_hks<end_date, ths_stop_listing_date_hks, end_date) date_to
+            FROM
+            (
+                SELECT info.ths_code, ths_ipo_date_hks date_frm, ths_stop_listing_date_hks,
+                if(hour(now())<19, subdate(curdate(),1), curdate()) end_date
+                FROM {info_table_name} info 
+            ) tt
+            WHERE date_frm <= if(ths_stop_listing_date_hks<end_date, ths_stop_listing_date_hks, end_date) 
+            ORDER BY ths_code""".format(info_table_name=info_table_name)
+        logger.warning('%s 不存在，仅使用 %s 表进行计算日期范围', table_name, info_table_name)
+    with with_db_session(engine_md) as session:
+        # 获取每只股票需要获取日线数据的日期区间
+        table = session.execute(sql_str)
+
+        # 获取每只股票需要获取日线数据的日期区间
+        code_date_range_dic = {
+            ths_code: (date_from if begin_time is None else min([date_from, begin_time]), date_to)
+            for ths_code, date_from, date_to in table.fetchall() if
+            ths_code_set is None or ths_code in ths_code_set}
+
+    if TRIAL:
+        date_from_min = date.today() - timedelta(days=(365 * 5))
+        # 试用账号只能获取近5年数据
+        code_date_range_dic = {
+            ths_code: (max([date_from, date_from_min]), date_to)
+            for ths_code, (date_from, date_to) in code_date_range_dic.items() if date_from_min <= date_to}
+
+    # 设置 dtype
+    dtype = {key: val for key, _, val in indicator_param_list}
+    dtype['ths_code'] = String(20)
+    dtype['time'] = Date
+
+    data_df_list, data_count, tot_data_count, code_count = [], 0, 0, len(code_date_range_dic)
+    try:
+        for num, (ths_code, (begin_time, end_time)) in enumerate(code_date_range_dic.items(), start=1):
+            logger.debug('%d/%d) %s [%s - %s]', num, code_count, ths_code, begin_time, end_time)
+            data_df = invoker.THS_DateSerial(
+                ths_code,
+                json_indicator,
+                json_param,
+                'Days:Tradedays,Fill:Previous,Interval:Q',
+                begin_time, end_time
+            )
+            if data_df is not None and data_df.shape[0] > 0:
+                data_count += data_df.shape[0]
+                data_df_list.append(data_df)
+
+            # 仅调试使用
+            if DEBUG and len(data_df_list) > 0:
+                break
+
+            # 大于阀值有开始插入
+            if data_count >= 2000:
+                tot_data_df = pd.concat(data_df_list)
+                # tot_data_df.to_sql(table_name, engine_md, if_exists='append', index=False, dtype=dtype)
+                bunch_insert_on_duplicate_update(tot_data_df, table_name, engine_md, dtype)
+                tot_data_count += data_count
+                data_df_list, data_count = [], 0
+
+    finally:
+        if data_count > 0:
+            tot_data_df = pd.concat(data_df_list)
+            # tot_data_df.to_sql(table_name, engine_md, if_exists='append', index=False, dtype=dtype)
+            bunch_insert_on_duplicate_update(tot_data_df, table_name, engine_md, dtype)
+            tot_data_count += data_count
+
+        logging.info("更新 %s 完成 新增数据 %d 条", table_name, tot_data_count)
+
+        if not has_table and engine_md.has_table(table_name):
+            alter_table_2_myisam(engine_md, [table_name])
+            build_primary_key([table_name])
+
+
 if __name__ == "__main__":
-    # DEBUG = True
+    DEBUG = True
     TRIAL = True
     # 股票基本信息数据加载
     # ths_code = None  # '600006.SH,600009.SH'
@@ -641,5 +758,7 @@ if __name__ == "__main__":
     # 添加新字段
     # add_new_col_data('ths_pe_ttm_stock', '101', ths_code_set=ths_code_set)
     # 股票财务报告日期
-    interval = 'Q'
-    import_stock_hk_report_date(interval=interval)
+    # interval = 'Q'
+    # import_stock_hk_report_date(interval=interval)
+    # 股票财务数据
+    import_stock_hk_fin()
