@@ -205,18 +205,16 @@ def import_tushare_stock_daily(ts_code_set=None):
     try:
         for num, (ts_code, (date_from, date_to)) in enumerate(code_date_range_dic.items(), start=1):
             logger.debug('%d/%d) %s [%s - %s]', num, data_len,ts_code, date_from, date_to)
-
             df = pro.daily(ts_code=ts_code, start_date=datetime_2_str(date_from,STR_FORMAT_DATE),end_date=datetime_2_str(date_to,STR_FORMAT_DATE))
             data_df=df
-            n=1
             while try_2_date(df['trade_date'].iloc[-1]) > date_from:
+                last_date_in_df_last, last_date_in_df_cur = try_2_date(df['trade_date'].iloc[-1]), None
                 df2 = pro.daily(ts_code=ts_code,start_date=datetime_2_str(date_from,STR_FORMAT_DATE),end_date=df['trade_date'].iloc[-1])
-                data_df = pd.concat([data_df, df2])
-                df = df2
-                n=n+1
-                if try_2_date(data_df['trade_date'].iloc[-1]) <= date_from:
-                    break
-                elif n>5:
+                last_date_in_df_cur = try_2_date(df2['trade_date'].iloc[-1])
+                if last_date_in_df_cur<last_date_in_df_last:
+                    data_df = pd.concat([data_df, df2])
+                    df = df2
+                elif last_date_in_df_cur==last_date_in_df_last:
                     break
                 if data_df is None:
                     logger.warning('%d/%d) %s has no data during %s %s', num, data_len, ts_code, date_from, date_to)
