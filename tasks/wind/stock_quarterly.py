@@ -137,7 +137,7 @@ def import_stock_quertarly(wind_code_set=None):
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG, format='%(asctime)s: %(levelname)s [%(name)s:%(funcName)s] %(message)s')
     # 更新股票季报数据
-    DEBUG = True
+    #DEBUG = True
     wind_code_set = None
     import_stock_quertarly(wind_code_set)
 

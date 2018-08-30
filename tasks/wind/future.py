@@ -446,7 +446,7 @@ def update_future_info_hk():
 
 
 if __name__ == "__main__":
-    DEBUG = True
+    #DEBUG = True
     wind_code_set = None
     # import_future_info_hk()
     import_future_daily(wind_code_set)

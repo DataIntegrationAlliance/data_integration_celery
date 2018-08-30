@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on 2017/4/14
+Created on 2018/4/14
 @author: MG
 """
 import pandas as pd
@@ -178,7 +178,57 @@ def build_commodity_info():
         ["S0059893", "china_bond_corporate_bond_yield_5y_A+", "5年期中债企业债到期收益率_A+", "2008-01-07", None, '债券交易中心'],
         ["S0059895", "china_bond_corporate_bond_yield_10y_A+", "10年期中债企业债到期收益率_A+", "2008-01-07", None, '债券交易中心'],
         ["M0057971", "china_bond_corporate_bond_yield_6y_A+", "6年期中债企业债到期收益率_A+", "2008-01-07", None, '债券交易中心'],
+        #城投债AAA
+        ["M0048432", "china_bond_local_government_bond_yield_1y_AAA", "1年期中债城投债到期收益率_AAA", "2008-08-21", None,
+         '债券估值中心'],
+        ["M0048434", "china_bond_local_government_bond_yield_3y_AAA", "3年期中债城投债到期收益率_AAA", "2008-08-21", None,
+         '债券估值中心'],
+        ["M0048435", "china_bond_local_government_bond_yield_5y_AAA", "5年期中债城投债到期收益率_AAA", "2008-08-21", None,
+         '债券估值中心'],
+        ["M0057985", "china_bond_local_government_bond_yield_6y_AAA", "6年期中债城投债到期收益率_AAA", "2008-08-21", None,
+         '债券估值中心'],
+        ["M0048437", "china_bond_local_government_bond_yield_10y_AAA", "10年期中债城投债到期收益率_AAA", "2008-08-21", None,
+         '债券估值中心'],
+        ["M0048438", "china_bond_local_government_bond_yield_15y_AAA", "15年期中债城投债到期收益率_AAA", "2008-08-21", None,
+         '债券估值中心'],
+        ["M0048439", "china_bond_local_government_bond_yield_20y_AAA", "20年期中债城投债到期收益率_AAA", "2008-08-21", None,
+         '债券估值中心'],
+        ["M1006901", "china_bond_local_government_bond_yield_1m_AAA", "1月期中债城投债到期收益率_AAA", "2013-05-03", None,
+         '债券估值中心'],
+        ["M1004553", "china_bond_local_government_bond_yield_3m_AAA", "3月年期中债城投债到期收益率_AAA", "2012-02-21", None,
+         '债券估值中心'],
+        # 城投债AA+
+        ["M0048422", "china_bond_local_government_bond_yield_1y_AA+", "1年期中债城投债到期收益率_AA+", "2008-08-19", None, '债券估值中心'],
+        ["M0048424", "china_bond_local_government_bond_yield_3y_AA+", "3年期中债城投债到期收益率_AA+", "2008-08-19", None, '债券估值中心'],
+        ["M0048425", "china_bond_local_government_bond_yield_5y_AA+", "5年期中债城投债到期收益率_AA+", "2008-08-19", None, '债券估值中心'],
+        ["M0057981", "china_bond_local_government_bond_yield_6y_AA+", "6年期中债城投债到期收益率_AA+", "2008-08-19", None, '债券估值中心'],
+        ["M0048427", "china_bond_local_government_bond_yield_10y_AA+", "10年期中债城投债到期收益率_AA+", "2008-08-19", None, '债券估值中心'],
+        ["M0048428", "china_bond_local_government_bond_yield_15y_AA+", "15年期中债城投债到期收益率_AA+", "2008-08-19", None, '债券估值中心'],
+        ["M0048429", "china_bond_local_government_bond_yield_20y_AA+", "20年期中债城投债到期收益率_AA+", "2008-08-19", None, '债券估值中心'],
+        ["M1006904", "china_bond_local_government_bond_yield_1m_AA+", "1月期中债城投债到期收益率_AA+", "2013-05-03", None,
+         '债券估值中心'],
+        ["M1004555", "china_bond_local_government_bond_yield_3m_AA+", "3月年期中债城投债到期收益率_AA+", "2012-02-21", None,
+         '债券估值中心'],
 
+        # 城投债AA
+        ["M0048412", "china_bond_local_government_bond_yield_1y_AA", "1年期中债城投债到期收益率_AA", "2008-08-28", None,
+         '债券估值中心'],
+        ["M0048414", "china_bond_local_government_bond_yield_3y_AA", "3年期中债城投债到期收益率_AA", "2008-08-28", None,
+         '债券估值中心'],
+        ["M0048415", "china_bond_local_government_bond_yield_5y_AA", "5年期中债城投债到期收益率_AA", "2008-08-28", None,
+         '债券估值中心'],
+        ["M0057974", "china_bond_local_government_bond_yield_6y_AA", "6年期中债城投债到期收益率_AA", "2008-08-28", None,
+         '债券估值中心'],
+        ["M0048417", "china_bond_local_government_bond_yield_10y_AA", "10年期中债城投债到期收益率_AA", "2008-08-28", None,
+         '债券估值中心'],
+        ["M0048418", "china_bond_local_government_bond_yield_15y_AA", "15年期中债城投债到期收益率_AA", "2008-08-28", None,
+         '债券估值中心'],
+        ["M0048419", "china_bond_local_government_bond_yield_20y_AA", "20年期中债城投债到期收益率_AA", "2008-08-28", None,
+         '债券估值中心'],
+        ["M1006907", "china_bond_local_government_bond_yield_1m_AA", "1月期中债城投债到期收益率_AA", "2013-05-03", None,
+         '债券估值中心'],
+        ["M1004557", "china_bond_local_government_bond_yield_3m_AA", "3月年期中债城投债到期收益率_AA", "2012-02-21", None,
+         '债券估值中心'],
         #香港同业拆借
         ["M0062945", "HIBOR_N", "HIBOR_N", "2006-01-03", None, '香港同业拆借市场'],
         ["M0062946", "HIBOR_1W", "HIBOR_1W", "2006-01-03", None, '香港同业拆借市场'],
