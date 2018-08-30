@@ -72,7 +72,7 @@ def build_primary_key(table_name_list):
                 create_ifind_info_pk_str = """ALTER TABLE %s
                     CHANGE COLUMN `ths_code` `ths_code` VARCHAR(20) NOT NULL FIRST,
                     ADD PRIMARY KEY (`ths_code`)"""
-                if table_name.find('_daily') != -1:
+                if table_name.find('_daily') != -1 or table_name.find('_report_date') != -1:
                     col_name = session.execute(query_pk_str,
                                                params={'schema': config.DB_SCHEMA_MD,
                                                        'table_name': table_name}).scalar()
