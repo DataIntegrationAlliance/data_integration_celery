@@ -120,6 +120,7 @@ def import_stock_daily_ds(ths_code_set: set = None, begin_time=None):
     :return:
     """
     table_name = 'ifind_stock_daily_ds'
+    info_table_name = 'ifind_stock_info'
     has_table = engine_md.has_table(table_name)
     indicator_param_list = [
         ('ths_af_stock', '', DOUBLE),
@@ -138,24 +139,24 @@ def import_stock_daily_ds(ths_code_set: set = None, begin_time=None):
                 SELECT info.ths_code, ifnull(trade_date_max_1, ths_ipo_date_stock) date_frm, ths_delist_date_stock,
                 if(hour(now())<16, subdate(curdate(),1), curdate()) end_date
                 FROM 
-                    ifind_stock_info info 
+                    {info_table_name} info 
                 LEFT OUTER JOIN
                     (SELECT ths_code, adddate(max(time),1) trade_date_max_1 FROM {table_name} GROUP BY ths_code) daily
                 ON info.ths_code = daily.ths_code
             ) tt
             WHERE date_frm <= if(ths_delist_date_stock<end_date, ths_delist_date_stock, end_date) 
-            ORDER BY ths_code""".format(table_name=table_name)
+            ORDER BY ths_code""".format(table_name=table_name, info_table_name=info_table_name)
     else:
         sql_str = """SELECT ths_code, date_frm, if(ths_delist_date_stock<end_date, ths_delist_date_stock, end_date) date_to
             FROM
             (
                 SELECT info.ths_code, ths_ipo_date_stock date_frm, ths_delist_date_stock,
                 if(hour(now())<16, subdate(curdate(),1), curdate()) end_date
-                FROM ifind_stock_info info 
+                FROM {info_table_name} info 
             ) tt
             WHERE date_frm <= if(ths_delist_date_stock<end_date, ths_delist_date_stock, end_date) 
-            ORDER BY ths_code"""
-        logger.warning('%s 不存在，仅使用 %s 表进行计算日期范围', table_name)
+            ORDER BY ths_code""".format(info_table_name=info_table_name)
+        logger.warning('%s 不存在，仅使用 %s 表进行计算日期范围', table_name, info_table_name)
     with with_db_session(engine_md) as session:
         # 获取每只股票需要获取日线数据的日期区间
         table = session.execute(sql_str)
@@ -364,26 +365,27 @@ def add_new_col_data(col_name, param, db_col_name=None, col_type_str='DOUBLE', t
     :param ths_code_set: 默认 None， 否则仅更新指定 ths_code
     :return:
     """
+    table_name = 'ifind_stock_daily_ds'
     if db_col_name is None:
         # 默认为 None，此时与col_name相同
         db_col_name = col_name
 
     # 检查当前数据库是否存在 db_col_name 列，如果不存在则添加该列
-    add_col_2_table(engine_md, 'ifind_stock_daily_ds', db_col_name, col_type_str)
+    add_col_2_table(engine_md, table_name, db_col_name, col_type_str)
     # 将数据增量保存到 ckdvp 表
     all_finished = add_data_2_ckdvp(col_name, param, ths_code_set)
     # 将数据更新到 ds 表中
     if all_finished:
-        sql_str = """update ifind_stock_daily_ds daily, ifind_ckdvp_stock ckdvp
+        sql_str = """update {table_name} daily, ifind_ckdvp_stock ckdvp
         set daily.{db_col_name} = ckdvp.value
         where daily.ths_code = ckdvp.ths_code
         and daily.time = ckdvp.time
         and ckdvp.key = '{db_col_name}'
-        and ckdvp.param = '{param}'""".format(db_col_name=db_col_name, param=param)
+        and ckdvp.param = '{param}'""".format(table_name=table_name, db_col_name=db_col_name, param=param)
         with with_db_session(engine_md) as session:
             session.execute(sql_str)
             session.commit()
-        logger.info('更新 %s 字段 ifind_stock_daily_ds 表', db_col_name)
+        logger.info('更新 %s 字段 %s 表', db_col_name, table_name)
 
 
 def add_data_2_ckdvp(json_indicator, json_param, ths_code_set: set = None, begin_time=None):
@@ -502,17 +504,257 @@ def add_data_2_ckdvp(json_indicator, json_param, ths_code_set: set = None, begin
     return all_finished
 
 
+def add_data_2_ckdvp_aginst_report_date(json_indicator, json_param, ths_code_set: set = None, begin_time=None):
+    """
+    尚未完成
+    将数据增量保存到 ifind_ckdvp_stock 表，code key date value param 五个字段组合成的表 value 为 Varchar(80)
+    该表用于存放各种新增加字段的值
+    查询语句举例：
+    THS_DateSerial('600007.SH,600009.SH','ths_pe_ttm_stock','101','Days:Tradedays,Fill:Previous,Interval:D','2018-07-31','2018-07-31')
+    :param json_indicator:
+    :param json_param:
+    :param ths_code_set:
+    :param begin_time:
+    :return: 全部数据加载完成，返回True，否则False，例如数据加载中途流量不够而中断
+    """
+    all_finished = False
+    table_name = 'ifind_ckdvp_stock'
+    # report_date_table_name = 'ifind_stock_report_date'
+    has_table = engine_md.has_table(table_name)
+    if has_table:
+        sql_str = """
+            select ths_code, date_frm, if(ths_delist_date_stock<end_date, ths_delist_date_stock, end_date) date_to
+            FROM
+            (
+                select info.ths_code, ifnull(trade_date_max_1, ths_ipo_date_stock) date_frm, ths_delist_date_stock,
+                    if(hour(now())<16, subdate(curdate(),1), curdate()) end_date
+                from 
+                    ifind_stock_info info 
+                left outer join
+                    (select ths_code, adddate(max(time),1) trade_date_max_1 from {table_name} 
+                        where {table_name}.key='{0}' and param='{1}' group by ths_code
+                    ) daily
+                on info.ths_code = daily.ths_code
+            ) tt
+            where date_frm <= if(ths_delist_date_stock<end_date, ths_delist_date_stock, end_date) 
+            order by ths_code""".format(json_indicator, json_param, table_name=table_name)
+    else:
+        logger.warning('%s 不存在，仅使用 ifind_stock_info 表进行计算日期范围', table_name)
+        sql_str = """
+            SELECT ths_code, date_frm, 
+                if(ths_delist_date_stock<end_date, ths_delist_date_stock, end_date) date_to
+            FROM
+            (
+                SELECT info.ths_code, ths_ipo_date_stock date_frm, ths_delist_date_stock,
+                if(hour(now())<16, subdate(curdate(),1), curdate()) end_date
+                FROM ifind_stock_info info 
+            ) tt
+            WHERE date_frm <= if(ths_delist_date_stock<end_date, ths_delist_date_stock, end_date) 
+            ORDER BY ths_code"""
+
+    report_date_sql_str = """select distinct ths_code, ths_periodic_report_fore_dd_stock 
+        from ifind_stock_report_date where ths_periodic_report_fore_dd_stock is not null"""
+    # 计算每只股票需要获取日线数据的日期区间
+    with with_db_session(engine_md) as session:
+        # 获取每只股票需要获取日线数据的日期区间
+        table = session.execute(sql_str)
+        code_date_range_dic = {
+            ths_code: (date_from if begin_time is None else min([date_from, begin_time]), date_to)
+            for ths_code, date_from, date_to in table.fetchall() if
+            ths_code_set is None or ths_code in ths_code_set}
+
+        code_report_date_dic = {}
+        for ths_code, report_date in session.execute(report_date_sql_str).fetchall():
+            code_report_date_dic.setdefault(ths_code, []).append(report_date)
+
+        for report_date_list in code_report_date_dic.values():
+            report_date_list.sort()
+
+    # 设置 dtype
+    dtype = {
+        'ths_code': String(20),
+        'key': String(80),
+        'time': Date,
+        'value': String(80),
+        'param': String(80),
+    }
+    data_df_list, data_count, tot_data_count, code_count = [], 0, 0, len(code_date_range_dic)
+    try:
+        for num, (ths_code, (begin_time, end_time)) in enumerate(code_date_range_dic.items(), start=1):
+            if ths_code in code_report_date_dic:
+                report_date_list = code_report_date_dic[ths_code]
+                # TODO: 未完成
+            else:
+                logger.debug('%d/%d) %s [%s - %s]', num, code_count, ths_code, begin_time, end_time)
+                data_df = invoker.THS_DateSerial(
+                    ths_code,
+                    json_indicator,
+                    json_param,
+                    'Days:Tradedays,Fill:Previous,Interval:D',
+                    begin_time, end_time
+                )
+            if data_df is not None and data_df.shape[0] > 0:
+                data_df['key'] = json_indicator
+                data_df['param'] = json_param
+                data_df.rename(columns={json_indicator: 'value'}, inplace=True)
+                data_count += data_df.shape[0]
+                data_df_list.append(data_df)
+
+            # 大于阀值有开始插入
+            if data_count >= 10000:
+                data_df_all = pd.concat(data_df_list)
+                # tot_data_df.to_sql(table_name, engine_md, if_exists='append', index=False, dtype=dtype)
+                data_count = bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md, dtype)
+                tot_data_count += data_count
+                data_df_list, data_count = [], 0
+
+            # 仅调试使用
+            if DEBUG and len(data_df_list) > 1:
+                break
+
+            all_finished = True
+    finally:
+        if data_count > 0:
+            data_df_all = pd.concat(data_df_list)
+            # tot_data_df.to_sql(table_name, engine_md, if_exists='append', index=False, dtype=dtype)
+            data_count = bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md, dtype)
+            tot_data_count += data_count
+
+        if not has_table:
+            create_pk_str = """ALTER TABLE {table_name}
+                CHANGE COLUMN `ths_code` `ths_code` VARCHAR(20) NOT NULL ,
+                CHANGE COLUMN `time` `time` DATE NOT NULL ,
+                CHANGE COLUMN `key` `key` VARCHAR(80) NOT NULL ,
+                CHANGE COLUMN `param` `param` VARCHAR(80) NOT NULL ,
+                ADD PRIMARY KEY (`ths_code`, `time`, `key`, `param`)""".format(table_name=table_name)
+            with with_db_session(engine_md) as session:
+                session.execute(create_pk_str)
+
+        logging.info("更新 %s 完成 新增数据 %d 条", table_name, tot_data_count)
+
+    return all_finished
+
+
+@app.task
+def import_stock_report_date(ths_code_set: set = None, begin_time=None, interval='W'):
+    """
+    通过date_serise接口将历史财务数据保存到 ifind_stock_fin，国内财务数据按季度发布，因此获取周期为周（默认）
+    :param ths_code_set:
+    :param begin_time:
+    :param interval: Q 季度 M 月 W 周 D 日
+    :return:
+    """
+    table_name = 'ifind_stock_report_date'
+    info_table_name = 'ifind_stock_info'
+    has_table = engine_md.has_table(table_name)
+    indicator_param_list = [
+        ('ths_regular_report_actual_dd_stock', '', Date),  # 实际披露日期
+        ('ths_periodic_report_fore_dd_stock', '', Date),  # 预披露日期
+    ]
+    # jsonIndicator='ths_regular_report_actual_dd_stock;ths_periodic_report_fore_dd_stock'
+    # jsonparam=';'
+    json_indicator, json_param = unzip_join([(key, val) for key, val, _ in indicator_param_list], sep=';')
+    if has_table:
+        sql_str = """SELECT ths_code, date_frm, if(ths_delist_date_stock<end_date, ths_delist_date_stock, end_date) date_to
+            FROM
+            (
+                SELECT info.ths_code, ifnull(trade_date_max_1, ths_ipo_date_stock) date_frm, ths_delist_date_stock,
+                if(hour(now())<16, subdate(curdate(),1), curdate()) end_date
+                FROM 
+                    {info_table_name} info 
+                LEFT OUTER JOIN
+                    (SELECT ths_code, adddate(max(time),1) trade_date_max_1 
+                    FROM {table_name} GROUP BY ths_code) daily
+                ON info.ths_code = daily.ths_code
+            ) tt
+            WHERE date_frm <= if(ths_delist_date_stock<end_date, ths_delist_date_stock, end_date) 
+            ORDER BY ths_code""".format(table_name=table_name, info_table_name=info_table_name)
+    else:
+        sql_str = """SELECT ths_code, date_frm, if(ths_delist_date_stock<end_date, ths_delist_date_stock, end_date) date_to
+            FROM
+            (
+                SELECT info.ths_code, ths_ipo_date_stock date_frm, ths_delist_date_stock,
+                if(hour(now())<16, subdate(curdate(),1), curdate()) end_date
+                FROM {info_table_name} info 
+            ) tt
+            WHERE date_frm <= if(ths_delist_date_stock<end_date, ths_delist_date_stock, end_date) 
+            ORDER BY ths_code""".format(info_table_name=info_table_name)
+        logger.warning('%s 不存在，仅使用 %s 表进行计算日期范围', table_name, info_table_name)
+    with with_db_session(engine_md) as session:
+        # 获取每只股票需要获取日线数据的日期区间
+        table = session.execute(sql_str)
+        code_date_range_dic = {
+            ths_code: (date_from if begin_time is None else min([date_from, begin_time]), date_to)
+            for ths_code, date_from, date_to in table.fetchall() if
+            ths_code_set is None or ths_code in ths_code_set}
+
+    if TRIAL:
+        date_from_min = date.today() - timedelta(days=(365 * 5))
+        # 试用账号只能获取近5年数据
+        code_date_range_dic = {
+            ths_code: (max([date_from, date_from_min]), date_to)
+            for ths_code, (date_from, date_to) in code_date_range_dic.items() if date_from_min <= date_to}
+
+    # 设置 dtype
+    dtype = {key: val for key, _, val in indicator_param_list}
+    dtype['ths_code'] = String(20)
+    dtype['time'] = Date
+
+    data_df_list, data_count, tot_data_count, code_count = [], 0, 0, len(code_date_range_dic)
+    try:
+        for num, (ths_code, (begin_time, end_time)) in enumerate(code_date_range_dic.items(), start=1):
+            logger.debug('%d/%d) %s [%s - %s]', num, code_count, ths_code, begin_time, end_time)
+            data_df = invoker.THS_DateSerial(
+                ths_code,
+                json_indicator,
+                json_param,
+                "Days:Tradedays,Fill:Previous,Interval:{interval}".format(interval=interval),
+                begin_time, end_time
+            )
+            if data_df is not None and data_df.shape[0] > 0:
+                data_count += data_df.shape[0]
+                data_df_list.append(data_df)
+            # 大于阀值有开始插入
+            if data_count >= 10000:
+                data_df_all = pd.concat(data_df_list)
+                # data_df_all.to_sql(table_name, engine_md, if_exists='append', index=False, dtype=dtype)
+                data_count = bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md, dtype)
+                tot_data_count += data_count
+                data_df_list, data_count = [], 0
+
+            # 仅调试使用
+            if DEBUG and len(data_df_list) > 1:
+                break
+    finally:
+        if data_count > 0:
+            data_df_all = pd.concat(data_df_list)
+            # data_df_all.to_sql(table_name, engine_md, if_exists='append', index=False, dtype=dtype)
+            data_count = bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md, dtype)
+            tot_data_count += data_count
+
+        if not has_table and engine_md.has_table(table_name):
+            alter_table_2_myisam(engine_md, [table_name])
+            build_primary_key([table_name])
+
+        logging.info("更新 %s 完成 新增数据 %d 条", table_name, tot_data_count)
+
+
 if __name__ == "__main__":
     # DEBUG = True
     TRIAL = True
-    ths_code = None  # '600006.SH,600009.SH'
-    refresh = False
+
     # 股票基本信息数据加载
+    # ths_code = None  # '600006.SH,600009.SH'
+    # refresh = False
     # import_stock_info(ths_code, refresh=refresh)
-    ths_code_set = None  # {'600006.SH', '600009.SH'}
     # 股票日K历史数据加载
+    # ths_code_set = None  # {'600006.SH', '600009.SH'}
     # import_stock_daily_his(ths_code_set)
     # 股票日K数据加载
-    import_stock_daily_ds(ths_code_set)
+    # ths_code_set = None  # {'600006.SH', '600009.SH'}
+    # import_stock_daily_ds(ths_code_set)
     # 添加新字段
     # add_new_col_data('ths_pe_ttm_stock', '101', ths_code_set=ths_code_set)
+    # 股票财务报告日期
+    interval = 'W'
+    import_stock_report_date(interval=interval)
