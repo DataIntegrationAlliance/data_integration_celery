@@ -72,7 +72,7 @@ def build_primary_key(table_name_list):
                 create_ifind_info_pk_str = """ALTER TABLE %s
                     CHANGE COLUMN `ths_code` `ths_code` VARCHAR(20) NOT NULL FIRST,
                     ADD PRIMARY KEY (`ths_code`)"""
-                if table_name.find('_daily') != -1 or table_name.find('_report_date') != -1:
+                if any([table_name.find(tag) != -1 for tag in ('_daily', '_report_date', '_fin')]):
                     col_name = session.execute(query_pk_str,
                                                params={'schema': config.DB_SCHEMA_MD,
                                                        'table_name': table_name}).scalar()
@@ -91,6 +91,7 @@ def build_primary_key(table_name_list):
                         logger.info('%d/%d) %s 建立主键 [ths_code]', num, table_count, table_name)
                 else:
                     logger.debug('%d/%d) %s 无需操作', num, table_count, table_name)
+
             elif table_name.find('wind_') != -1:
                 # wind info daily
                 create_wind_daily_pk_str = """ALTER TABLE %s
@@ -148,6 +149,7 @@ def build_primary_key(table_name_list):
                         logger.info('%d/%d) %s 建立主键 [ts_code]', num, table_count, table_name)
                 else:
                     logger.debug('%d/%d) %s 无需操作', num, table_count, table_name)
+
             else:
                 # 合并后的 info daily
                 create_daily_pk_str = """ALTER TABLE %s

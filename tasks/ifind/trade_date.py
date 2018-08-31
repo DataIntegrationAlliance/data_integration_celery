@@ -9,7 +9,7 @@ from sqlalchemy.types import String, Date, Integer
 from tasks import app
 from tasks.ifind import invoker
 from tasks.utils.fh_utils import STR_FORMAT_DATE
-from tasks.utils.db_utils import with_db_session
+from tasks.utils.db_utils import with_db_session, bunch_insert_on_duplicate_update, alter_table_2_myisam
 from tasks.backend import engine_md
 import logging
 logger = logging.getLogger()
@@ -23,10 +23,14 @@ def import_trade_date():
     日后将会考虑将两张表进行合并
     :return: 
     """
+    table_name = 'ifind_trade_date'
+    has_table = engine_md.has_table(table_name)
     exch_code_trade_date_dic = {}
     with with_db_session(engine_md) as session:
         try:
-            table = session.execute('SELECT exch_code,max(trade_date) FROM ifind_trade_date GROUP BY exch_code')
+            table = session.execute('SELECT exch_code,max(trade_date) FROM {table_name} GROUP BY exch_code'.format(
+                table_name=table_name
+            ))
             exch_code_trade_date_dic = {exch_code: trade_date for exch_code, trade_date in table.fetchall()}
         except Exception as exp:
             logger.exception("交易日获取异常")
@@ -50,26 +54,42 @@ def import_trade_date():
             start_date_str = '1980-01-01'
 
         end_date_str = (date.today() + timedelta(days=310)).strftime(STR_FORMAT_DATE)
-        trade_date_df = invoker.THS_DateQuery(exchange_code, 'dateType:0,period:D,dateFormat:0', start_date_str, end_date_str)
+        trade_date_df = invoker.THS_DateQuery(
+            exchange_code, 'dateType:0,period:D,dateFormat:0', start_date_str, end_date_str)
         if trade_date_df is None or trade_date_df.shape[0] == 0:
             logger.warning('%s[%s] [%s - %s] 没有查询到交易日期',
                            exchange_code_dict[exchange_code], exchange_code, start_date_str, end_date_str)
             continue
-        date_count = trade_date_df.shape[0]
+
+        data_count = trade_date_df.shape[0]
         logger.info("%s[%s] %d 条交易日数据将被导入 %s",
-                    exchange_code_dict[exchange_code], exchange_code, date_count, 'ifind_trade_date')
+                    exchange_code_dict[exchange_code], exchange_code, data_count, table_name)
         # with with_db_session(engine_md) as session:
         #     session.execute("INSERT INTO ifind_trade_date (trade_date,exch_code) VALUE (:trade_date,:exch_code)",
         #                     params=[{'trade_date': trade_date, 'exch_code': exchange_code} for trade_date in
         #                             trade_date_df['time']])
         trade_date_df['exch_code'] = exchange_code
-        trade_date_df.rename(columns={'time': 'trade_date'}, inplace=True)
-        trade_date_df.to_sql('ifind_trade_date', engine_md, if_exists='append', index=False, dtype={
+        # trade_date_df.rename(columns={'time': 'trade_date'}, inplace=True)
+        # trade_date_df.to_sql('ifind_trade_date', engine_md, if_exists='append', index=False, dtype={
+        #     'exch_code': String(10),
+        #     'trade_date': Date,
+        # })
+        data_count = bunch_insert_on_duplicate_update(trade_date_df, table_name, engine_md, dtype={
             'exch_code': String(10),
-            'trade_date': Date,
+            'time': Date,
         })
         logger.info('%s[%s] %d 条交易日数据导入 %s 完成',
-                    exchange_code_dict[exchange_code], exchange_code, date_count, 'ifind_trade_date')
+                    exchange_code_dict[exchange_code], exchange_code, data_count, table_name)
+        if not has_table and engine_md.has_table(table_name):
+            alter_table_2_myisam(engine_md, [table_name])
+            # build_primary_key([table_name])
+            create_pk_str = """ALTER TABLE {table_name}
+                CHANGE COLUMN `exch_code` `exch_code` VARCHAR(10) NOT NULL FIRST,
+                CHANGE COLUMN `time` `time` DATE NOT NULL AFTER `exch_code`,
+                ADD PRIMARY KEY (`exch_code`, `time`)""".format(table_name=table_name)
+            with with_db_session(engine_md) as session:
+                session.execute(create_pk_str)
+            logger.info('%s 表 `exch_code`, `time` 主键设置完成', table_name)
 
 
 if __name__ == "__main__":

@@ -119,6 +119,7 @@ def alter_table_2_myisam(engine, table_name_list=None):
             logger.info('%d/%d)修改 %s 表引擎为 MyISAM', num, data_count, table_name)
             sql_str = "ALTER TABLE %s ENGINE = MyISAM" % table_name
             session.execute(sql_str)
+            session.commit()
 
 
 def add_col_2_table(engine, table_name, col_name, col_type_str):
@@ -143,6 +144,7 @@ def add_col_2_table(engine, table_name, col_name, col_type_str):
         )
         with with_db_session(engine) as session:
             session.execute(add_col_sql_str)
+            session.commit()
         logger.info('%s 添加 %s [%s] 列成功', table_name, col_name, col_type_str)
 
 
