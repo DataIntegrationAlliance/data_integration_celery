@@ -220,6 +220,16 @@ def max_up_or_down(data_s: pd.Series, ths_key, wind_key, primary_keys=None, **kw
     return ret_code
 
 
+def get_ifind_daily_df(table_name, date_from) -> pd.DataFrame:
+    if date_from is None:
+        sql_str = "select * from {table_name}".format(table_name=table_name)
+        data_df = pd.read_sql(sql_str, engine_md)  # , index_col='ths_code'
+    else:
+        sql_str = "select * from {table_name} where time >= %s".format(table_name=table_name)
+        data_df = pd.read_sql(sql_str, engine_md, params=[date_from])  # , index_col='ths_code'
+    return data_df
+
+
 if __name__ == "__main__":
     data_df = merge_stock_info()
     # print(data_df)
