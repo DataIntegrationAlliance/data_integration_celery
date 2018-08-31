@@ -19,6 +19,7 @@ from tasks.backend import engine_md
 from tasks import app
 from tasks.merge.code_mapping import update_from_info_table
 
+TRIAL = True
 DEBUG = False
 logger = logging.getLogger()
 DATE_BASE = datetime.strptime('1990-01-01', STR_FORMAT_DATE).date()
@@ -195,6 +196,13 @@ def import_private_fund_daily(ths_code_set: set = None, begin_time=None):
             for ths_code, date_from, date_to in table.fetchall() if
             ths_code_set is None or ths_code in ths_code_set}
 
+    if TRIAL:
+        date_from_min = date.today() - timedelta(days=(365 * 5))
+        # 试用账号只能获取近5年数据
+        code_date_range_dic = {
+            ths_code: (max([date_from, date_from_min]), date_to)
+            for ths_code, (date_from, date_to) in code_date_range_dic.items() if date_from_min <= date_to}
+
     # 设置 dtype
     dtype = {key: val for key, _, val in indicator_param_list}
     dtype['ths_code'] = String(20)
@@ -238,8 +246,9 @@ def import_private_fund_daily(ths_code_set: set = None, begin_time=None):
 
 if __name__ == "__main__":
     # DEBUG = True
+    TRIAL = True
     ths_code = None  # '600006.SH,600009.SH'
     # 基金基本信息数据加载
-    import_fund_info(ths_code)
+    # import_fund_info(ths_code)
     # 基金日K数据行情加载
-    # import_private_fund_daily(ths_code)
+    import_private_fund_daily(ths_code)
