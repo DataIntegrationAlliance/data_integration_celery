@@ -32,14 +32,14 @@ def import_edb():
     table_name = 'ifind_edb'
     has_table = engine_md.has_table(table_name)
     indicators_dic = {
-        "M002043802": ("制造业PMI", "2005-01-01"),
-        "M002811185": ("财新PMI:综合产出指数", "2005-01-01"),
-        "M002811186": ("财新PMI:制造业", "2005-01-01"),
-        "M002811190": ("财新PMI:服务业经营活动指数", "2005-01-01"),
-        "M002822183": ("GDP:累计同比", "1990-01-01"),
-        "M002826938": ("GDP:同比", "1990-01-01"),
-        "M001620247": ("GDP:全国", "1990-01-01"),
-        "M001620253": ("GDP:人均", "1990-01-01"),
+        "M002043802": ("制造业PMI", "manufacturing_PMI", "2005-01-01", None),
+        "M002811185": ("财新PMI:综合产出指数", "Caixin_PMI_composite_output_index", "2005-01-01", None),
+        "M002811186": ("财新PMI:制造业", "Caixin_PMI_manufacturing", "2005-01-01",None),
+        "M002811190": ("财新PMI:服务业经营活动指数", "Caixin_PMI_service_business_activity_index", "2005-01-01", None),
+        "M002822183": ("GDP:累计同比", "GDP_cumulative_yoy", "1990-01-01", None),
+        "M002826938": ("GDP:同比", "GDP_yoy", "1990-01-01", None),
+        "M001620247": ("GDP:全国", "GDP_nationwide", "1990-01-01", None),
+        "M001620253": ("GDP:人均", "GDP_per_capita", "1990-01-01", None),
     }
     if has_table:
         sql_str = """select id, adddate(max(time),1) from {table_name} group by id""".format(table_name=table_name)
@@ -51,23 +51,27 @@ def import_edb():
     # 设置 dtype
     dtype = {
         'id': String(20),
-        'name': String(100),
+        'cn_name': String(100),
+        'en_name': String(100),
         'time': Date,
+        'note':String(500),
         'value': DOUBLE,
     }
     data_df_list = []
     try:
-        for num, (indicators, (item_name, start_date_str)) in enumerate(indicators_dic.items()):
+        for num, (indicators, (item_cn_name, item_en_name,start_date_str,item_note)) in enumerate(indicators_dic.items()):
             begin_time = indicators_date_dic[indicators] if indicators in indicators_date_dic else start_date_str
             end_time = date.today()
             if str_2_date(begin_time) > end_time:
                 continue
             begin_time, end_time = date_2_str(begin_time), date_2_str(end_time)
-            logger.info("获取 %s %s [%s - %s] 数据", indicators, item_name, begin_time, end_time)
+            logger.info("获取 %s %s [%s - %s] 数据", indicators, item_cn_name, begin_time, end_time)
             data_df = invoker.THS_EDBQuery(indicators=indicators,
                                            begintime=begin_time,
                                            endtime=end_time)
-            data_df['name'] = item_name
+            data_df['cn_name'] = item_cn_name
+            data_df['en_name'] = item_en_name
+            data_df['note'] = item_note
             data_df_list.append(data_df)
             if DEBUG and len(data_df_list) > 1:
                 break
@@ -88,7 +92,7 @@ def import_edb():
 
 def get_edb_item_date_range():
     table_name = 'ifind_edb'
-    sql_str = "SELECT id, name, min(time) date_from, max(time) date_to FROM {table_name} group by id". format(
+    sql_str = "SELECT id, name, min(time) date_from, max(time) date_to FROM {table_name} group by id".format(
         table_name=table_name)
     df = pd.read_sql(sql_str, engine_md)
     return df
@@ -97,5 +101,4 @@ def get_edb_item_date_range():
 if __name__ == "__main__":
     # DEBUG = True
     import_edb()
-    df = get_edb_item_date_range()
-    print(df)
+
