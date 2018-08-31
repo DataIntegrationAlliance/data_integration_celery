@@ -164,22 +164,24 @@ def import_tushare_stock_daily(ts_code_set=None):
             logger.debug('%d/%d) %s [%s - %s]', num, data_len,ts_code, date_from, date_to)
             df = pro.daily(ts_code=ts_code, start_date=datetime_2_str(date_from,STR_FORMAT_DATE_TS),end_date=datetime_2_str(date_to,STR_FORMAT_DATE_TS))
             data_df=df
-            while try_2_date(df['trade_date'].iloc[-1]) > date_from:
-                last_date_in_df_last, last_date_in_df_cur = try_2_date(df['trade_date'].iloc[-1]), None
-                df2 = pro.daily(ts_code=ts_code,start_date=datetime_2_str(date_from,STR_FORMAT_DATE_TS),end_date=df['trade_date'].iloc[-1])
-                last_date_in_df_cur = try_2_date(df2['trade_date'].iloc[-1])
-                if last_date_in_df_cur<last_date_in_df_last:
-                    data_df = pd.concat([data_df, df2])
-                    df = df2
-                elif last_date_in_df_cur==last_date_in_df_last:
-                    break
-                if data_df is None:
-                    logger.warning('%d/%d) %s has no data during %s %s', num, data_len, ts_code, date_from, date_to)
-                    continue
-            logger.info('%d/%d) %d data of %s between %s and %s', num, data_len, data_df.shape[0], ts_code, date_from,date_to)
-            # if len(data_df) > 0:
-            #     data_df_all = pd.concat(data_df)
-            if len(data_df) > 0:
+            if len(data_df)>0:
+                while try_2_date(df['trade_date'].iloc[-1]) > date_from:
+                    last_date_in_df_last, last_date_in_df_cur = try_2_date(df['trade_date'].iloc[-1]), None
+                    df2 = pro.daily(ts_code=ts_code,start_date=datetime_2_str(date_from,STR_FORMAT_DATE_TS),
+                                    end_date=datetime_2_str(try_2_date(df['trade_date'].iloc[-1])-timedelta(days=1),STR_FORMAT_DATE_TS))
+                    last_date_in_df_cur = try_2_date(df2['trade_date'].iloc[-1])
+                    if last_date_in_df_cur<last_date_in_df_last:
+                        data_df = pd.concat([data_df, df2])
+                        df = df2
+                    elif last_date_in_df_cur==last_date_in_df_last:
+                        break
+                    if data_df is None:
+                        logger.warning('%d/%d) %s has no data during %s %s', num, data_len, ts_code, date_from, date_to)
+                        continue
+                    logger.info('%d/%d) %d data of %s between %s and %s', num, data_len, data_df.shape[0], ts_code, date_from,date_to)
+                    # if len(data_df) > 0:
+                    #     data_df_all = pd.concat(data_df)
+                #数据插入数据库
                 data_df_all = data_df
                 data_count = bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md, dtype)
                 logging.info("更新 %s 结束 %d 条信息被更新", table_name, data_count)
