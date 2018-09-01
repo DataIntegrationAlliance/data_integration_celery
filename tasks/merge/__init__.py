@@ -12,6 +12,7 @@ from functools import partial
 # import warnings
 import logging
 from tasks.utils.fh_utils import is_not_nan_or_none, log_param_when_exception
+from tasks.backend import engine_md
 
 logger = logging.getLogger()
 
@@ -92,3 +93,38 @@ def merge_data(data_df: pd.DataFrame, col_merge_rule_dic: dict) -> pd.DataFrame:
         data_list.append({key: handler(data_s) for key, handler in col_handler_list})
 
     return pd.DataFrame(data_list)
+
+
+def get_ifind_daily_df(table_name, date_from) -> pd.DataFrame:
+    if date_from is None:
+        sql_str = "select * from {table_name}".format(table_name=table_name)
+        data_df = pd.read_sql(sql_str, engine_md)  # , index_col='ths_code'
+    else:
+        sql_str = "select * from {table_name} where time >= %s".format(table_name=table_name)
+        data_df = pd.read_sql(sql_str, engine_md, params=[date_from])  # , index_col='ths_code'
+    return data_df
+
+
+def get_wind_daily_df(table_name, date_from) -> pd.DataFrame:
+    if date_from is None:
+        sql_str = "select * from {table_name}".format(table_name=table_name)
+        data_df = pd.read_sql(sql_str, engine_md)  # , index_col='ths_code'
+    else:
+        sql_str = "select * from {table_name} where time >= %s".format(table_name=table_name)
+        data_df = pd.read_sql(sql_str, engine_md, params=[date_from])  # , index_col='ths_code'
+    return data_df
+
+
+def generate_range(iterator):
+    """将一个 N 长度的 iterator 生成 N + 1 个区间"""
+    last_val = None
+    for val in iterator:
+        yield last_val, val
+        last_val = val
+    else:
+        yield last_val, None
+
+
+if __name__ == "__main__":
+    for x in generate_range([1, 2, 3]):
+        print(x)

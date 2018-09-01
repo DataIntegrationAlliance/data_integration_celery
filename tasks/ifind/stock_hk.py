@@ -28,6 +28,73 @@ ONE_DAY = timedelta(days=1)
 # 标示每天几点以后下载当日行情数据
 BASE_LINE_HOUR = 20
 TRIAL = False
+# daily_ds 表
+INDICATOR_PARAM_LIST_STOCK_HK_DAILY_DS = [
+    ('ths_ss_vol_hks', '', DOUBLE),
+    ('ths_ss_amt_d_hks', '', String(10)),
+    ('ths_trading_status_hks', '', String(120)),
+    ('ths_suspen_reason_hks', '', String(300)),
+    ('ths_td_currency_d_hks', '', String(10)),
+    ('ths_original_currency_hks', '', String(80)),
+    ('ths_corp_total_shares_hks', '', DOUBLE),
+    ('ths_pe_ttm_hks', '101', DOUBLE),
+    ('ths_pcf_operating_cash_flow_ttm_hks', '101', DOUBLE),
+    ('ths_pcf_cash_net_flow_ttm_hks', '101', DOUBLE),
+    ('ths_ps_ttm_hks', '101', DOUBLE),
+    ('ths_market_value_hks', 'HKD', DOUBLE),
+]
+# 设置 dtype
+DTYPE_STOCK_HK_DAILY_DS = {key: val for key, _, val in INDICATOR_PARAM_LIST_STOCK_HK_DAILY_DS}
+DTYPE_STOCK_HK_DAILY_DS['ths_code'] = String(20)
+DTYPE_STOCK_HK_DAILY_DS['time'] = Date
+# daily_his 表
+INDICATOR_PARAM_LIST_STOCK_HK_DAILY_HIS = [
+    ('preClose', '', DOUBLE),
+    ('open', '', DOUBLE),
+    ('high', '', DOUBLE),
+    ('low', '', DOUBLE),
+    ('close', '', DOUBLE),
+    ('avgPrice', '', DOUBLE),
+    ('changeRatio', '', DOUBLE),
+    ('change', '', DOUBLE),
+    ('volume', '', DOUBLE),
+    ('amount', '', DOUBLE),
+    ('turnoverRatio', '', DOUBLE),
+]
+# 设置 dtype
+DTYPE_STOCK_HK_DAILY_HIS = {key: val for key, _, val in INDICATOR_PARAM_LIST_STOCK_HK_DAILY_HIS}
+DTYPE_STOCK_HK_DAILY_HIS['ths_code'] = String(20)
+DTYPE_STOCK_HK_DAILY_HIS['time'] = Date
+# report_date 表
+INDICATOR_PARAM_LIST_STOCK_HK_REPORT_DATE = [
+    ('ths_perf_briefing_fore_dsclsr_date_hks', '', Date),  # 预披露日期
+    ('ths_perf_brief_actual_dd_hks', '', Date),  # 实际披露日期
+    ('ths_perf_report_foredsclsr_date_hks', '', Date),  # 预披露日期
+    ('ths_perf_report_actual_dd_hks', '', Date),  # 实际披露日期
+]
+# 设置 dtype
+DTYPE_STOCK_HK_REPORT_DATE = {key: val for key, _, val in INDICATOR_PARAM_LIST_STOCK_HK_REPORT_DATE}
+DTYPE_STOCK_HK_REPORT_DATE['ths_code'] = String(20)
+DTYPE_STOCK_HK_REPORT_DATE['time'] = Date
+# fin 表
+INDICATOR_PARAM_LIST_STOCK_HK_FIN = [
+    ('ths_cce_hks', '2013,100,OC', DOUBLE),
+    ('ths_total_liab_hks', '2013,100,OC', DOUBLE),
+    ('ths_ebit_ttm_hks', 'OC,101', DOUBLE),
+    ('ths_asset_liab_ratio_hks', '', DOUBLE),
+    ('ths_current_ratio_hks', '', DOUBLE),
+    ('ths_quick_ratio_hks', '', DOUBLE),
+    ('ths_ebit_to_interest_fee_hks', '', DOUBLE),
+    ('ths_roe_avg_by_ths_hks', '', DOUBLE),
+    ('ths_roic_hks', '', DOUBLE),
+    ('ths_np_yoy_hks', '', DOUBLE),
+    ('ths_net_asset_yoy_hks', '', DOUBLE),
+    ('ths_roe_dltd_yoy_hks', '', DOUBLE),
+]
+# 设置 dtype
+DTYPE_STOCK_HK_FIN = {key: val for key, _, val in INDICATOR_PARAM_LIST_STOCK_HK_FIN}
+DTYPE_STOCK_HK_FIN['ths_code'] = String(20)
+DTYPE_STOCK_HK_FIN['time'] = Date
 
 
 def get_stock_hk_code_set(date_fetch):
@@ -145,23 +212,10 @@ def import_stock_hk_daily_ds(ths_code_set: set = None, begin_time=None):
     """
     table_name = 'ifind_stock_hk_daily_ds'
     info_table_name = 'ifind_stock_hk_info'
-    indicator_param_list = [
-        ('ths_ss_vol_hks', '', DOUBLE),
-        ('ths_ss_amt_d_hks', '', String(10)),
-        ('ths_trading_status_hks', '', String(120)),
-        ('ths_suspen_reason_hks', '', String(300)),
-        ('ths_td_currency_d_hks', '', String(10)),
-        ('ths_original_currency_hks', '', String(80)),
-        ('ths_corp_total_shares_hks', '', DOUBLE),
-        ('ths_pe_ttm_hks', '101', DOUBLE),
-        ('ths_pcf_operating_cash_flow_ttm_hks', '101', DOUBLE),
-        ('ths_pcf_cash_net_flow_ttm_hks', '101', DOUBLE),
-        ('ths_ps_ttm_hks', '101', DOUBLE),
-        ('ths_market_value_hks', 'HKD', DOUBLE),
-    ]
     # jsonIndicator='ths_pre_close_stock;ths_open_price_stock;ths_high_price_stock;ths_low_stock;ths_close_price_stock;ths_chg_ratio_stock;ths_chg_stock;ths_vol_stock;ths_trans_num_stock;ths_amt_stock;ths_turnover_ratio_stock;ths_vaild_turnover_stock;ths_af_stock;ths_up_and_down_status_stock;ths_trading_status_stock;ths_suspen_reason_stock;ths_last_td_date_stock'
     # jsonparam='100;100;100;100;100;;100;100;;;;;;;;;'
-    json_indicator, json_param = unzip_join([(key, val) for key, val, _ in indicator_param_list], sep=';')
+    json_indicator, json_param = unzip_join([(key, val) for key, val, _ in INDICATOR_PARAM_LIST_STOCK_HK_DAILY_DS],
+                                            sep=';')
     has_table = engine_md.has_table(table_name)
     if has_table:
         sql_str = """SELECT ths_code, date_frm, if(ths_stop_listing_date_hks<end_date, ths_stop_listing_date_hks, end_date) date_to
@@ -205,11 +259,6 @@ def import_stock_hk_daily_ds(ths_code_set: set = None, begin_time=None):
             ths_code: (max([date_from, date_from_min]), date_to)
             for ths_code, (date_from, date_to) in code_date_range_dic.items() if date_from_min <= date_to}
 
-    # 设置 dtype
-    dtype = {key: val for key, _, val in indicator_param_list}
-    dtype['ths_code'] = String(20)
-    dtype['time'] = Date
-
     data_df_list, data_count, tot_data_count, code_count = [], 0, 0, len(code_date_range_dic)
     try:
         for num, (ths_code, (begin_time, end_time)) in enumerate(code_date_range_dic.items(), start=1):
@@ -233,7 +282,7 @@ def import_stock_hk_daily_ds(ths_code_set: set = None, begin_time=None):
             if data_count >= 2000:
                 tot_data_df = pd.concat(data_df_list)
                 # tot_data_df.to_sql(table_name, engine_md, if_exists='append', index=False, dtype=dtype)
-                bunch_insert_on_duplicate_update(tot_data_df, table_name, engine_md, dtype)
+                bunch_insert_on_duplicate_update(tot_data_df, table_name, engine_md, DTYPE_STOCK_HK_DAILY_DS)
                 tot_data_count += data_count
                 data_df_list, data_count = [], 0
 
@@ -241,7 +290,7 @@ def import_stock_hk_daily_ds(ths_code_set: set = None, begin_time=None):
         if data_count > 0:
             tot_data_df = pd.concat(data_df_list)
             # tot_data_df.to_sql(table_name, engine_md, if_exists='append', index=False, dtype=dtype)
-            bunch_insert_on_duplicate_update(tot_data_df, table_name, engine_md, dtype)
+            bunch_insert_on_duplicate_update(tot_data_df, table_name, engine_md, DTYPE_STOCK_HK_DAILY_DS)
             tot_data_count += data_count
 
         logging.info("更新 %s 完成 新增数据 %d 条", table_name, tot_data_count)
@@ -263,24 +312,11 @@ def import_stock_hk_daily_his(ths_code_set: set = None, begin_time=None):
     if begin_time is not None and type(begin_time) == date:
         begin_time = str_2_date(begin_time)
 
-    indicator_param_list = [
-        ('preClose', '', DOUBLE),
-        ('open', '', DOUBLE),
-        ('high', '', DOUBLE),
-        ('low', '', DOUBLE),
-        ('close', '', DOUBLE),
-        ('avgPrice', '', DOUBLE),
-        ('changeRatio', '', DOUBLE),
-        ('change', '', DOUBLE),
-        ('volume', '', DOUBLE),
-        ('amount', '', DOUBLE),
-        ('turnoverRatio', '', DOUBLE),
-    ]
     # THS_HistoryQuotes('600006.SH,600010.SH',
     # 'preClose,open,high,low,close,avgPrice,changeRatio,volume,amount,turnoverRatio,transactionAmount,totalShares,totalCapital,floatSharesOfAShares,floatSharesOfBShares,floatCapitalOfAShares,floatCapitalOfBShares,pe_ttm,pe,pb,ps,pcf',
     # 'Interval:D,CPS:1,baseDate:1900-01-01,Currency:YSHB,fill:Previous',
     # '2018-06-30','2018-07-30')
-    json_indicator, _ = unzip_join([(key, val) for key, val, _ in indicator_param_list], sep=';')
+    json_indicator, _ = unzip_join([(key, val) for key, val, _ in INDICATOR_PARAM_LIST_STOCK_HK_DAILY_HIS], sep=';')
     has_table = engine_md.has_table(table_name)
     if has_table:
         sql_str = """SELECT ths_code, date_frm, if(ths_stop_listing_date_hks<end_date, ths_stop_listing_date_hks, end_date) date_to
@@ -317,10 +353,6 @@ def import_stock_hk_daily_his(ths_code_set: set = None, begin_time=None):
             ths_code: (date_from if begin_time is None else min([date_from, begin_time]), date_to)
             for ths_code, date_from, date_to in table.fetchall() if
             ths_code_set is None or ths_code in ths_code_set}
-    # 设置 dtype
-    dtype = {key: val for key, _, val in indicator_param_list}
-    dtype['ths_code'] = String(20)
-    dtype['time'] = Date
 
     data_df_list, data_count, tot_data_count, code_count = [], 0, 0, len(code_date_range_dic)
     try:
@@ -337,12 +369,12 @@ def import_stock_hk_daily_his(ths_code_set: set = None, begin_time=None):
                 data_df_list.append(data_df)
             # 大于阀值有开始插入
             if data_count >= 10000:
-                data_count = save_ifind_stock_hk_daily_his(table_name, data_df_list, dtype)
+                data_count = save_ifind_stock_hk_daily_his(table_name, data_df_list, DTYPE_STOCK_HK_DAILY_HIS)
                 tot_data_count += data_count
                 data_df_list, data_count = [], 0
     finally:
         if data_count > 0:
-            data_count = save_ifind_stock_hk_daily_his(table_name, data_df_list, dtype)
+            data_count = save_ifind_stock_hk_daily_his(table_name, data_df_list, DTYPE_STOCK_HK_DAILY_HIS)
             tot_data_count += data_count
 
         logging.info("更新 %s 完成 新增数据 %d 条", table_name, tot_data_count)
@@ -531,15 +563,9 @@ def import_stock_hk_report_date(ths_code_set: set = None, begin_time=None, inter
     table_name = 'ifind_stock_hk_report_date'
     info_table_name = 'ifind_stock_hk_info'
     has_table = engine_md.has_table(table_name)
-    indicator_param_list = [
-        ('ths_perf_briefing_fore_dsclsr_date_hks', '', Date),  # 预披露日期
-        ('ths_perf_brief_actual_dd_hks', '', Date),  # 实际披露日期
-        ('ths_perf_report_foredsclsr_date_hks', '', Date),  # 预披露日期
-        ('ths_perf_report_actual_dd_hks', '', Date),  # 实际披露日期
-    ]
     # jsonIndicator='ths_perf_briefing_fore_dsclsr_date_hks;ths_perf_brief_actual_dd_hks;ths_perf_report_foredsclsr_date_hks;ths_perf_report_actual_dd_hks'
     # jsonparam=';'
-    json_indicator, json_param = unzip_join([(key, val) for key, val, _ in indicator_param_list], sep=';')
+    json_indicator, json_param = unzip_join([(key, val) for key, val, _ in INDICATOR_PARAM_LIST_STOCK_HK_REPORT_DATE], sep=';')
     if has_table:
         sql_str = """SELECT ths_code, date_frm, if(ths_stop_listing_date_hks<end_date, ths_stop_listing_date_hks, end_date) date_to
             FROM
@@ -580,11 +606,6 @@ def import_stock_hk_report_date(ths_code_set: set = None, begin_time=None, inter
             ths_code: (max([date_from, date_from_min]), date_to)
             for ths_code, (date_from, date_to) in code_date_range_dic.items() if date_from_min <= date_to}
 
-    # 设置 dtype
-    dtype = {key: val for key, _, val in indicator_param_list}
-    dtype['ths_code'] = String(20)
-    dtype['time'] = Date
-
     data_df_list, data_count, tot_data_count, code_count = [], 0, 0, len(code_date_range_dic)
     try:
         for num, (ths_code, (begin_time, end_time)) in enumerate(code_date_range_dic.items(), start=1):
@@ -603,7 +624,7 @@ def import_stock_hk_report_date(ths_code_set: set = None, begin_time=None, inter
             if data_count >= 10000:
                 data_df_all = pd.concat(data_df_list)
                 # data_df_all.to_sql(table_name, engine_md, if_exists='append', index=False, dtype=dtype)
-                data_count = bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md, dtype)
+                data_count = bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md, DTYPE_STOCK_HK_REPORT_DATE)
                 tot_data_count += data_count
                 data_df_list, data_count = [], 0
 
@@ -614,7 +635,7 @@ def import_stock_hk_report_date(ths_code_set: set = None, begin_time=None, inter
         if data_count > 0:
             data_df_all = pd.concat(data_df_list)
             # data_df_all.to_sql(table_name, engine_md, if_exists='append', index=False, dtype=dtype)
-            data_count = bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md, dtype)
+            data_count = bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md, DTYPE_STOCK_HK_REPORT_DATE)
             tot_data_count += data_count
 
         if not has_table and engine_md.has_table(table_name):
@@ -635,23 +656,9 @@ def import_stock_hk_fin(ths_code_set: set = None, begin_time=None):
     """
     table_name = 'ifind_stock_hk_fin'
     info_table_name = 'ifind_stock_hk_info'
-    indicator_param_list = [
-        ('ths_cce_hks', '2013,100,OC', DOUBLE),
-        ('ths_total_liab_hks', '2013,100,OC', DOUBLE),
-        ('ths_ebit_ttm_hks', 'OC,101', DOUBLE),
-        ('ths_asset_liab_ratio_hks', '', DOUBLE),
-        ('ths_current_ratio_hks', '', DOUBLE),
-        ('ths_quick_ratio_hks', '', DOUBLE),
-        ('ths_ebit_to_interest_fee_hks', '', DOUBLE),
-        ('ths_roe_avg_by_ths_hks', '', DOUBLE),
-        ('ths_roic_hks', '', DOUBLE),
-        ('ths_np_yoy_hks', '', DOUBLE),
-        ('ths_net_asset_yoy_hks', '', DOUBLE),
-        ('ths_roe_dltd_yoy_hks', '', DOUBLE),
-    ]
     # ths_cce_hks;ths_total_liab_hks;ths_ebit_ttm_hks
     # jsonparam='2013,100,OC;2013,100,OC;OC,101'
-    json_indicator, json_param = unzip_join([(key, val) for key, val, _ in indicator_param_list], sep=';')
+    json_indicator, json_param = unzip_join([(key, val) for key, val, _ in INDICATOR_PARAM_LIST_STOCK_HK_FIN], sep=';')
     has_table = engine_md.has_table(table_name)
     if has_table:
         sql_str = """SELECT ths_code, date_frm, if(ths_stop_listing_date_hks<end_date, ths_stop_listing_date_hks, end_date) date_to
@@ -681,8 +688,6 @@ def import_stock_hk_fin(ths_code_set: set = None, begin_time=None):
     with with_db_session(engine_md) as session:
         # 获取每只股票需要获取日线数据的日期区间
         table = session.execute(sql_str)
-
-        # 获取每只股票需要获取日线数据的日期区间
         code_date_range_dic = {
             ths_code: (date_from if begin_time is None else min([date_from, begin_time]), date_to)
             for ths_code, date_from, date_to in table.fetchall() if
@@ -694,11 +699,6 @@ def import_stock_hk_fin(ths_code_set: set = None, begin_time=None):
         code_date_range_dic = {
             ths_code: (max([date_from, date_from_min]), date_to)
             for ths_code, (date_from, date_to) in code_date_range_dic.items() if date_from_min <= date_to}
-
-    # 设置 dtype
-    dtype = {key: val for key, _, val in indicator_param_list}
-    dtype['ths_code'] = String(20)
-    dtype['time'] = Date
 
     data_df_list, data_count, tot_data_count, code_count = [], 0, 0, len(code_date_range_dic)
     try:
@@ -723,7 +723,7 @@ def import_stock_hk_fin(ths_code_set: set = None, begin_time=None):
             if data_count >= 2000:
                 tot_data_df = pd.concat(data_df_list)
                 # tot_data_df.to_sql(table_name, engine_md, if_exists='append', index=False, dtype=dtype)
-                bunch_insert_on_duplicate_update(tot_data_df, table_name, engine_md, dtype)
+                bunch_insert_on_duplicate_update(tot_data_df, table_name, engine_md, DTYPE_STOCK_HK_FIN)
                 tot_data_count += data_count
                 data_df_list, data_count = [], 0
 
@@ -731,7 +731,7 @@ def import_stock_hk_fin(ths_code_set: set = None, begin_time=None):
         if data_count > 0:
             tot_data_df = pd.concat(data_df_list)
             # tot_data_df.to_sql(table_name, engine_md, if_exists='append', index=False, dtype=dtype)
-            bunch_insert_on_duplicate_update(tot_data_df, table_name, engine_md, dtype)
+            bunch_insert_on_duplicate_update(tot_data_df, table_name, engine_md, DTYPE_STOCK_HK_FIN)
             tot_data_count += data_count
 
         logging.info("更新 %s 完成 新增数据 %d 条", table_name, tot_data_count)
@@ -742,7 +742,7 @@ def import_stock_hk_fin(ths_code_set: set = None, begin_time=None):
 
 
 if __name__ == "__main__":
-    DEBUG = True
+    # DEBUG = True
     TRIAL = True
     # 股票基本信息数据加载
     # ths_code = None  # '600006.SH,600009.SH'
