@@ -40,7 +40,7 @@ def merge_ifind_stock_hk_daily(date_from=None):
         sql_str = "select adddate(max(`time`),1) from {table_name}".format(table_name=table_name)
         with with_db_session(engine_md) as session:
             date_from = date_2_str(session.execute(sql_str).scalar())
-    ifind_his_df = get_ifind_daily_df('ifind_stock_hk_daily_ds', date_from)
+    ifind_his_df = get_ifind_daily_df('ifind_stock_hk_daily_his', date_from)
     ifind_ds_df = get_ifind_daily_df('ifind_stock_hk_daily_ds', date_from)
     ifind_report_date_df = get_ifind_daily_df('ifind_stock_hk_report_date', None)
     ifind_fin_df = get_ifind_daily_df('ifind_stock_hk_fin', None)
