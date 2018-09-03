@@ -28,6 +28,81 @@ ONE_DAY = timedelta(days=1)
 BASE_LINE_HOUR = 20
 TRIAL = False
 
+INDICATOR_PARAM_LIST_INDEX_DAILY_DS = [
+    ('ths_total_shares_index', '', DOUBLE),
+    ('ths_float_ashare_index', '', DOUBLE),
+    ('ths_float_bshare_index', '', DOUBLE),
+    ('ths_float_hshare_index', '', DOUBLE),
+    ('ths_total_float_shares_index', '', DOUBLE),
+    ('ths_float_ashare_to_total_shares_index', '', DOUBLE),
+    ('ths_float_bshare_to_total_shares_index', '', DOUBLE),
+    ('ths_float_hshare_to_total_shares_index', '', DOUBLE),
+    ('ths_total_float_shares_ratio_index', '', DOUBLE),
+    ('ths_limited_ashare_index', '', DOUBLE),
+    ('ths_limited_bshare_index', '', DOUBLE),
+    ('ths_unfloat_shares_index', '', DOUBLE),
+    ('ths_total_limited_ashare_ratio_index', '', DOUBLE),
+    ('ths_state_owned_shares_index', '', DOUBLE),
+    ('ths_state_owned_lp_shares_index', '', DOUBLE),
+    ('ths_total_domestic_lp_shares_index', '', DOUBLE),
+    ('ths_margin_trading_sell_amt_index', '', DOUBLE),
+    ('ths_margin_trading_repay_amt_index', '', DOUBLE),
+    ('ths_margin_trading_balance_index', '', DOUBLE),
+    ('ths_short_selling_sell_vol_index', '', DOUBLE),
+    ('ths_short_selling_payment_vol_index', '', DOUBLE),
+    ('ths_short_selling_vol_balance_index', '', DOUBLE),
+    ('ths_short_selling_amtb_index', '', DOUBLE),
+    ('ths_margin_trading_amtb_index', '', DOUBLE),
+    ('ths_financing_buy_amt_int_index', '', DOUBLE),
+    ('ths_financing_payment_amt_int_index', '', DOUBLE),
+    ('ths_mt_sell_vol_int_index', '', DOUBLE),
+    ('ths_mt_payment_vol_int_index', '', DOUBLE),
+    ('ths_pe_index', '101,100', DOUBLE),
+    ('ths_pb_index', '100,100', DOUBLE),
+    ('ths_pcf_index', '102,100', DOUBLE),
+    ('ths_ps_index', '102,100', DOUBLE),
+    ('ths_dividend_rate_index', '', DOUBLE),
+    ('ths_float_ashare_mv_index', '', DOUBLE),
+    ('ths_float_bshare_mv_index', '', DOUBLE),
+    ('ths_current_mv_index', '', DOUBLE),
+    ('ths_flaot_mv_ratio_index', '', DOUBLE),
+    ('ths_market_value_index', '', DOUBLE),
+    ('ths_mv_csrc_alg_index', '', DOUBLE),
+]
+# 設置dtype類型
+DTYPE_INDEX_DAILY_DS = {key: val for key, _, val in INDICATOR_PARAM_LIST_INDEX_DAILY_DS}
+DTYPE_INDEX_DAILY_DS['ths_code'] = String(20)
+
+# import_index_daily_his 表
+INDICATOR_PARAM_LIST_INDEX_DAILY_HIS = [
+    ('preClose', '', DOUBLE),
+    ('open', '', DOUBLE),
+    ('high', '', DOUBLE),
+    ('low', '', DOUBLE),
+    ('close', '', DOUBLE),
+    ('avgPrice', '', DOUBLE),
+    ('changeRatio', '', DOUBLE),
+    ('volume', '', DOUBLE),
+    ('amount', '', DOUBLE),
+    ('turnoverRatio', '', DOUBLE),
+    ('transactionAmount', '', DOUBLE),
+    ('totalShares', '', DOUBLE),
+    ('totalCapital', '', DOUBLE),
+    ('floatSharesOfAShares', '', DOUBLE),
+    ('floatSharesOfBShares', '', DOUBLE),
+    ('floatCapitalOfAShares', '', DOUBLE),
+    ('floatCapitalOfBShares', '', DOUBLE),
+    ('pe_ttm', '', DOUBLE),
+    ('pe', '', DOUBLE),
+    ('pb', '', DOUBLE),
+    ('ps', '', DOUBLE),
+    ('pcf', '', DOUBLE),
+]
+# 设置 dtype
+DTYPE_INDEX_DAILY_HIS = {key: val for key, _, val in INDICATOR_PARAM_LIST_INDEX_DAILY_HIS}
+DTYPE_INDEX_DAILY_HIS['ths_code'] = String(20)
+DTYPE_INDEX_DAILY_HIS['time'] = Date
+
 
 def get_stock_code_set(date_fetch):
     date_fetch_str = date_fetch.strftime(STR_FORMAT_DATE)
@@ -43,7 +118,6 @@ def get_stock_code_set(date_fetch):
 @app.task
 def import_index_info(ths_code=None, refresh=False):
     """
-
     :param ths_code:
     :param refresh:
     :return:
@@ -121,52 +195,7 @@ def import_index_daily_ds(ths_code_set: set = None, begin_time=None):
     """
     table_name = 'ifind_index_daily_ds'
     has_table = engine_md.has_table(table_name)
-    indicator_param_list = [
-        ('ths_total_shares_index', '', String(20)),
-        ('ths_float_ashare_index', '', String(20)),
-        ('ths_float_bshare_index', '', String(20)),
-        ('ths_float_hshare_index', '', String(20)),
-        ('ths_total_float_shares_index', '', String(20)),
-        ('ths_float_ashare_to_total_shares_index', '', String(20)),
-        ('ths_float_bshare_to_total_shares_index', '', String(20)),
-        ('ths_float_hshare_to_total_shares_index', '', String(20)),
-        ('ths_total_float_shares_ratio_index', '', String(20)),
-        ('ths_limited_ashare_index', '', String(20)),
-        ('ths_limited_bshare_index', '', String(20)),
-        ('ths_unfloat_shares_index', '', String(20)),
-        ('ths_total_limited_ashare_ratio_index', '', String(20)),
-        ('ths_state_owned_shares_index', '', String(20)),
-        ('ths_state_owned_lp_shares_index', '', String(20)),
-        ('ths_total_domestic_lp_shares_index', '', String(20)),
-        ('ths_margin_trading_sell_amt_index', '', String(20)),
-        ('ths_margin_trading_repay_amt_index', '', String(20)),
-        ('ths_margin_trading_balance_index', '', String(20)),
-        ('ths_short_selling_sell_vol_index', '', String(20)),
-        ('ths_short_selling_payment_vol_index', '', String(20)),
-        ('ths_short_selling_vol_balance_index', '', String(20)),
-        ('ths_short_selling_amtb_index', '', String(20)),
-        ('ths_margin_trading_amtb_index', '', String(20)),
-        ('ths_financing_buy_amt_int_index', '', String(20)),
-        ('ths_financing_payment_amt_int_index', '', String(20)),
-        ('ths_mt_sell_vol_int_index', '', String(20)),
-        ('ths_mt_payment_vol_int_index', '', String(20)),
-        ('ths_pe_index', '101,100', String(20)),
-        ('ths_pb_index', '100,100', String(20)),
-
-
-        ('ths_pcf_index', '102,100', String(20)),
-        ('ths_ps_index', '102,100', String(20)),#########
-        ('ths_dividend_rate_index', '', String(20)),
-        ('ths_float_ashare_mv_index', '', String(20)),
-        ('ths_float_bshare_mv_index', '', String(20)),
-        ('ths_current_mv_index', '', String(20)),
-        ('ths_flaot_mv_ratio_index', '', String(20)),
-        ('ths_market_value_index', '', String(20)),
-        ('ths_mv_csrc_alg_index', '', String(20)),
-            ]
-    # jsonIndicator='ths_pre_close_stock;ths_open_price_stock;ths_high_price_stock;ths_low_stock;ths_close_price_stock;ths_chg_ratio_stock;ths_chg_stock;ths_vol_stock;ths_trans_num_stock;ths_amt_stock;ths_turnover_ratio_stock;ths_vaild_turnover_stock;ths_af_stock;ths_up_and_down_status_stock;ths_trading_status_stock;ths_suspen_reason_stock;ths_last_td_date_stock'
-    # jsonparam='100;100;100;100;100;;100;100;;;;;;;;;'
-    json_indicator, json_param = unzip_join([(key, val) for key, val, _ in indicator_param_list], sep=';')
+    json_indicator, json_param = unzip_join([(key, val) for key, val, _ in INDICATOR_PARAM_LIST_INDEX_DAILY_DS],sep=';')
     if has_table:
         sql_str = """SELECT ths_code, date_frm, if(NULL<end_date, NULL, end_date) date_to
             FROM
@@ -210,11 +239,6 @@ def import_index_daily_ds(ths_code_set: set = None, begin_time=None):
             ths_code: (max([date_from, date_from_min]), date_to)
             for ths_code, (date_from, date_to) in code_date_range_dic.items() if date_from_min <= date_2_str(date_to)}
 
-    # 设置 dtype
-    dtype = {key: val for key, _, val in indicator_param_list}
-    dtype['ths_code'] = String(20)
-
-
     data_df_list, data_count, tot_data_count, code_count = [], 0, 0, len(code_date_range_dic)
     try:
         for num, (ths_code, (begin_time, end_time)) in enumerate(code_date_range_dic.items(), start=1):
@@ -234,18 +258,17 @@ def import_index_daily_ds(ths_code_set: set = None, begin_time=None):
             if data_count >= 10000:
                 data_df_all = pd.concat(data_df_list)
                 # data_df_all.to_sql(table_name, engine_md, if_exists='append', index=False, dtype=dtype)
-                data_count = bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md, dtype)
+                data_count = bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md, DTYPE_INDEX_DAILY_DS)
                 tot_data_count += data_count
                 data_df_list, data_count = [], 0
 
             # 仅调试使用
-            # if DEBUG and len(data_df_list) > 1:
-            #     break
+            if DEBUG and len(data_df_list) > 1:
+                break
     finally:
         if data_count > 0:
             data_df_all = pd.concat(data_df_list)
-            # data_df_all.to_sql(table_name, engine_md, if_exists='append', index=False, dtype=dtype)
-            data_count = bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md, dtype)
+            data_count = bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md, DTYPE_INDEX_DAILY_DS)
             tot_data_count += data_count
 
         if not has_table and engine_md.has_table(table_name):
@@ -263,39 +286,16 @@ def import_index_daily_his(ths_code_set: set = None, begin_time=None):
     :param begin_time: 默认为None，如果非None则代表所有数据更新日期不得晚于该日期
     :return:
     """
+    table_name = 'ifind_index_daily_his'
     if begin_time is not None and type(begin_time) == date:
         begin_time = str_2_date(begin_time)
-
-    indicator_param_list = [
-        ('preClose', '', DOUBLE),
-        ('open', '', DOUBLE),
-        ('high', '', DOUBLE),
-        ('low', '', DOUBLE),
-        ('close', '', DOUBLE),
-        ('avgPrice', '', DOUBLE),
-        ('changeRatio', '', DOUBLE),
-        ('volume', '', DOUBLE),
-        ('amount', '', DOUBLE),
-        ('turnoverRatio', '', DOUBLE),
-        ('transactionAmount', '', DOUBLE),
-        ('totalShares', '', DOUBLE),
-        ('totalCapital', '', DOUBLE),
-        ('floatSharesOfAShares', '', DOUBLE),
-        ('floatSharesOfBShares', '', DOUBLE),
-        ('floatCapitalOfAShares', '', DOUBLE),
-        ('floatCapitalOfBShares', '', DOUBLE),
-        ('pe_ttm', '', DOUBLE),
-        ('pe', '', DOUBLE),
-        ('pb', '', DOUBLE),
-        ('ps', '', DOUBLE),
-        ('pcf', '', DOUBLE),
-    ]
     # THS_HistoryQuotes('600006.SH,600010.SH',
     # 'preClose,open,high,low,close,avgPrice,changeRatio,volume,amount,turnoverRatio,transactionAmount,totalShares,totalCapital,floatSharesOfAShares,floatSharesOfBShares,floatCapitalOfAShares,floatCapitalOfBShares,pe_ttm,pe,pb,ps,pcf',
     # 'Interval:D,CPS:1,baseDate:1900-01-01,Currency:YSHB,fill:Previous',
     # '2018-06-30','2018-07-30')
-    json_indicator, _ = unzip_join([(key, val) for key, val, _ in indicator_param_list], sep=';')
-    if engine_md.has_table('ifind_index_daily_his'):
+    json_indicator, _ = unzip_join([(key, val) for key, val, _ in INDICATOR_PARAM_LIST_INDEX_DAILY_HIS], sep=';')
+    has_table = engine_md.has_table(table_name)
+    if has_table:
         sql_str = """SELECT ths_code, date_frm, if(NULL<end_date, NULL, end_date) date_to
             FROM
             (
@@ -330,18 +330,13 @@ def import_index_daily_his(ths_code_set: set = None, begin_time=None):
             ths_code: (date_from if begin_time is None else min([date_from, begin_time]), date_to)
             for ths_code, date_from, date_to in table.fetchall() if
             ths_code_set is None or ths_code in ths_code_set}
-    #
-    # if TRIAL:
-    #     date_from_min = date.today() - timedelta(days=(365 * 5))
-    #     # 试用账号只能获取近5年数据
-    #     code_date_range_dic = {
-    #         ths_code: (max([date_from, date_from_min]), date_to)
-    #         for ths_code, (date_from, date_to) in code_date_range_dic.items() if date_from_min <= date_to}
 
-    # 设置 dtype
-    dtype = {key: val for key, _, val in indicator_param_list}
-    dtype['ths_code'] = String(20)
-    dtype['time'] = Date
+    if TRIAL:
+        date_from_min = date.today() - timedelta(days=(365 * 5))
+        # 试用账号只能获取近5年数据
+        code_date_range_dic = {
+            ths_code: (max([date_from, date_from_min]), date_to)
+            for ths_code, (date_from, date_to) in code_date_range_dic.items() if date_from_min <= date_to}
 
     data_df_list, data_count, tot_data_count, code_count = [], 0, 0, len(code_date_range_dic)
     try:
@@ -358,7 +353,7 @@ def import_index_daily_his(ths_code_set: set = None, begin_time=None):
                 data_df_list.append(data_df)
             # 大于阀值有开始插入
             if data_count >= 10000:
-                data_count = save_ifind_index_daily_his(data_df_list, dtype)
+                data_count = bunch_insert_on_duplicate_update(data_df, table_name, engine_md, DTYPE_INDEX_DAILY_HIS)
                 tot_data_count += data_count
                 data_df_list, data_count = [], 0
 
@@ -367,25 +362,14 @@ def import_index_daily_his(ths_code_set: set = None, begin_time=None):
                 break
     finally:
         if data_count > 0:
-            data_count = save_ifind_index_daily_his(data_df_list, dtype)
+            data_df_all = pd.concat(data_df_list)
+            data_count = bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md, DTYPE_INDEX_DAILY_HIS)
             tot_data_count += data_count
 
         logging.info("更新 ifind_stock_daily_his 完成 新增数据 %d 条", tot_data_count)
-
-
-def save_ifind_index_daily_his(data_df_list, dtype):
-    """保存数据到 ifind_index_daily_his"""
-    if len(data_df_list) > 0:
-        table_name = 'ifind_index_daily_his'
-        data_df_all = pd.concat(data_df_list)
-        # TODO: 需要解决重复数据插入问题，日后改为sql语句插入模式
-        # data_df_all.to_sql(table_name, engine_md, if_exists='append', index=False, dtype=dtype)
-        # data_count = tot_data_df.shape[0]
-        data_count = bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md, dtype)
-        logger.info('保存数据到 %s 成功，包含 %d 条记录', table_name, data_count)
-        return data_count
-    else:
-        return 0
+        if not has_table and engine_md.has_table(table_name):
+            alter_table_2_myisam(engine_md, [table_name])
+            build_primary_key([table_name])
 
 
 @app.task
@@ -514,7 +498,7 @@ def add_data_2_ckdvp(json_indicator, json_param, ths_code_set: set = None, begin
                 data_df_list, data_count = [], 0
 
             # 仅调试使用
-            if DEBUG and len(data_df_list) > 1:
+            if DEBUG and len(data_df_list) > 4:
                 break
 
             all_finished = True
@@ -526,6 +510,7 @@ def add_data_2_ckdvp(json_indicator, json_param, ths_code_set: set = None, begin
             tot_data_count += data_count
 
         if not has_table:
+            alter_table_2_myisam(engine_md, [table_name])
             create_pk_str = """ALTER TABLE {table_name}
                 CHANGE COLUMN `ths_code` `ths_code` VARCHAR(20) NOT NULL ,
                 CHANGE COLUMN `time` `time` DATE NOT NULL ,
