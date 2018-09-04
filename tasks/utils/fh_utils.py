@@ -19,7 +19,7 @@ import warnings
 from functools import reduce
 import xlrd
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 STR_FORMAT_DATE = '%Y-%m-%d'
 STR_FORMAT_DATETIME = '%Y-%m-%d %H:%M:%S'
 STR_FORMAT_DATETIME2 = '%Y-%m-%d %H:%M:%S.%f'
@@ -43,6 +43,14 @@ def is_nan_or_none(x):
     :return:
     """
     return True if x is None else isinstance(x, float) and np.isnan(x)
+
+
+def try_2_float(data):
+    try:
+        return None if data is None else float(data)
+    except:
+        logger.exception('%s 转化失败', data)
+        return None
 
 
 def split_chunk(l: list, n: int):
