@@ -70,10 +70,10 @@ def import_index_daily():
 
     if has_table:
         sql_str = """
-              SELECT wind_code, date_frm, if(launchdate<end_date, launchdate, end_date) date_to
+              SELECT wind_code, date_frm, if(null<end_date, null, end_date) date_to
               FROM
               (
-                  SELECT info.wind_code, ifnull(trade_date, basedate) date_frm, launchdate,
+                  SELECT info.wind_code, ifnull(trade_date, basedate) date_frm, null,
                   if(hour(now())<16, subdate(curdate(),1), curdate()) end_date
                   FROM 
                       wind_index_info info 
@@ -81,19 +81,19 @@ def import_index_daily():
                       (SELECT wind_code, adddate(max(trade_date),1) trade_date FROM {table_name} GROUP BY wind_code) daily
                   ON info.wind_code = daily.wind_code
               ) tt
-              WHERE date_frm <= if(launchdate<end_date, launchdate, end_date) 
+              WHERE date_frm <= if(null<end_date, null, end_date) 
               ORDER BY wind_code""".format(table_name=table_name)
     else:
         logger.warning('%s 不存在，仅使用 wind_index_info 表进行计算日期范围', table_name)
         sql_str = """
-              SELECT wind_code, date_frm, if(launchdate<end_date, launchdate, end_date) date_to
+              SELECT wind_code, date_frm, if(null<end_date, null, end_date) date_to
               FROM
               (
-                  SELECT info.wind_code, basedate date_frm, launchdate,
+                  SELECT info.wind_code, basedate date_frm, null,
                   if(hour(now())<16, subdate(curdate(),1), curdate()) end_date
                   FROM wind_index_info info 
               ) tt
-              WHERE date_frm <= if(launchdate<end_date, launchdate, end_date) 
+              WHERE date_frm <= if(null<end_date, null, end_date) 
               ORDER BY wind_code;"""
 
     with with_db_session(engine_md) as session:
@@ -173,7 +173,7 @@ def import_index_info(wind_codes):
     # info_df.to_sql(table_name, engine_md, if_exists='append', index=True,
     #                 dtype={
     #                 'wind_code': String(20),
-    #                 'launchdate': Date,
+    #                 'null': Date,
     #                 'basedate': Date,
     #                 'basevalue': DOUBLE,
     #                 'country': String(20),
