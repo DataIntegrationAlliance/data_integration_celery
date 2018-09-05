@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Created on 2018/1/17
+Created on 2018/9/3
 @author: MG
-@desc    : 2018-08-21 已经正式运行测试完成，可以正常使用
+@desc    :2018-09-05 已经正式运行测试完成，可以正常使用
 """
 
 import logging
@@ -111,12 +111,12 @@ def get_stock_code_set(date_fetch):
         logging.warning('%s 获取股票代码失败', date_fetch_str)
         return None
     stock_count = stock_df.shape[0]
-    logging.info('get %d stocks on %s', stock_count, date_fetch_str)
+    logging.info('get %d codes on %s', stock_count, date_fetch_str)
     return set(stock_df['THSCODE'])
 
 
 @app.task
-def import_index_info(ths_code=None, refresh=False):
+def import_index_info(ths_code=None):
     """
     :param ths_code:
     :param refresh:
@@ -127,19 +127,8 @@ def import_index_info(ths_code=None, refresh=False):
     logging.info("更新 ifind_index_info 开始")
     if ths_code is None:
         # 获取全市场股票代码及名称
-        if refresh:
-            date_fetch = datetime.strptime('1991-02-01', STR_FORMAT_DATE).date()
-        else:
-            date_fetch = date.today()
-
         date_end = date.today()
         stock_code_set = set()
-        while date_fetch < date_end:
-            stock_code_set_sub = get_stock_code_set(date_fetch)
-            if stock_code_set_sub is not None:
-                stock_code_set |= stock_code_set_sub
-            date_fetch += timedelta(days=365)
-
         stock_code_set_sub = get_stock_code_set(date_end)
         if stock_code_set_sub is not None:
             stock_code_set |= stock_code_set_sub
@@ -147,12 +136,11 @@ def import_index_info(ths_code=None, refresh=False):
         ths_code = ','.join(stock_code_set)
 
     indicator_param_list = [
-        ('ths_index_short_name_index', '', String(10)),
+        ('ths_index_short_name_index', '', String(20)),
         ('ths_index_code_index', '', String(10)),
-        ('ths_thscode_index', '', String(10)),
-        ('ths_index_category_index', '', String(10)),
-        ('ths_index_base_period_index', '', String(10)),
-        ('ths_index_base_point_index', '', String(20)),
+        ('ths_index_category_index', '', String(20)),
+        ('ths_index_base_period_index', '', Date),
+        ('ths_index_base_point_index', '', DOUBLE),
         ('ths_publish_org_index', '', String(20)),
     ]
     # indicator' = 'ths_index_short_name_index;ths_index_code_index;ths_thscode_index;ths_index_category_index;
@@ -163,18 +151,9 @@ def import_index_info(ths_code=None, refresh=False):
     if data_df is None or data_df.shape[0] == 0:
         logging.info("没有可用的 index info 可以更新")
         return
-    # 删除历史数据，更新数据
-    # with with_db_session(engine_md) as session:
-    #     session.execute(
-    #         "DELETE FROM {table_name} WHERE ths_code IN (".format(table_name=table_name) + ','.join(
-    #             [':code%d' % n for n in range(len(stock_code_set))]
-    #         ) + ")",
-    #         params={'code%d' % n: val for n, val in enumerate(stock_code_set)})
-    #     session.commit()
+
     dtype = {key: val for key, _, val in indicator_param_list}
     dtype['ths_code'] = String(20)
-    # data_count = data_df.shape[0]
-    # data_df.to_sql(table_name, engine_md, if_exists='append', index=False, dtype=dtype)
     data_count = bunch_insert_on_duplicate_update(data_df, table_name, engine_md, dtype)
     logging.info("更新 %s 完成 存量数据 %d 条", table_name, data_count)
     if not has_table and engine_md.has_table(table_name):
@@ -233,11 +212,11 @@ def import_index_daily_ds(ths_code_set: set = None, begin_time=None):
 
     if TRIAL:
         date_from_min = date.today() - timedelta(days=(365 * 5))
-        date_from_min = date_2_str(date_from_min)
         # 试用账号只能获取近5年数据
         code_date_range_dic = {
             ths_code: (max([date_from, date_from_min]), date_to)
-            for ths_code, (date_from, date_to) in code_date_range_dic.items() if date_from_min <= date_2_str(date_to)}
+            for ths_code, (date_from, date_to) in code_date_range_dic.items()
+            if date_to is not None and date_from_min <= date_to}
 
     data_df_list, data_count, tot_data_count, code_count = [], 0, 0, len(code_date_range_dic)
     try:
@@ -310,7 +289,7 @@ def import_index_daily_his(ths_code_set: set = None, begin_time=None):
             WHERE date_frm <= if(NULL<end_date, NULL, end_date) 
             ORDER BY ths_code;"""
     else:
-        logger.warning('ifind_index_daily_his 不存在，仅使用 ifind_index_info 表进行计算日期范围')
+        logger.warning('%s 不存在，仅使用 ifind_index_info 表进行计算日期范围', table_name)
         sql_str = """SELECT ths_code, date_frm, if(NULL<end_date, NULL, end_date) date_to
             FROM
             (
@@ -336,7 +315,9 @@ def import_index_daily_his(ths_code_set: set = None, begin_time=None):
         # 试用账号只能获取近5年数据
         code_date_range_dic = {
             ths_code: (max([date_from, date_from_min]), date_to)
-            for ths_code, (date_from, date_to) in code_date_range_dic.items() if date_from_min <= date_to}
+            for ths_code, (date_from, date_to) in code_date_range_dic.items()
+            if date_to is not None and date_from_min <= date_to
+        }
 
     data_df_list, data_count, tot_data_count, code_count = [], 0, 0, len(code_date_range_dic)
     try:
@@ -366,7 +347,7 @@ def import_index_daily_his(ths_code_set: set = None, begin_time=None):
             data_count = bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md, DTYPE_INDEX_DAILY_HIS)
             tot_data_count += data_count
 
-        logging.info("更新 ifind_stock_daily_his 完成 新增数据 %d 条", tot_data_count)
+        logging.info("更新 %s 完成 新增数据 %d 条", table_name, tot_data_count)
         if not has_table and engine_md.has_table(table_name):
             alter_table_2_myisam(engine_md, [table_name])
             build_primary_key([table_name])
@@ -389,9 +370,9 @@ def add_new_col_data(col_name, param, db_col_name=None, col_type_str='DOUBLE', t
     if db_col_name is None:
         # 默认为 None，此时与col_name相同
         db_col_name = col_name
-
+    table_name = 'ifind_index_daily_ds'
     # 检查当前数据库是否存在 db_col_name 列，如果不存在则添加该列
-    add_col_2_table(engine_md, 'ifind_index_daily_ds', db_col_name, col_type_str)
+    add_col_2_table(engine_md, table_name, db_col_name, col_type_str)
     # 将数据增量保存到 ckdvp 表
     all_finished = add_data_2_ckdvp(col_name, param, ths_code_set)
     # 将数据更新到 ds 表中
@@ -528,14 +509,14 @@ def add_data_2_ckdvp(json_indicator, json_param, ths_code_set: set = None, begin
 if __name__ == "__main__":
     DEBUG = True
     TRIAL = True
-    ths_code = None  # '600006.SH,600009.SH'
-    refresh = False
     # 股票基本信息数据加载
-    # import_index_info(ths_code, refresh=refresh)
-    ths_code_set = None  # {'600006.SH', '600009.SH'}
+    ths_code = None  # '600006.SH,600009.SH'
+    import_index_info(ths_code)
     # 股票日K历史数据加载
-    # import_index_daily_his(ths_code_set)
+    ths_code_set = None  # {'600006.SH', '600009.SH'}
+    import_index_daily_his(ths_code_set)
     # 股票日K数据加载
-    # import_index_daily_ds(ths_code_set)
+    ths_code_set = None  # {'600006.SH', '600009.SH'}
+    import_index_daily_ds(ths_code_set)
     # 添加新字段
-    add_new_col_data('ths_annual_volatility_index', '101', ths_code_set=ths_code_set)
+    # add_new_col_data('ths_annual_volatility_index', '101', ths_code_set=ths_code_set)
