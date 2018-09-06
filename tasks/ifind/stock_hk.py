@@ -746,7 +746,7 @@ def import_stock_hk_fin_by_report_date_weekly(ths_code_set: set = None, begin_ti
     """
     通过date_serise接口将历史数据保存到 import_stock_hk_fin
     该数据作为 为周度获取
-    以财务报表发布日期为进准，财务报表发布日-14天~财务报表发布日，周度获取财务数据
+    以财务报表发布日期为进准，[ 财务报表发布日-14天 ~ 财务报表发布日]，周度获取财务数据
     :param ths_code_set:
     :param begin_time:
     :param refresh: 全部刷新
@@ -758,6 +758,15 @@ def import_stock_hk_fin_by_report_date_weekly(ths_code_set: set = None, begin_ti
     # jsonparam='2013,100,OC;2013,100,OC;OC,101'
     json_indicator, json_param = unzip_join([(key, val) for key, val, _ in INDICATOR_PARAM_LIST_STOCK_HK_FIN], sep=';')
     has_table = engine_md.has_table(table_name)
+    ths_code_report_date_str = """select distinct ths_code, subdate(report_date, 14), report_date from
+        (
+        select ths_code, ths_perf_brief_actual_dd_hks report_date from ifind_stock_hk_report_date
+        union
+        select ths_code, ths_perf_report_actual_dd_hks report_date from ifind_stock_hk_report_date
+        ) tt
+        where report_date is not null
+        order by ths_code, report_date"""
+
     if has_table:
         sql_str = """SELECT ths_code, date_frm, if(ths_stop_listing_date_hks<end_date, ths_stop_listing_date_hks, end_date) date_to
             FROM
@@ -784,46 +793,94 @@ def import_stock_hk_fin_by_report_date_weekly(ths_code_set: set = None, begin_ti
             ORDER BY ths_code""".format(info_table_name=info_table_name)
         logger.warning('%s 不存在，仅使用 %s 表进行计算日期范围', table_name, info_table_name)
     with with_db_session(engine_md) as session:
+        # 获取报告日-10天到报告日日期范围列表
+        table = session.execute(ths_code_report_date_str)
+        ths_code_report_date_range_list_dic, ths_code_report_date_range_list_dic_tmp = {}, {}
+        for ths_code, date_from, date_to in table.fetchall():
+            if ths_code_set is None or ths_code in ths_code_set:
+                ths_code_report_date_range_list_dic_tmp.setdefault(ths_code, []).append((date_from, date_to))
+
         # 获取每只股票需要获取日线数据的日期区间
-        table = session.execute(sql_str)
-        code_date_range_dic = {
-            ths_code: (date_from if begin_time is None else min([date_from, begin_time]), date_to)
-            for ths_code, date_from, date_to in table.fetchall() if
-            ths_code_set is None or ths_code in ths_code_set}
+        if not refresh:
+            # 如果全部刷新，则忽略 code_date_range_dic 的日期范围的限制
+            table = session.execute(sql_str)
+            code_date_range_dic = {
+                ths_code: (date_from if begin_time is None else min([date_from, begin_time]), date_to)
+                for ths_code, date_from, date_to in table.fetchall() if
+                ths_code_set is None or ths_code in ths_code_set}
 
-    if TRIAL:
-        date_from_min = date.today() - timedelta(days=(365 * 5))
-        # 试用账号只能获取近5年数据
-        code_date_range_dic = {
-            ths_code: (max([date_from, date_from_min]), date_to)
-            for ths_code, (date_from, date_to) in code_date_range_dic.items() if date_from_min <= date_to}
+            if TRIAL:
+                date_from_min = date.today() - timedelta(days=(365 * 5))
+                # 试用账号只能获取近5年数据
+                code_date_range_dic = {
+                    ths_code: (max([date_from, date_from_min]), date_to)
+                    for ths_code, (date_from, date_to) in code_date_range_dic.items() if date_from_min <= date_to}
+        else:
+            code_date_range_dic = {}
 
-    data_df_list, data_count, tot_data_count, code_count = [], 0, 0, len(code_date_range_dic)
+    # 合并重叠的日期
+    for ths_code, date_range_list in ths_code_report_date_range_list_dic_tmp.items():
+        if not refresh and ths_code in code_date_range_dic:
+            code_date_range = code_date_range_dic[ths_code]
+        else:
+            code_date_range = None
+
+        # date_range_list 按照 起始日期 顺序排序，下层循环主要作用是将具有重叠日期的日期范围进行合并
+        date_range_list_new, date_from_last, date_to_last = [], None, None
+        for date_from, date_to in date_range_list:
+            if code_date_range is not None:
+                # 如果全部刷新，则忽略 code_date_range_dic 的日期范围的限制
+                if not refresh and (date_to < code_date_range[0] or code_date_range[1] < date_from):
+                    continue
+
+            if date_from_last is None:
+                # 首次循环 设置 date_from_last
+                date_from_last = date_from
+            elif date_from < date_to_last:
+                # 日期重叠，需要合并
+                pass
+            else:
+                # 日期未重叠，保存 range
+                date_range_list_new.append((date_from_last, date_to_last))
+                date_from_last = date_from
+
+            # 循环底部，设置 date_to_last
+            date_to_last = date_to
+
+        # 循环结束，保存 range
+        if date_from_last is not None and date_to_last is not None:
+            date_range_list_new.append((date_from_last, date_to_last))
+
+        if len(date_range_list_new) > 0:
+            ths_code_report_date_range_list_dic[ths_code] = date_range_list_new
+
+    data_df_list, data_count, tot_data_count, code_count = [], 0, 0, len(ths_code_report_date_range_list_dic)
     try:
-        for num, (ths_code, (begin_time, end_time)) in enumerate(code_date_range_dic.items(), start=1):
-            logger.debug('%d/%d) %s [%s - %s]', num, code_count, ths_code, begin_time, end_time)
-            data_df = invoker.THS_DateSerial(
-                ths_code,
-                json_indicator,
-                json_param,
-                'Days:Tradedays,Fill:Previous,Interval:Q',
-                begin_time, end_time
-            )
-            if data_df is not None and data_df.shape[0] > 0:
-                data_count += data_df.shape[0]
-                data_df_list.append(data_df)
+        for num, (ths_code, date_range_list) in enumerate(ths_code_report_date_range_list_dic.items(), start=1):
+            for begin_time, end_time in date_range_list:
+                logger.debug('%d/%d) %s [%s - %s]', num, code_count, ths_code, begin_time, end_time)
+                data_df = invoker.THS_DateSerial(
+                    ths_code,
+                    json_indicator,
+                    json_param,
+                    'Days:Tradedays,Fill:Previous,Interval:W',
+                    begin_time, end_time
+                )
+                if data_df is not None and data_df.shape[0] > 0:
+                    data_count += data_df.shape[0]
+                    data_df_list.append(data_df)
 
-            # 仅调试使用
-            if DEBUG and len(data_df_list) > 0:
-                break
+                # 仅调试使用
+                if DEBUG and len(data_df_list) > 0:
+                    break
 
-            # 大于阀值有开始插入
-            if data_count >= 2000:
-                tot_data_df = pd.concat(data_df_list)
-                # tot_data_df.to_sql(table_name, engine_md, if_exists='append', index=False, dtype=dtype)
-                bunch_insert_on_duplicate_update(tot_data_df, table_name, engine_md, DTYPE_STOCK_HK_FIN)
-                tot_data_count += data_count
-                data_df_list, data_count = [], 0
+                # 大于阀值有开始插入
+                if data_count >= 2000:
+                    tot_data_df = pd.concat(data_df_list)
+                    # tot_data_df.to_sql(table_name, engine_md, if_exists='append', index=False, dtype=dtype)
+                    bunch_insert_on_duplicate_update(tot_data_df, table_name, engine_md, DTYPE_STOCK_HK_FIN)
+                    tot_data_count += data_count
+                    data_df_list, data_count = [], 0
 
     finally:
         if data_count > 0:
@@ -856,7 +913,10 @@ if __name__ == "__main__":
     # 添加新字段
     # add_new_col_data('ths_pe_ttm_stock', '101', ths_code_set=ths_code_set)
     # 股票财务报告日期
-    # interval = 'Q'
-    # import_stock_hk_report_date(interval=interval)
+    interval = 'Q'
+    import_stock_hk_report_date(interval=interval)
     # 股票财务数据
-    import_stock_hk_fin_quarterly()
+    # import_stock_hk_fin_quarterly()
+    # 补充股票财务数据
+    refresh = True
+    import_stock_hk_fin_by_report_date_weekly()
