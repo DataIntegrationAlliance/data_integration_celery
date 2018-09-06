@@ -859,4 +859,4 @@ if __name__ == "__main__":
     # interval = 'Q'
     # import_stock_hk_report_date(interval=interval)
     # 股票财务数据
-    import_stock_hk_fin()
+    import_stock_hk_fin_quarterly()
