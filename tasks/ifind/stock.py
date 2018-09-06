@@ -88,6 +88,7 @@ INDICATOR_PARAM_LIST_STOCK_DAILY_FIN = [
 ]
 DTYPE_STOCK_DAILY_FIN = {key: val for key, _, val in INDICATOR_PARAM_LIST_STOCK_DAILY_FIN}
 DTYPE_STOCK_DAILY_FIN['ths_code'] = String(20)
+DTYPE_STOCK_DAILY_FIN['time'] = Date
 
 
 def get_stock_code_set(date_fetch):
@@ -1009,27 +1010,27 @@ def add_data_fin_2_ckdvp(json_indicator, json_param, ths_code_set: set = None, b
 
 
 if __name__ == "__main__":
-    DEBUG = True
+    # DEBUG = True
     TRIAL = True
 
     # 股票基本信息数据加载
-    ths_code = None  # '600006.SH,600009.SH'
-    refresh = False
+    # ths_code = None  # '600006.SH,600009.SH'
+    # refresh = False
     # import_stock_info(ths_code, refresh=refresh)
     # 股票日K历史数据加载
-    # ths_code_set = None  # {'600006.SH', '600009.SH'}
-    # import_stock_daily_his(ths_code_set)
+    ths_code_set = None  # {'600006.SH', '600009.SH'}
+    import_stock_daily_his(ths_code_set)
     # 股票日K数据加载
-    # ths_code_set = None  # {'600006.SH', '600009.SH'}
-    # import_stock_daily_ds(ths_code_set)
+    ths_code_set = None  # {'600006.SH', '600009.SH'}
+    import_stock_daily_ds(ths_code_set)
     # 添加新字段
     # add_new_col_data('ths_pe_ttm_stock', '101', ths_code_set=ths_code_set)
     # 股票财务报告日期
-    # interval = 'W'
-    # import_stock_report_date(interval=interval)
+    interval = 'W'
+    import_stock_report_date(interval=interval)
     # 測試添加 新數據
-    # ths_code_set = {'601398.SH'}
-    # import_stock_fin(ths_code_set)
+    ths_code_set = None  # {'601398.SH'}
+    import_stock_fin(ths_code_set)
     # 測試添加新的字段名 和編碼
-    ths_code_set = {'601398.SH'}
-    add_new_col_data_to_fin('ths_invest_income_stock', '101', ths_code_set=ths_code_set)
+    # ths_code_set = {'601398.SH'}
+    # add_new_col_data_to_fin('ths_invest_income_stock', '101', ths_code_set=ths_code_set)
