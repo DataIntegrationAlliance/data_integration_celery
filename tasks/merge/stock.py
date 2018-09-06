@@ -283,7 +283,7 @@ def merge_ifind_stock_daily(ths_code_set: set = None, date_from=None):
                 continue
             ifind_fin_df_temp = ifind_fin_df_g.get_group(ths_code)
             if report_date not in report_date_dic_dic:
-                ifind_fin_df_temp = ifind_fin_df_temp[ifind_fin_df_temp['time'] >= report_date]
+                ifind_fin_df_temp = ifind_fin_df_temp[ifind_fin_df_temp['time'] <= report_date]
                 if ifind_fin_df_temp.shape[0] > 0:
                     report_date_dic[report_date] = ifind_fin_df_temp.sort_values('time').iloc[0]
 
