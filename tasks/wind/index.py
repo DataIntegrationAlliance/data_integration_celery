@@ -67,7 +67,6 @@ def import_index_daily():
     #     trade_date_sorted_list.sort()
     # date_to = get_last(trade_date_sorted_list, lambda x: x <= date_ending)
     # data_len = len(wind_code_date_from_dic)
-
     if has_table:
         sql_str = """
               SELECT wind_code, date_frm, if(null<end_date, null, end_date) date_to
