@@ -60,7 +60,7 @@ def merge_ifind_stock_hk_daily(date_from=None):
             report_date_dic = report_date_dic_dic.setdefault(ths_code, {})
             ifind_fin_df_tmp = ifind_fin_df_g.get_group(ths_code)
             if report_date not in report_date_dic:
-                ifind_fin_df_tmp = ifind_fin_df_tmp[ifind_fin_df_tmp['time'] >= report_date]
+                ifind_fin_df_tmp = ifind_fin_df_tmp[ifind_fin_df_tmp['time'] <= report_date]
                 if ifind_fin_df_tmp.shape[0] > 0:
                     report_date_dic[report_date] = ifind_fin_df_tmp.sort_values('time').iloc[0]
 
