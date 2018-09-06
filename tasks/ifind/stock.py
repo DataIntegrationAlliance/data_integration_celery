@@ -65,9 +65,9 @@ INDICATOR_PARAM_LIST_STOCK_DAILY_HIS = [
     ('pcf', '', DOUBLE),
 ]
 # 设置 dtype
-DTYPE_STOCK_HK_DAILY_HIS = {key: val for key, _, val in INDICATOR_PARAM_LIST_STOCK_DAILY_HIS}
-DTYPE_STOCK_HK_DAILY_HIS['ths_code'] = String(20)
-DTYPE_STOCK_HK_DAILY_HIS['time'] = Date
+DTYPE_STOCK_DAILY_HIS = {key: val for key, _, val in INDICATOR_PARAM_LIST_STOCK_DAILY_HIS}
+DTYPE_STOCK_DAILY_HIS['ths_code'] = String(20)
+DTYPE_STOCK_DAILY_HIS['time'] = Date
 
 INDICATOR_PARAM_LIST_STOCK_DAILY_FIN = [
     ('ths_final_balance_of_cce_stock', '2052,100', DOUBLE),
@@ -88,7 +88,17 @@ INDICATOR_PARAM_LIST_STOCK_DAILY_FIN = [
 ]
 DTYPE_STOCK_DAILY_FIN = {key: val for key, _, val in INDICATOR_PARAM_LIST_STOCK_DAILY_FIN}
 DTYPE_STOCK_DAILY_FIN['ths_code'] = String(20)
+DTYPE_STOCK_DAILY_FIN['time'] = Date
 
+# report_date 表
+INDICATOR_PARAM_LIST_STOCK_REPORT_DATE = [
+    ('ths_regular_report_actual_dd_stock', '', Date),  # 实际披露日期
+    ('ths_periodic_report_fore_dd_stock', '', Date),  # 预披露日期
+]
+# 设置 dtype
+DTYPE_STOCK_REPORT_DATE = {key: val for key, _, val in INDICATOR_PARAM_LIST_STOCK_REPORT_DATE}
+DTYPE_STOCK_REPORT_DATE['ths_code'] = String(20)
+DTYPE_STOCK_REPORT_DATE['time'] = Date
 
 def get_stock_code_set(date_fetch):
     date_fetch_str = date_fetch.strftime(STR_FORMAT_DATE)
@@ -248,7 +258,7 @@ def import_stock_daily_ds(ths_code_set: set = None, begin_time=None):
                 data_df_all = pd.concat(data_df_list)
                 # data_df_all.to_sql(table_name, engine_md, if_exists='append', index=False, dtype=dtype)
                 data_count = bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md,
-                                                              DTYPE_STOCK_HK_DAILY_HIS)
+                                                              DTYPE_STOCK_DAILY_HIS)
                 tot_data_count += data_count
                 data_df_list, data_count = [], 0
 
@@ -259,7 +269,7 @@ def import_stock_daily_ds(ths_code_set: set = None, begin_time=None):
         if data_count > 0:
             data_df_all = pd.concat(data_df_list)
             # data_df_all.to_sql(table_name, engine_md, if_exists='append', index=False, dtype=dtype)
-            data_count = bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md, DTYPE_STOCK_HK_DAILY_HIS)
+            data_count = bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md, DTYPE_STOCK_DAILY_HIS)
             tot_data_count += data_count
 
         if not has_table and engine_md.has_table(table_name):
@@ -341,7 +351,7 @@ def import_stock_daily_his(ths_code_set: set = None, begin_time=None):
                 data_df_list.append(data_df)
             # 大于阀值有开始插入
             if data_count >= 10000:
-                data_count = save_ifind_stock_daily_his(data_df_list, DTYPE_STOCK_HK_DAILY_HIS)
+                data_count = save_ifind_stock_daily_his(data_df_list, DTYPE_STOCK_DAILY_HIS)
                 tot_data_count += data_count
                 data_df_list, data_count = [], 0
 
@@ -350,7 +360,7 @@ def import_stock_daily_his(ths_code_set: set = None, begin_time=None):
                 break
     finally:
         if data_count > 0:
-            data_count = save_ifind_stock_daily_his(data_df_list, DTYPE_STOCK_HK_DAILY_HIS)
+            data_count = save_ifind_stock_daily_his(data_df_list, DTYPE_STOCK_DAILY_HIS)
             tot_data_count += data_count
 
         logging.info("更新 ifind_stock_daily_his 完成 新增数据 %d 条", tot_data_count)
@@ -667,13 +677,10 @@ def import_stock_report_date(ths_code_set: set = None, begin_time=None, interval
     table_name = 'ifind_stock_report_date'
     info_table_name = 'ifind_stock_info'
     has_table = engine_md.has_table(table_name)
-    indicator_param_list = [
-        ('ths_regular_report_actual_dd_stock', '', Date),  # 实际披露日期
-        ('ths_periodic_report_fore_dd_stock', '', Date),  # 预披露日期
-    ]
+
     # jsonIndicator='ths_regular_report_actual_dd_stock;ths_periodic_report_fore_dd_stock'
     # jsonparam=';'
-    json_indicator, json_param = unzip_join([(key, val) for key, val, _ in indicator_param_list], sep=';')
+    json_indicator, json_param = unzip_join([(key, val) for key, val, _ in INDICATOR_PARAM_LIST_STOCK_REPORT_DATE], sep=';')
     if has_table:
         sql_str = """SELECT ths_code, date_frm, if(ths_delist_date_stock<end_date, ths_delist_date_stock, end_date) date_to
             FROM
@@ -715,11 +722,6 @@ def import_stock_report_date(ths_code_set: set = None, begin_time=None, interval
             ths_code: (max([date_from, date_from_min]), date_to)
             for ths_code, (date_from, date_to) in code_date_range_dic.items() if date_from_min <= date_to}
 
-    # 设置 dtype
-    dtype = {key: val for key, _, val in indicator_param_list}
-    dtype['ths_code'] = String(20)
-    dtype['time'] = Date
-
     data_df_list, data_count, tot_data_count, code_count = [], 0, 0, len(code_date_range_dic)
     try:
         for num, (ths_code, (begin_time, end_time)) in enumerate(code_date_range_dic.items(), start=1):
@@ -738,18 +740,18 @@ def import_stock_report_date(ths_code_set: set = None, begin_time=None, interval
             if data_count >= 10000:
                 data_df_all = pd.concat(data_df_list)
                 # data_df_all.to_sql(table_name, engine_md, if_exists='append', index=False, dtype=dtype)
-                data_count = bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md, dtype)
+                data_count = bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md, DTYPE_STOCK_REPORT_DATE)
                 tot_data_count += data_count
                 data_df_list, data_count = [], 0
 
             # 仅调试使用
-            if DEBUG and len(data_df_list) > 1:
+            if DEBUG and len(data_df_list) > 500:
                 break
     finally:
         if data_count > 0:
             data_df_all = pd.concat(data_df_list)
             # data_df_all.to_sql(table_name, engine_md, if_exists='append', index=False, dtype=dtype)
-            data_count = bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md, dtype)
+            data_count = bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md, DTYPE_STOCK_REPORT_DATE)
             tot_data_count += data_count
 
         if not has_table and engine_md.has_table(table_name):
@@ -831,7 +833,7 @@ def import_stock_fin(ths_code_set: set = None, begin_time=None):
                 data_df_list.append(data_df)
 
             # 仅调试使用
-            if DEBUG and len(data_df_list) > 520:
+            if DEBUG and len(data_df_list) > 500:
                 break
 
             # 大于阀值有开始插入
@@ -1020,9 +1022,10 @@ if __name__ == "__main__":
     # ths_code_set = None  # {'600006.SH', '600009.SH'}
     # import_stock_daily_his(ths_code_set)
     # 股票日K数据加载
-    # ths_code_set = None  # {'600006.SH', '600009.SH'}
+    # ths_code_set = {'600006.SH'}  # {'600006.SH', '600009.SH'}
     # import_stock_daily_ds(ths_code_set)
     # 添加新字段
+    # ths_code_set = {'600006.SH'}
     # add_new_col_data('ths_pe_ttm_stock', '101', ths_code_set=ths_code_set)
     # 股票财务报告日期
     # interval = 'W'
@@ -1030,6 +1033,8 @@ if __name__ == "__main__":
     # 測試添加 新數據
     # ths_code_set = {'601398.SH'}
     # import_stock_fin(ths_code_set)
+    ths_code_set = {'300417.SZ'}
+    import_stock_fin(ths_code_set)
     # 測試添加新的字段名 和編碼
-    ths_code_set = {'601398.SH'}
-    add_new_col_data_to_fin('ths_invest_income_stock', '101', ths_code_set=ths_code_set)
+    # ths_code_set = {'601398.SH'}
+    # add_new_col_data_to_fin('ths_invest_income_stock', '101', ths_code_set=ths_code_set)
