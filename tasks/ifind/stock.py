@@ -107,7 +107,7 @@ def get_stock_code_set(date_fetch):
         logging.warning('%s 获取股票代码失败', date_fetch_str)
         return None
     stock_count = stock_df.shape[0]
-    logging.info('get %d stocks on %s', stock_count, date_fetch_str)
+    logging.info('get %d ths_code on %s', stock_count, date_fetch_str)
     return set(stock_df['THSCODE'])
 
 

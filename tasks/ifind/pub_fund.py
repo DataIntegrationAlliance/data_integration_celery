@@ -36,7 +36,7 @@ def get_pub_fund_code_set(date_fetch):
         logging.warning('%s 获取基金代码失败', date_fetch_str)
         return None
     stock_count = stock_df.shape[0]
-    logging.info('get %d stocks on %s', stock_count, date_fetch_str)
+    logging.info('get %d ths_code on %s', stock_count, date_fetch_str)
     return set(stock_df['THSCODE'])
 
 
@@ -277,9 +277,9 @@ def import_pub_fund_daily(ths_code_set: set = None, begin_time=None):
 if __name__ == "__main__":
     TRIAL = True
     # DEBUG = True
-    # ths_code = None  # '600006.SH,600009.SH'
+    ths_code = None  # '600006.SH,600009.SH'
     # 股票基本信息数据加载
-    # import_pub_fund_info(ths_code)
+    import_pub_fund_info(ths_code)
     # 股票日K数据加载
     ths_code_set = None  # {'600006.SH', '600009.SH'}
     # 股票日K历史数据加载
