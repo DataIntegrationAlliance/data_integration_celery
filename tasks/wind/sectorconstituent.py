@@ -285,15 +285,15 @@ def import_sectorconstituent(sector_code, sector_name, date_start, chain_param=N
         #     break
 
 
-sector_name = 'HSI恒生综合指数成分'
-sector_code = 'a003090201000000'
-date_str = '2018-02-23'
-import_sectorconstituent(sector_code, sector_name, date_str, None)
-
 if __name__ == "__main__":
     DEBUG = True
     logging.basicConfig(level=logging.DEBUG, format='%(asctime)s: %(levelname)s [%(name)s:%(funcName)s] %(message)s')
     logging.getLogger('requests.packageimport_sectorconstituent_alls.urllib3.connectionpool').setLevel(logging.WARNING)
     logging.getLogger('urllib3.connectionpool').setLevel(logging.WARNING)
+
+    # sector_name = 'HSI恒生综合指数成分'
+    # sector_code = 'a003090201000000'
+    # date_str = '2018-02-23'
+    # import_sectorconstituent(sector_code, sector_name, date_str, None)
 
     import_sectorconstituent_all(chain_param=None)
