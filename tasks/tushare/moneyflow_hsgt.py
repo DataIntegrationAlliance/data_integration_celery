@@ -30,7 +30,7 @@ STR_FORMAT_DATE_TS = '%Y%m%d'
 
 df=pro.moneyflow_hsgt(trade_date='20141117')
 
-@try_n_times(times=3, sleep_time=6)
+@try_n_times(times=5, sleep_time=0,exception_sleep_time=60)
 def invoke_moneyflow_hsgt(trade_date):
     moneyflow_hsgt = pro.moneyflow_hsgt(trade_date=trade_date)
     return moneyflow_hsgt

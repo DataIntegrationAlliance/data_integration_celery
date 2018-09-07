@@ -1,6 +1,6 @@
 """
-Created on 2017/4/14
-@author: MG
+Created on 2018/8/14
+@author: yby
 @desc    : 2018-08-21 已经正式运行测试完成，可以正常使用
 """
 import tushare as ts
