@@ -1,3 +1,9 @@
+"""
+Created on 2018/8/13
+@author: yby
+@desc    : 2018-08-3
+contact author:ybychem@gmail.com
+"""
 import tushare as ts
 import pandas as pd
 import logging
