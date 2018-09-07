@@ -27,6 +27,78 @@ ONE_DAY = timedelta(days=1)
 BASE_LINE_HOUR = 16
 STR_FORMAT_DATE_TS = '%Y%m%d'
 
+
+INDICATOR_PARAM_LIST_STOCK_ICOME = [
+    ('ts_code', String(20)),
+    ('ann_date', Date),
+    ('f_ann_date', Date),
+    ('end_date', Date),
+    ('report_type', DOUBLE),
+    ('comp_type', DOUBLE),
+    ('basic_eps', DOUBLE),
+    ('diluted_eps', DOUBLE),
+    ('total_revenue', DOUBLE),
+    ('revenue', DOUBLE),
+    ('int_income', DOUBLE),
+    ('prem_earned', DOUBLE),
+    ('comm_income', DOUBLE),
+    ('n_commis_income', DOUBLE),
+    ('n_oth_income', DOUBLE),
+    ('n_oth_b_income', DOUBLE),
+    ('prem_income', DOUBLE),
+    ('out_prem', DOUBLE),
+    ('une_prem_reser', DOUBLE),
+    ('reins_income', DOUBLE),
+    ('n_sec_tb_income', DOUBLE),
+    ('n_sec_uw_income', DOUBLE),
+    ('n_asset_mg_income', DOUBLE),
+    ('oth_b_income', DOUBLE),
+    ('fv_value_chg_gain', DOUBLE),
+    ('invest_income', DOUBLE),
+    ('ass_invest_income', DOUBLE),
+    ('forex_gain', DOUBLE),
+    ('total_cogs', DOUBLE),
+    ('oper_cost', DOUBLE),
+    ('int_exp', DOUBLE),
+    ('comm_exp', DOUBLE),
+    ('biz_tax_surchg', DOUBLE),
+    ('sell_exp', DOUBLE),
+    ('admin_exp', DOUBLE),
+    ('fin_exp', DOUBLE),
+    ('assets_impair_loss', DOUBLE),
+    ('prem_refund', DOUBLE),
+    ('compens_payout', DOUBLE),
+    ('reser_insur_liab', DOUBLE),
+    ('div_payt', DOUBLE),
+    ('reins_exp', DOUBLE),
+    ('oper_exp', DOUBLE),
+    ('compens_payout_refu', DOUBLE),
+    ('insur_reser_refu', DOUBLE),
+    ('reins_cost_refund', DOUBLE),
+    ('other_bus_cost', DOUBLE),
+    ('operate_profit', DOUBLE),
+    ('non_oper_income', DOUBLE),
+    ('non_oper_exp', DOUBLE),
+    ('nca_disploss', DOUBLE),
+    ('total_profit', DOUBLE),
+    ('income_tax', DOUBLE),
+    ('n_income', DOUBLE),
+    ('n_income_attr_p', DOUBLE),
+    ('minority_gain', DOUBLE),
+    ('oth_compr_income', DOUBLE),
+    ('t_compr_income', DOUBLE),
+    ('compr_inc_attr_p', DOUBLE),
+    ('compr_inc_attr_m_s', DOUBLE),
+    ('ebit', DOUBLE),
+    ('ebitda', DOUBLE),
+    ('insurance_exp', DOUBLE),
+    ('undist_profit', DOUBLE),
+    ('distable_profit', DOUBLE),
+
+]
+# 设置 dtype
+DTYPE_TUSHARE_DAILY = {key: val for key, val in INDICATOR_PARAM_LIST_STOCK_ICOME}
+
 @app.task
 def import_tushare_stock_income(ts_code_set=None):
     """
@@ -36,73 +108,6 @@ def import_tushare_stock_income(ts_code_set=None):
     """
     table_name = 'tushare_stock_income'
     logging.info("更新 %s 开始", table_name)
-    param_list = [
-        ('ts_code', String(20)),
-        ('ann_date', Date),
-        ('f_ann_date', Date),
-        ('end_date', Date),
-        ('report_type', DOUBLE),
-        ('comp_type', DOUBLE),
-        ('basic_eps', DOUBLE),
-        ('diluted_eps', DOUBLE),
-        ('total_revenue', DOUBLE),
-        ('revenue', DOUBLE),
-        ('int_income', DOUBLE),
-        ('prem_earned', DOUBLE),
-        ('comm_income', DOUBLE),
-        ('n_commis_income', DOUBLE),
-        ('n_oth_income', DOUBLE),
-        ('n_oth_b_income', DOUBLE),
-        ('prem_income', DOUBLE),
-        ('out_prem', DOUBLE),
-        ('une_prem_reser', DOUBLE),
-        ('reins_income', DOUBLE),
-        ('n_sec_tb_income', DOUBLE),
-        ('n_sec_uw_income', DOUBLE),
-        ('n_asset_mg_income', DOUBLE),
-        ('oth_b_income', DOUBLE),
-        ('fv_value_chg_gain', DOUBLE),
-        ('invest_income', DOUBLE),
-        ('ass_invest_income', DOUBLE),
-        ('forex_gain', DOUBLE),
-        ('total_cogs', DOUBLE),
-        ('oper_cost', DOUBLE),
-        ('int_exp', DOUBLE),
-        ('comm_exp', DOUBLE),
-        ('biz_tax_surchg', DOUBLE),
-        ('sell_exp', DOUBLE),
-        ('admin_exp', DOUBLE),
-        ('fin_exp', DOUBLE),
-        ('assets_impair_loss', DOUBLE),
-        ('prem_refund', DOUBLE),
-        ('compens_payout', DOUBLE),
-        ('reser_insur_liab', DOUBLE),
-        ('div_payt', DOUBLE),
-        ('reins_exp', DOUBLE),
-        ('oper_exp', DOUBLE),
-        ('compens_payout_refu', DOUBLE),
-        ('insur_reser_refu', DOUBLE),
-        ('reins_cost_refund', DOUBLE),
-        ('other_bus_cost', DOUBLE),
-        ('operate_profit', DOUBLE),
-        ('non_oper_income', DOUBLE),
-        ('non_oper_exp', DOUBLE),
-        ('nca_disploss', DOUBLE),
-        ('total_profit', DOUBLE),
-        ('income_tax', DOUBLE),
-        ('n_income', DOUBLE),
-        ('n_income_attr_p', DOUBLE),
-        ('minority_gain', DOUBLE),
-        ('oth_compr_income', DOUBLE),
-        ('t_compr_income', DOUBLE),
-        ('compr_inc_attr_p', DOUBLE),
-        ('compr_inc_attr_m_s', DOUBLE),
-        ('ebit', DOUBLE),
-        ('ebitda', DOUBLE),
-        ('insurance_exp', DOUBLE),
-        ('undist_profit', DOUBLE),
-        ('distable_profit', DOUBLE),
-    ]
     # wind_indictor_str = ",".join([key for key, _ in param_list])
     # rename_col_dic = {key.upper(): key.lower() for key, _ in param_list}
     has_table = engine_md.has_table(table_name)
@@ -145,8 +150,7 @@ def import_tushare_stock_income(ts_code_set=None):
             ts_code: (date_from if begin_time is None else min([date_from, begin_time]), date_to)
             for ts_code, date_from, date_to in table.fetchall() if
             ts_code_set is None or ts_code in ts_code_set}
-    # 设置 dtype
-    dtype = {key: val for key, val in param_list}
+
     # dtype['ts_code'] = String(20)
     # dtype['trade_date'] = Date
 
