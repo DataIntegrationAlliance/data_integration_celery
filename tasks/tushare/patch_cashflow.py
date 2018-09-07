@@ -27,7 +27,7 @@ ONE_DAY = timedelta(days=1)
 BASE_LINE_HOUR = 16
 STR_FORMAT_DATE_TS = '%Y%m%d'
 
-@try_n_times(times=600,sleep_time=1,logger=logger,exception=Exception,exception_sleep_time=120)
+@try_n_times(times=5,sleep_time=0,logger=logger,exception=Exception,exception_sleep_time=60)
 def invoke_cashflow(ts_code,start_date,end_date):
     invoke_cashflow=pro.cashflow(ts_code=ts_code,start_date=start_date,end_date=end_date)
     return invoke_cashflow
