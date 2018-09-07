@@ -14,10 +14,11 @@ from tasks import app
 from tasks.backend import engine_md
 from datetime import date, datetime, timedelta
 from tasks.utils.db_utils import with_db_session
-from tasks.utils.fh_utils import STR_FORMAT_DATE, date_2_str, str_2_date, get_last_idx, get_first,get_last
+from tasks.utils.fh_utils import STR_FORMAT_DATE, date_2_str, str_2_date, get_last_idx, get_first, get_last
 from tasks.wind import invoker
 from sqlalchemy.types import String, Date, Float, Integer
 from sqlalchemy.dialects.mysql import DOUBLE
+
 DEBUG = False
 logger = logging.getLogger()
 DATE_BASE = datetime.strptime('1980-01-01', STR_FORMAT_DATE).date()
@@ -44,7 +45,7 @@ def get_latest_constituent_df(sector_code):
     :return:
     """
     table_name = "wind_sectorconstituent"
-    has_table =engine_md.has_table(table_name)
+    has_table = engine_md.has_table(table_name)
     if not has_table:
         return None, None
 
@@ -169,7 +170,11 @@ def recursion_get_sectorconstituent(idx_start, idx_end, trade_date_list_sorted, 
 
 
 @app.task
-def import_sectorconstituent_all():
+def import_sectorconstituent_all(chain_param=None):
+    """
+    :param chain_param:  在celery 中將前面結果做爲參數傳給後面的任務
+    :return:
+    """
     param_dic_list = [
         {"sector_name": 'SW银行', "sector_code": '1000012612000000', 'date_start': '2018-02-23'},
         {"sector_name": 'SW非銀金融', "sector_code": '1000012613000000', 'date_start': '2018-02-23'},
@@ -223,12 +228,13 @@ def import_sectorconstituent_all():
 
 
 @app.task
-def import_sectorconstituent(sector_code, sector_name, date_start, exch_code='SZSE'):
+def import_sectorconstituent(sector_code, sector_name, date_start, chain_param=None, exch_code='SZSE'):
     """
     导入 sector_code 板块的成分股
     :param sector_code:默认"SZSE":"深圳"
     :param sector_name:
     :param date_start:
+    :param chain_param:  在celery 中將前面結果做爲參數傳給後面的任務
     :return:
     """
     # 根据 exch_code 获取交易日列表
@@ -282,8 +288,7 @@ def import_sectorconstituent(sector_code, sector_name, date_start, exch_code='SZ
 sector_name = 'HSI恒生综合指数成分'
 sector_code = 'a003090201000000'
 date_str = '2018-02-23'
-import_sectorconstituent(sector_code, sector_name, date_str)
-
+import_sectorconstituent(sector_code, sector_name, date_str, None)
 
 if __name__ == "__main__":
     DEBUG = True
@@ -291,4 +296,4 @@ if __name__ == "__main__":
     logging.getLogger('requests.packageimport_sectorconstituent_alls.urllib3.connectionpool').setLevel(logging.WARNING)
     logging.getLogger('urllib3.connectionpool').setLevel(logging.WARNING)
 
-    import_sectorconstituent_all()
+    import_sectorconstituent_all(chain_param=None)

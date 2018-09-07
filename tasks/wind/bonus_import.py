@@ -18,6 +18,7 @@ from tasks.utils.fh_utils import STR_FORMAT_DATE
 from tasks.utils.db_utils import alter_table_2_myisam
 from sqlalchemy.types import String, Date, FLOAT
 from sqlalchemy.dialects.mysql import DOUBLE
+
 UN_AVAILABLE_DATE = datetime.strptime('1900-01-01', STR_FORMAT_DATE).date()
 TODAY = date.today()
 BASE_DATE = datetime.strptime('2010-12-31', STR_FORMAT_DATE).date()
@@ -34,8 +35,9 @@ def str_date(x):
 
 
 @app.task
-def import_wind_bonus(chain):
+def import_wind_bonus(chain_param=None):
     """
+    :param chain_param:  在celery 中將前面結果做爲參數傳給後面的任務
     :return:
     """
     table_name = 'wind_stock_bonus'
@@ -62,7 +64,8 @@ def import_wind_bonus(chain):
     param = ",".join([key for key, _ in param_list])
     with with_db_session(engine_md) as session:
         table = session.execute('SELECT wind_code, ipo_date, delist_date FROM wind_stock_info')
-        stock_date_dic = {wind_code: (ipo_date, delist_date if delist_date > UN_AVAILABLE_DATE else None) for wind_code, ipo_date, delist_date in table.fetchall()}
+        stock_date_dic = {wind_code: (ipo_date, delist_date if delist_date > UN_AVAILABLE_DATE else None) for
+                          wind_code, ipo_date, delist_date in table.fetchall()}
     print(len(stock_date_dic))
     DATE_LIST = [datetime.strptime('2010-12-31', STR_FORMAT_DATE).date(),
                  datetime.strptime('2011-12-31', STR_FORMAT_DATE).date(),
@@ -76,7 +79,8 @@ def import_wind_bonus(chain):
     dic_exdate_df_list = []
     for rep_date in DATE_LIST:
         rep_date_str = rep_date.strftime('%Y%m%d')
-        stock_list = [s for s, date_pair in stock_date_dic.items() if date_pair[0] < rep_date and (rep_date < date_pair[1] if date_pair[1] is not None else True)]
+        stock_list = [s for s, date_pair in stock_date_dic.items() if
+                      date_pair[0] < rep_date and (rep_date < date_pair[1] if date_pair[1] is not None else True)]
         dic_exdate_df = invoker.wss(stock_list, param)
         dic_exdate_df_list.append(dic_exdate_df)
 
@@ -103,5 +107,6 @@ def import_wind_bonus(chain):
         alter_table_2_myisam(engine_md, [table_name])
         build_primary_key([table_name])
 
+
 if __name__ == "__main__":
-    import_wind_bonus()
+    import_wind_bonus(None)

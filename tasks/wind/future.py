@@ -59,10 +59,11 @@ def get_date_since(wind_code_ipo_date_dic, regex_str, date_establish):
 
 
 @app.task
-def import_future_info():
+def import_future_info(chain_param=None):
     """
     更新期货合约列表信息
-    :return: 
+    :param chain_param:  在celery 中將前面結果做爲參數傳給後面的任務
+    :return:
     """
     table_name = "wind_future_info"
     has_table = engine_md.has_table(table_name)
@@ -187,10 +188,11 @@ def import_future_info():
 
 
 @app.task
-def import_future_daily(wind_code_set=None, begin_time=None):
+def import_future_daily(chain_param=None, wind_code_set=None, begin_time=None):
     """
     更新期货合约日级别行情信息
-    :return: 
+    :param chain_param:  在celery 中將前面結果做爲參數傳給後面的任務
+    :return:
     """
     table_name = "wind_future_daily"
     logger.info("更新 %s 开始", table_name)
@@ -285,7 +287,8 @@ def import_future_daily(wind_code_set=None, begin_time=None):
             if data_df is None:
                 logger.warning('%d/%d) %s has no data during %s %s', num, data_len, wind_code, date_frm_str, date_to)
                 continue
-            logger.info('%d/%d) %d data of %s between %s and %s', num, data_len, data_df.shape[0], wind_code, date_frm_str,
+            logger.info('%d/%d) %d data of %s between %s and %s', num, data_len, data_df.shape[0], wind_code,
+                        date_frm_str,
                         date_to)
             data_df['wind_code'] = wind_code
             data_df.index.rename('trade_date', inplace=True)
@@ -312,11 +315,12 @@ def import_future_daily(wind_code_set=None, begin_time=None):
 
 
 @app.task
-def update_future_info_hk():
+def update_future_info_hk(chain_param=None):
     """
     更新 香港股指 期货合约列表信息
     香港恒生指数期货，香港国企指数期货合约只有07年2月开始的合约，且无法通过 wset 进行获取
-    :return: 
+    :param chain_param:  在celery 中將前面結果做爲參數傳給後面的任務
+    :return:
     """
     table_name = "wind_future_info_hk"
     has_table = engine_md.has_table(table_name)
@@ -446,8 +450,8 @@ def update_future_info_hk():
 
 
 if __name__ == "__main__":
-    #DEBUG = True
+    # DEBUG = True
     wind_code_set = None
-    # import_future_info_hk()
-    import_future_daily(wind_code_set)
-    # update_future_info_hk()
+    # import_future_info_hk(chain_param=None)
+    import_future_daily(None, wind_code_set)
+    # update_future_info_hk(chain_param=None)
