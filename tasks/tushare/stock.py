@@ -41,6 +41,27 @@ def get_stock_code_set():
     #logging.info('get %d ts_code on %s', stock_count, date_fetch_str)
     return set(stock_df['ts_code'])
 
+INDICATOR_PARAM_LIST_TUSHARE_DAILY = [
+    ('ts_code', String(20)),
+    ('trade_date', Date),
+    ('open', DOUBLE),
+    ('high', DOUBLE),
+    ('low', DOUBLE),
+    ('close', DOUBLE),
+    ('pre_close', DOUBLE),
+    ('change', DOUBLE),
+    ('pch_change', DOUBLE),
+    ('vol', DOUBLE),
+    ('amount', DOUBLE),
+    ('pct_chg', DOUBLE),
+]
+
+
+DTYPE_TUSHARE_DAILY = {key: val for key, val in INDICATOR_PARAM_LIST_TUSHARE_DAILY}
+# 设置 dtype
+DTYPE_TUSHARE_DAILY['ts_code'] = String(20)
+DTYPE_TUSHARE_DAILY['trade_date'] = Date
+
 
 @app.task
 def import_tushare_stock_info(refresh=False):
@@ -92,22 +113,8 @@ def import_tushare_stock_daily(ts_code_set=None):
     """
     table_name = 'tushare_stock_daily'
     logging.info("更新 %s 开始", table_name)
-    param_list = [
-        ('ts_code', String(20)),
-        ('trade_date', Date),
-        ('open', DOUBLE),
-        ('high', DOUBLE),
-        ('low', DOUBLE),
-        ('close', DOUBLE),
-        ('pre_close', DOUBLE),
-        ('change', DOUBLE),
-        ('pch_change', DOUBLE),
-        ('vol', DOUBLE),
-        ('amount', DOUBLE),
-        ('pct_chg', DOUBLE),
-    ]
-    wind_indictor_str = ",".join([key for key, _ in param_list])
-    rename_col_dic = {key.upper(): key.lower() for key, _ in param_list}
+    wind_indictor_str = ",".join([key for key, _ in INDICATOR_PARAM_LIST_TUSHARE_DAILY])
+    rename_col_dic = {key.upper(): key.lower() for key, _ in INDICATOR_PARAM_LIST_TUSHARE_DAILY}
     has_table = engine_md.has_table(table_name)
     # 进行表格判断，确定是否含有tushare_stock_daily
     if has_table:
@@ -148,11 +155,6 @@ def import_tushare_stock_daily(ts_code_set=None):
             ts_code: (date_from if begin_time is None else min([date_from, begin_time]), date_to)
             for ts_code, date_from, date_to in table.fetchall() if
             ts_code_set is None or ts_code in ts_code_set}
-    # 设置 dtype
-    dtype = {key: val for key, val in param_list}
-    dtype['ts_code'] = String(20)
-    dtype['trade_date'] = Date
-
 
     data_len = len(code_date_range_dic)
     logger.info('%d stocks will been import into wind_stock_daily', data_len)
