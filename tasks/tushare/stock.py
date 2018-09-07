@@ -27,7 +27,7 @@ BASE_LINE_HOUR = 16
 STR_FORMAT_DATE_TS = '%Y%m%d'
 
 
-@try_n_times(times=300, sleep_time=0,exception_sleep_time=120)
+@try_n_times(times=5, sleep_time=0,exception_sleep_time=60)
 def invoke_daily(ts_code,start_date,end_date):
     invoke_daily=pro.daily(ts_code=ts_code,start_date=start_date,end_date=end_date)
     return invoke_daily

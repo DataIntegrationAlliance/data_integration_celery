@@ -31,8 +31,8 @@ STR_FORMAT_DATE_TS = '%Y%m%d'
 df=pro.moneyflow_hsgt(trade_date='20141117')
 
 @try_n_times(times=3, sleep_time=6)
-def invoke_moneyflow_hsgt(ts_code, trade_date):
-    moneyflow_hsgt = pro.moneyflow_hsgt(ts_code=ts_code, trade_date=trade_date)
+def invoke_moneyflow_hsgt(trade_date):
+    moneyflow_hsgt = pro.moneyflow_hsgt(trade_date=trade_date)
     return moneyflow_hsgt
 
 @app.task

@@ -28,21 +28,21 @@ BASE_LINE_HOUR = 16
 STR_FORMAT_DATE_TS = '%Y%m%d'
 
 
-#df=pro.moneyflow_hsgt(trade_date='20141117')
+df=pro.moneyflow_hsgt(trade_date='20141117')
 
 @try_n_times(times=3, sleep_time=6)
-def invoke_hsgt_top10(trade_date,market_type):
-    invoke_hsgt_top10 = pro.invoke_hsgt_top10(trade_date=trade_date, market_type=market_type)
-    return invoke_hsgt_top10
+def invoke_ggt_top10(ts_code, trade_date):
+    moneyflow_hsgt = pro.ggt_top10(ts_code=ts_code, trade_date=trade_date)
+    return moneyflow_hsgt
 
 @app.task
-def import_tushare_moneyflow_hsgt():
+def import_tushare_ggt_top10():
     """
     插入股票日线数据到最近一个工作日-1。
     如果超过 BASE_LINE_HOUR 时间，则获取当日的数据
     :return:
     """
-    table_name = 'tushare_hsgt_top10'
+    table_name = 'tushare_moneyflow_hsgt'
     logging.info("更新 %s 开始", table_name)
     param_list = [
         ('ts_code', String(20)),
@@ -94,7 +94,7 @@ def import_tushare_moneyflow_hsgt():
     try:
         for i in range(len(trddate)):
             trade_date = datetime_2_str(trddate[i], STR_FORMAT_DATE_TS)
-            data_df = invoke_hsgt_top10(trade_date=trade_date)
+            data_df = invoke_moneyflow_hsgt(trade_date=trade_date)
             if len(data_df) > 0:
                 data_count = bunch_insert_on_duplicate_update(data_df, table_name, engine_md, dtype)
                 logging.info("%s更新 %s 结束 %d 条信息被更新", trade_date,table_name, data_count)
@@ -114,4 +114,4 @@ def import_tushare_moneyflow_hsgt():
 
 if __name__ == "__main__":
     # DEBUG = True
-    import_tushare_hsgt_top10()
+    import_tushare_moneyflow_hsgt()
