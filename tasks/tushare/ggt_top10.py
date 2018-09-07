@@ -45,21 +45,17 @@ def import_tushare_ggt_top10(chain_param=None):
     table_name = 'tushare_moneyflow_hsgt'
     logging.info("更新 %s 开始", table_name)
     param_list = [
-        ('ts_code', String(20)),
         ('trade_date', Date),
+        ('ts_code', String(20)),
+        ('name', String(20)),
         ('close', DOUBLE),
-        ('turnover_rate', DOUBLE),
-        ('volume_ratio', DOUBLE),
-        ('pe', DOUBLE),
-        ('pe_ttm', DOUBLE),
-        ('pb', DOUBLE),
-        ('ps', DOUBLE),
-        ('pb_ttm', DOUBLE),
-        ('total_share', DOUBLE),
-        ('float_share', DOUBLE),
-        ('free_share', DOUBLE),
-        ('total_mv', DOUBLE),
-        ('circ_mv', DOUBLE),
+        ('change', DOUBLE),
+        ('rank', Integer),
+        ('market_type', String(20)),
+        ('amount', DOUBLE),
+        ('net_amount', DOUBLE),
+        ('buy', DOUBLE),
+        ('sell', DOUBLE),
     ]
 
     has_table = engine_md.has_table(table_name)

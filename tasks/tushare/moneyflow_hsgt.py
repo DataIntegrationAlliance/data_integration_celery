@@ -43,21 +43,14 @@ def import_tushare_moneyflow_hsgt(chain_param=None):
     table_name = 'tushare_moneyflow_hsgt'
     logging.info("更新 %s 开始", table_name)
     param_list = [
-        ('ts_code', String(20)),
         ('trade_date', Date),
-        ('close', DOUBLE),
-        ('turnover_rate', DOUBLE),
-        ('volume_ratio', DOUBLE),
-        ('pe', DOUBLE),
-        ('pe_ttm', DOUBLE),
-        ('pb', DOUBLE),
-        ('ps', DOUBLE),
-        ('pb_ttm', DOUBLE),
-        ('total_share', DOUBLE),
-        ('float_share', DOUBLE),
-        ('free_share', DOUBLE),
-        ('total_mv', DOUBLE),
-        ('circ_mv', DOUBLE),
+        ('ggt_ss', DOUBLE),
+        ('ggt_sz', DOUBLE),
+        ('hgt', DOUBLE),
+        ('sgt', DOUBLE),
+        ('north_money', DOUBLE),
+        ('south_money', DOUBLE),
+
     ]
 
     has_table = engine_md.has_table(table_name)
@@ -80,7 +73,7 @@ def import_tushare_moneyflow_hsgt(chain_param=None):
                select cal_date from tushare_trade_date trddate where (trddate.is_open=1 
             and cal_date <= if(hour(now())<16, subdate(curdate(),1), curdate()) 
             and exchange_id='SSE'  and cal_date>='2014-11-17') order by cal_date"""
-        logger.warning('%s 不存在，仅使用 tushare_stock_info 表进行计算日期范围', table_name)
+        logger.warning('%s 不存在，仅使用 tushare_trade_date 表进行计算日期范围', table_name)
 
     with with_db_session(engine_md) as session:
         # 获取交易日数据
