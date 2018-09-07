@@ -28,8 +28,9 @@ BASE_LINE_HOUR = 16
 
 
 @app.task
-def import_smfund_info():
+def import_smfund_info(chain_param=None):
     """
+    :param chain_param:  在celery 中將前面結果做爲參數傳給後面的任務
     :return:
     """
     table_name = "wind_smfund_info"
@@ -120,8 +121,9 @@ def import_smfund_info():
 
 
 @app.task
-def import_smfund_daily():
+def import_smfund_daily(chain_param=None):
     """
+    :param chain_param:  在celery 中將前面結果做爲參數傳給後面的任務
     :return:
     """
     table_name = "wind_smfund_daily"
@@ -284,5 +286,5 @@ def import_smfund_daily():
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG, format='%(asctime)s: %(levelname)s [%(name)s:%(funcName)s] %(message)s')
     DEBUG = True
-    # import_smfund_info()
-    import_smfund_daily()
+    # import_smfund_info(chain_param=None)
+    import_smfund_daily(chain_param=None)

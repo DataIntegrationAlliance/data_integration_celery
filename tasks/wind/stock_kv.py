@@ -86,12 +86,13 @@ def get_wind_kv_per_year(wind_code, wind_indictor_str, date_from, date_to, param
 
 
 @app.task
-def import_wind_code_kv(keys: list, wind_code_list=None):
+def import_wind_code_kv(keys: list, chain_param=None, wind_code_list=None):
     """
     插入股票相关市场数据。
     如果超过 BASE_LINE_HOUR 时间，则获取当日的数据
     w.wsd("600000.SH", "west_eps", "2018-05-05", "2018-06-03", "year=2018;westPeriod=180")
     :param keys:
+    :param chain_param:  在celery 中將前面結果做爲參數傳給後面的任務
     :param wind_code_list:
     :return:
     """
@@ -102,10 +103,10 @@ def import_wind_code_kv(keys: list, wind_code_list=None):
     # 本次获取数据的截止日期
     date_ending = date.today() - ONE_DAY if datetime.now().hour < BASE_LINE_HOUR else date.today()
     param_list = [
-            ('trade_date', Date),
-            ('key', String(45)),
-            ('value', DOUBLE),
-                       ]
+        ('trade_date', Date),
+        ('key', String(45)),
+        ('value', DOUBLE),
+    ]
     dtype = {key: val for key, val in param_list}
     dtype['wind_code'] = String(20)
     for item_key in keys:
@@ -172,7 +173,7 @@ def import_wind_code_kv(keys: list, wind_code_list=None):
         data_len = len(stock_date_dic)
         logger.info('%d stocks will been import into wind_code_kv', data_len)
         try:
-            for data_num, (wind_code, (date_from,date_to)) in enumerate(stock_date_dic.items(), start=1):
+            for data_num, (wind_code, (date_from, date_to)) in enumerate(stock_date_dic.items(), start=1):
                 # if wind_code_set is not None and wind_code not in wind_code_set:
                 #     continue
                 # # 获取 date_from
@@ -254,4 +255,4 @@ if __name__ == "__main__":
         "600716.SH", "600724.SH", "600732.SH", "600733.SH", "600736.SH", "600743.SH", "600748.SH", "600773.SH",
         "600791.SH", "600807.SH", "600817.SH", "600823.SH", "600848.SH", "600890.SH", "600895.SH", "601155.SH",
         "601588.SH", "603357.SH", "603506.SH", "603778.SH", "603955.SH", ]
-    import_wind_code_kv(['west_eps'])  # , wind_code_list=wind_code_list
+    import_wind_code_kv(['west_eps'], None)  # , wind_code_list=wind_code_list

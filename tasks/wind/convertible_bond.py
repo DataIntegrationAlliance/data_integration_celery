@@ -22,7 +22,8 @@ from tasks.backend.orm import build_primary_key
 from sqlalchemy.types import String, Date, Integer
 from tasks.utils.db_utils import alter_table_2_myisam
 from tasks.merge.code_mapping import update_from_info_table
-from tasks.utils.db_utils import with_db_session,bunch_insert_on_duplicate_update
+from tasks.utils.db_utils import with_db_session, bunch_insert_on_duplicate_update
+
 DEBUG = False
 logger = logging.getLogger()
 DATE_BASE = datetime.strptime('1998-01-01', STR_FORMAT_DATE).date()
@@ -41,9 +42,10 @@ def get_cb_set(date_fetch):
 
 
 @app.task
-def import_cb_info(first_time=False):
+def import_cb_info(chain_param=None, first_time=False):
     """
     获取全市场可转债数据
+    :param chain_param:  在celery 中將前面結果做爲參數傳給後面的任務
     :param first_time: 第一次执行时将从 1999 年开始查找全部基本信息
     :return: 
     """
@@ -133,10 +135,11 @@ def import_cb_info(first_time=False):
 
 
 @app.task
-def import_cb_daily(wind_code_set: set = None, begin_time=None):
+def import_cb_daily(chain_param=None, wind_code_set: set = None, begin_time=None):
     """
     导入可转债日线数据
     需要补充 转股价格
+    :param chain_param:  在celery 中將前面結果做爲參數傳給後面的任務
     :return: 
     """
     table_name = "wind_convertible_bond_daily"
@@ -183,7 +186,7 @@ def import_cb_daily(wind_code_set: set = None, begin_time=None):
             WHERE date_frm <= if(delist_date<end_date, delist_date, end_date) 
             ORDER BY wind_code""".format(table_name=table_name)
     else:
-        logger.warning('%s 不存在，仅使用 %s 表进行计算日期范围', table_name,info_table_name )
+        logger.warning('%s 不存在，仅使用 %s 表进行计算日期范围', table_name, info_table_name)
         sql_str = """
             SELECT wind_code, date_frm, if(delist_date<end_date, delist_date, end_date) date_to
             FROM
@@ -408,11 +411,11 @@ def fill_col_by_wsd(col_name_dic: dict, table_name, top_n=None):
 
 if __name__ == "__main__":
     # logging.basicConfig(level=logging.DEBUG, format='%(asctime)s: %(levelname)s [%(name)s:%(funcName)s] %(message)s')
-    #DEBUG = True
+    # DEBUG = True
     # 基本信息数据加载
-    #import_cb_info()
+    # import_cb_info(chain_param=None)
     # 日K历史数据加载
-    import_cb_daily()
+    import_cb_daily(chain_param=None)
     # wind_code_set = None
 
     # 更新 wind_convertible_bond_info 信息

@@ -43,9 +43,10 @@ def get_stock_code_set(date_fetch):
 
 
 @app.task
-def import_stock_info_hk(refresh=False):
+def import_stock_info_hk(chain_param=None, refresh=False):
     """
     获取全市场股票代码及名称 导入 港股股票信息 到 wind_stock_info_hk
+    :param chain_param:  在celery 中將前面結果做爲參數傳給後面的任務
     :param refresh: 默认为False，True 则进行全部更新
     :return:
     """
@@ -122,10 +123,11 @@ def import_stock_info_hk(refresh=False):
 
 
 @app.task
-def import_stock_daily_hk(wind_code_set=None, begin_time=None):
+def import_stock_daily_hk(chain_param=None, wind_code_set=None, begin_time=None):
     """
     插入股票日线数据到最近一个工作日-1。
     如果超过 BASE_LINE_HOUR 时间，则获取当日的数据
+    :param chain_param:  在celery 中將前面結果做爲參數傳給後面的任務
     :param wind_code_set:
     :param begin_time:
     :return:
@@ -251,9 +253,10 @@ def import_stock_daily_hk(wind_code_set=None, begin_time=None):
 
 
 @app.task
-def import_stock_quertarly_hk(wind_code_set=None, begin_time=None):
+def import_stock_quertarly_hk(chain_param=None, wind_code_set=None, begin_time=None):
     """
     插入股票日线数据到最近一个工作日-1
+    :param chain_param:  在celery 中將前面結果做爲參數傳給後面的任務
     :param wind_code_set:
     :param begin_time:
     :return:
@@ -354,13 +357,15 @@ def import_stock_quertarly_hk(wind_code_set=None, begin_time=None):
 
 
 @app.task
-def add_new_col_data(col_name, param, db_col_name=None, col_type_str='DOUBLE', wind_code_set: set = None):
+def add_new_col_data(col_name, param, chain_param=None, db_col_name=None, col_type_str='DOUBLE',
+                     wind_code_set: set = None):
     """
     1）修改 daily 表，增加字段
     2）wind_ckdvp_stock_hk表增加数据
     3）第二部不见得1天能够完成，当第二部完成后，将wind_ckdvp_stock_hk数据更新daily表中
     :param col_name:增加字段名称
     :param param: 参数
+    :param chain_param:  在celery 中將前面結果做爲參數傳給後面的任務
     :param db_col_name: 默认为 None，此时与col_name相同
     :param col_type_str: DOUBLE, VARCHAR(20), INTEGER, etc. 不区分大小写
     :param wind_code_set: 默认 None， 否则仅更新指定 wind_code
@@ -506,7 +511,7 @@ if __name__ == "__main__":
     # DEBUG = True
     # wind_code_set = {'1680.HK'}
     wind_code_set = None
-    # import_stock_info_hk()
-    import_stock_daily_hk(wind_code_set)
-    # import_stock_quertarly_hk()
-    # add_new_col_data('ebitdaps', '', wind_code_set=wind_code_set)
+    # import_stock_info_hk(None)
+    import_stock_daily_hk(None, wind_code_set)
+    # import_stock_quertarly_hk(None)
+    # add_new_col_data('ebitdaps', '', None, wind_code_set=wind_code_set)

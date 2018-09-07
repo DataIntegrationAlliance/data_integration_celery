@@ -197,7 +197,11 @@ def loop_get_data(idx_start, idx_end, trade_date_list_sorted, date_constituent_d
 
 
 @app.task
-def import_index_constituent_all():
+def import_index_constituent_all(chain_param=None):
+    """
+    :param chain_param:  在celery 中將前面結果做爲參數傳給後面的任務
+    :return:
+    """
     param_dic_list = [
         # 股票指数
         {"index_name": '沪深300', "index_code": '000300.SH', 'date_start': '2005-04-08', 'method': 'loop'},
@@ -306,7 +310,7 @@ if __name__ == "__main__":
     date_str = '2018-02-23'
     DEBUG = True
     import_index_constituent(sector_code, sector_name, date_str)
-    import_index_constituent_all()
+    import_index_constituent_all(chain_param=None)
     logging.basicConfig(level=logging.DEBUG, format='%(asctime)s: %(levelname)s [%(name)s:%(funcName)s] %(message)s')
     logging.getLogger('requests.packages.urllib3.connectionpool').setLevel(logging.WARNING)
     logging.getLogger('urllib3.connectionpool').setLevel(logging.WARNING)
