@@ -28,15 +28,13 @@ BASE_LINE_HOUR = 16
 STR_FORMAT_DATE_TS = '%Y%m%d'
 
 
-df=pro.moneyflow_hsgt(trade_date='20141117')
-
 @try_n_times(times=5, sleep_time=0,exception_sleep_time=60)
 def invoke_moneyflow_hsgt(trade_date):
     moneyflow_hsgt = pro.moneyflow_hsgt(trade_date=trade_date)
     return moneyflow_hsgt
 
 @app.task
-def import_tushare_moneyflow_hsgt():
+def import_tushare_moneyflow_hsgt(chain_param=None):
     """
     插入股票日线数据到最近一个工作日-1。
     如果超过 BASE_LINE_HOUR 时间，则获取当日的数据

@@ -33,7 +33,7 @@ def invoke_daily_basic(ts_code, trade_date):
     return df
 
 @app.task
-def import_tushare_daily_basic():
+def import_tushare_daily_basic(chain_param=None):
     """
     插入股票日线数据到最近一个工作日-1。
     如果超过 BASE_LINE_HOUR 时间，则获取当日的数据

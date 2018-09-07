@@ -49,7 +49,7 @@ def get_stock_code_set():
 
 
 @app.task
-def import_tushare_stock_info(refresh=False):
+def import_tushare_stock_info(chain_param=None,refresh=False):
     """ 获取全市场股票代码及名称
     """
     table_name = 'tushare_stock_info'
@@ -90,7 +90,7 @@ def import_tushare_stock_info(refresh=False):
 
 
 @app.task
-def import_tushare_stock_daily(ts_code_set=None):
+def import_tushare_stock_daily(chain_param=None,ts_code_set=None):
     """
     插入股票日线数据到最近一个工作日-1。
     如果超过 BASE_LINE_HOUR 时间，则获取当日的数据
