@@ -34,7 +34,7 @@ def str_date(x):
 
 
 @app.task
-def import_wind_bonus():
+def import_wind_bonus(chain):
     """
     :return:
     """

@@ -1,9 +1,3 @@
-"""
-Created on 2018/8/3
-@author: yby
-@desc    : 2018-08-20
-contact author:ybychem@gmail.com
-"""
 import tushare as ts
 import pandas as pd
 import logging
@@ -48,25 +42,11 @@ def import_tushare_adj_factor():
     has_table = engine_md.has_table(table_name)
     # 进行表格判断，确定是否含有tushare_stock_daily
 
-    #下面一定要注意引用表的来源，否则可能是串，提取混乱！！！比如本表是tushare_daily_basic，所以引用的也是这个，如果引用错误，就全部乱了l
-
-    if has_table:
-        sql_str = """
-                  select cal_date            
-                  FROM
-                   (
-                    select * from tushare_trade_date trddate 
-                    where( cal_date>(SELECT max(trade_date) FROM  tushare_adj_factor))
-                  )tt
-                  where (is_open=1 
-                         and cal_date <= if(hour(now())<16, subdate(curdate(),1), curdate()) 
-                         and exchange_id='SSE') """
-    else:
-        sql_str = """
-                  select cal_date from tushare_trade_date trddate where (trddate.is_open=1 
-               and cal_date <= if(hour(now())<16, subdate(curdate(),1), curdate()) 
-               and exchange_id='SSE') order by cal_date"""
-        logger.warning('%s 不存在，仅使用 tushare_stock_info 表进行计算日期范围', table_name)
+    sql_str = """
+        select cal_date from tushare_trade_date trddate where (trddate.is_open=1 
+        and cal_date <= if(hour(now())<16, subdate(curdate(),1), curdate()) 
+        and exchange_id='SSE') order by cal_date"""
+    logger.warning('使用 tushare_stock_info 表获取交易日')
 
 
     with with_db_session(engine_md) as session:
