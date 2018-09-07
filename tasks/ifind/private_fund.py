@@ -52,9 +52,10 @@ def get_private_fund_set(date_fetch, field='051010001'):
 
 
 @app.task
-def import_fund_info(ths_code=None, refresh=False):
+def import_fund_info(chain_param=None, ths_code=None, refresh=False):
     """
     更新基础信息表
+    :param chain_param: 该参数仅用于 task.chain 串行操作时，上下传递参数使用
     :param ths_code:
     :param refresh:
     :return:
@@ -142,9 +143,10 @@ def import_fund_info(ths_code=None, refresh=False):
 
 
 @app.task
-def import_private_fund_daily(ths_code_set: set = None, begin_time=None):
+def import_private_fund_daily(chain_param=None, ths_code_set: set = None, begin_time=None):
     """
-
+    导入 daily 数据
+    :param chain_param: 该参数仅用于 task.chain 串行操作时，上下传递参数使用
     :param ths_code_set:
     :param begin_time:
     :return:
@@ -247,8 +249,9 @@ def import_private_fund_daily(ths_code_set: set = None, begin_time=None):
 if __name__ == "__main__":
     # DEBUG = True
     TRIAL = True
-    ths_code = None  # '600006.SH,600009.SH'
     # 基金基本信息数据加载
-    # import_fund_info(ths_code)
+    # ths_code = None  # '600006.SH,600009.SH'
+    # import_fund_info(None, ths_code)
     # 基金日K数据行情加载
-    import_private_fund_daily(ths_code)
+    ths_code = None  # '600006.SH,600009.SH'
+    import_private_fund_daily(None, ths_code)

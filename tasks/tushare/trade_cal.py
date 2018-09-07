@@ -1,3 +1,10 @@
+"""
+Created on 2018/9/7
+@author: yby
+@desc    : 2018-09-7可正常运行
+contact author:ybychem@gmail.com
+"""
+
 import tushare as ts
 import pandas as pd
 import logging
@@ -24,7 +31,7 @@ STR_FORMAT_DATE_TS = '%Y%m%d'
 
 trade_dt=pro.trade_cal(exchange_id='', start_date='19901210', end_date='19980101')
 @app.task
-def import_trade_date():
+def import_trade_date(chain_param=None):
     """
     增量导入交易日数据导数据库表 wind_trade_date，默认导入未来300天的交易日数据
     2018-01-17 增加港股交易日数据，眼前考虑对减少对已有代码的冲击，新建一张 wind_trade_date_hk表

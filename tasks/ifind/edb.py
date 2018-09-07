@@ -24,9 +24,10 @@ DEBUG = False
 
 
 @app.task
-def import_edb():
+def import_edb(chain_param=None):
     """
     通过ifind接口获取并导入EDB数据
+    :param chain_param: 该参数仅用于 task.chain 串行操作时，上下传递参数使用
     :return:
     """
     table_name = 'ifind_edb'
