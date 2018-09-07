@@ -72,11 +72,11 @@ def import_tushare_moneyflow_hsgt():
                FROM
                 (
                  select * from tushare_trade_date trddate 
-                 where( cal_date>(SELECT max(trade_date) FROM  tushare_moneyflow_hsgt))
+                 where( cal_date>(SELECT max(trade_date) FROM  {table_name}))
                )tt
                where (is_open=1 
                       and cal_date <= if(hour(now())<16, subdate(curdate(),1), curdate()) 
-                      and exchange_id='SSE') """.format()
+                      and exchange_id='SSE') """.format(table_name=table_name)
     else:
         sql_str = """
                select cal_date from tushare_trade_date trddate where (trddate.is_open=1 
