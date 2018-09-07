@@ -52,7 +52,7 @@ def get_private_fund_set(date_fetch, field='051010001'):
 
 
 @app.task
-def import_fund_info(chain_param=None, ths_code=None, refresh=False):
+def import_private_fund_info(chain_param=None, ths_code=None, refresh=False):
     """
     更新基础信息表
     :param chain_param: 该参数仅用于 task.chain 串行操作时，上下传递参数使用
