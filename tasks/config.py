@@ -40,16 +40,15 @@ class ConfigClass(object):
     # Sql Alchemy settings
     DB_SCHEMA_MD = 'md_integration'
     DB_URL_DIC = {
-        DB_SCHEMA_MD: "mysql://mg:***@localhost/{DB_SCHEMA_MD}?charset=utf8".format(
+        DB_SCHEMA_MD: "mysql://root:123456@localhost:3306/md_integration?charset=utf8".format(
             DB_SCHEMA_MD=DB_SCHEMA_MD)
     }
-
     # ifind settings
-    IFIND_REST_URL = "http://localhost:5000/iFind/"
+    IFIND_REST_URL = "http://10.0.3.66:5000/iFind/"
     # wind settings
-    WIND_REST_URL = "http://10.0.5.63:5000/wind/"
+    WIND_REST_URL = "http://10.0.3.66:5000/wind/"
     # Tushare settings
-    TUSHARE_TOKEN = "***"
+    TUSHARE_TOKEN = "188cf0644dbbb4e234ba1bd52af2674c59f2bcdf476d6efd53c61e52"
     # CMC settings
     CMC_PRO_API_KEY = "***"
 
@@ -80,7 +79,7 @@ class ConfigClass(object):
         },
 
         root={
-            'handlers': ['console_handler'],  # , 'file_handler'
+            'handlers': ['console_handler', 'file_handler'],
             'level': logging.DEBUG,
         }
     )

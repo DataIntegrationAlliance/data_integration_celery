@@ -8,7 +8,7 @@ import pandas as pd
 import logging
 from tasks.backend.orm import build_primary_key
 from datetime import date, datetime, timedelta
-from tasks.utils.fh_utils import try_2_date,STR_FORMAT_DATE,datetime_2_str,split_chunk
+from tasks.utils.fh_utils import try_2_date,STR_FORMAT_DATE,datetime_2_str,split_chunk,try_n_times
 from tasks import app
 from sqlalchemy.types import String, Date, Integer
 from sqlalchemy.dialects.mysql import DOUBLE
@@ -26,6 +26,12 @@ ONE_DAY = timedelta(days=1)
 BASE_LINE_HOUR = 16
 STR_FORMAT_DATE_TS = '%Y%m%d'
 
+
+@try_n_times(times=5, sleep_time=0,exception_sleep_time=60)
+def invoke_daily(ts_code,start_date,end_date):
+    invoke_daily=pro.daily(ts_code=ts_code,start_date=start_date,end_date=end_date)
+    return invoke_daily
+
 def get_stock_code_set():
     """
      # 通过接口获取股票代码
@@ -38,7 +44,7 @@ def get_stock_code_set():
         #logging.warning('%s 获取股票代码失败', date_fetch_str)
         return None
     stock_count = stock_df.shape[0]
-    #logging.info('get %d ts_code on %s', stock_count, date_fetch_str)
+    #logging.info('get %d stocks on %s', stock_count, date_fetch_str)
     return set(stock_df['ts_code'])
 
 INDICATOR_PARAM_LIST_TUSHARE_DAILY = [
@@ -164,12 +170,12 @@ def import_tushare_stock_daily(ts_code_set=None):
     try:
         for num, (ts_code, (date_from, date_to)) in enumerate(code_date_range_dic.items(), start=1):
             logger.debug('%d/%d) %s [%s - %s]', num, data_len,ts_code, date_from, date_to)
-            df = pro.daily(ts_code=ts_code, start_date=datetime_2_str(date_from,STR_FORMAT_DATE_TS),end_date=datetime_2_str(date_to,STR_FORMAT_DATE_TS))
+            df = invoke_daily(ts_code=ts_code, start_date=datetime_2_str(date_from,STR_FORMAT_DATE_TS),end_date=datetime_2_str(date_to,STR_FORMAT_DATE_TS))
             data_df=df
             if len(data_df)>0:
                 while try_2_date(df['trade_date'].iloc[-1]) > date_from:
                     last_date_in_df_last, last_date_in_df_cur = try_2_date(df['trade_date'].iloc[-1]), None
-                    df2 = pro.daily(ts_code=ts_code,start_date=datetime_2_str(date_from,STR_FORMAT_DATE_TS),
+                    df2 = invoke_daily(ts_code=ts_code,start_date=datetime_2_str(date_from,STR_FORMAT_DATE_TS),
                                     end_date=datetime_2_str(try_2_date(df['trade_date'].iloc[-1])-timedelta(days=1),STR_FORMAT_DATE_TS))
                     last_date_in_df_cur = try_2_date(df2['trade_date'].iloc[-1])
                     if last_date_in_df_cur<last_date_in_df_last:
@@ -206,7 +212,7 @@ def import_tushare_stock_daily(ts_code_set=None):
 
 if __name__ == "__main__":
     # DEBUG = True
-    import_tushare_stock_info(refresh=False)
+    import_tushare_stock_info(refresh=True)
     # 更新每日股票数据
     import_tushare_stock_daily()
     # import_stock_daily_wch()

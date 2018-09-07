@@ -1,7 +1,8 @@
 """
-Created on 2018/8/31
+Created on 2018/9/3
 @author: yby
-@desc    : 2018-08-31
+@desc    : 2018-09-3
+contact author:ybychem@gmail.com
 """
 
 import tushare as ts
@@ -27,10 +28,11 @@ ONE_DAY = timedelta(days=1)
 BASE_LINE_HOUR = 16
 STR_FORMAT_DATE_TS = '%Y%m%d'
 
-@try_n_times(times=300, sleep_time=0, logger=logger, exception=Exception, exception_sleep_time=120)
-def invoke_income(ts_code,start_date,end_date):
-    invoke_income= pro.income(ts_code=ts_code,start_date=start_date,end_date=end_date)
-    return invoke_income
+@try_n_times(times=5, sleep_time=0,exception_sleep_time=60)
+def invoke_fina_audit(ts_code,start_date,end_date,fields):
+    invoke_fina_audit=pro.fina_audit(ts_code=ts_code,start_date=start_date,end_date=end_date,fields=fields)
+    return invoke_fina_audit
+
 
 @app.task
 def import_tushare_stock_income(ts_code_set=None):
@@ -39,7 +41,7 @@ def import_tushare_stock_income(ts_code_set=None):
     如果超过 BASE_LINE_HOUR 时间，则获取当日的数据
     :return:
     """
-    table_name = 'tushare_stock_income'
+    table_name = 'tushare_stock_fina_audit'
     logging.info("更新 %s 开始", table_name)
     param_list = [
         ('ts_code', String(20)),
@@ -48,65 +50,6 @@ def import_tushare_stock_income(ts_code_set=None):
         ('end_date', Date),
         ('report_type', DOUBLE),
         ('comp_type', DOUBLE),
-        ('basic_eps', DOUBLE),
-        ('diluted_eps', DOUBLE),
-        ('total_revenue', DOUBLE),
-        ('revenue', DOUBLE),
-        ('int_income', DOUBLE),
-        ('prem_earned', DOUBLE),
-        ('comm_income', DOUBLE),
-        ('n_commis_income', DOUBLE),
-        ('n_oth_income', DOUBLE),
-        ('n_oth_b_income', DOUBLE),
-        ('prem_income', DOUBLE),
-        ('out_prem', DOUBLE),
-        ('une_prem_reser', DOUBLE),
-        ('reins_income', DOUBLE),
-        ('n_sec_tb_income', DOUBLE),
-        ('n_sec_uw_income', DOUBLE),
-        ('n_asset_mg_income', DOUBLE),
-        ('oth_b_income', DOUBLE),
-        ('fv_value_chg_gain', DOUBLE),
-        ('invest_income', DOUBLE),
-        ('ass_invest_income', DOUBLE),
-        ('forex_gain', DOUBLE),
-        ('total_cogs', DOUBLE),
-        ('oper_cost', DOUBLE),
-        ('int_exp', DOUBLE),
-        ('comm_exp', DOUBLE),
-        ('biz_tax_surchg', DOUBLE),
-        ('sell_exp', DOUBLE),
-        ('admin_exp', DOUBLE),
-        ('fin_exp', DOUBLE),
-        ('assets_impair_loss', DOUBLE),
-        ('prem_refund', DOUBLE),
-        ('compens_payout', DOUBLE),
-        ('reser_insur_liab', DOUBLE),
-        ('div_payt', DOUBLE),
-        ('reins_exp', DOUBLE),
-        ('oper_exp', DOUBLE),
-        ('compens_payout_refu', DOUBLE),
-        ('insur_reser_refu', DOUBLE),
-        ('reins_cost_refund', DOUBLE),
-        ('other_bus_cost', DOUBLE),
-        ('operate_profit', DOUBLE),
-        ('non_oper_income', DOUBLE),
-        ('non_oper_exp', DOUBLE),
-        ('nca_disploss', DOUBLE),
-        ('total_profit', DOUBLE),
-        ('income_tax', DOUBLE),
-        ('n_income', DOUBLE),
-        ('n_income_attr_p', DOUBLE),
-        ('minority_gain', DOUBLE),
-        ('oth_compr_income', DOUBLE),
-        ('t_compr_income', DOUBLE),
-        ('compr_inc_attr_p', DOUBLE),
-        ('compr_inc_attr_m_s', DOUBLE),
-        ('ebit', DOUBLE),
-        ('ebitda', DOUBLE),
-        ('insurance_exp', DOUBLE),
-        ('undist_profit', DOUBLE),
-        ('distable_profit', DOUBLE),
     ]
     # wind_indictor_str = ",".join([key for key, _ in param_list])
     # rename_col_dic = {key.upper(): key.lower() for key, _ in param_list}
@@ -123,8 +66,8 @@ def import_tushare_stock_income(ts_code_set=None):
                   tushare_stock_info info 
                 LEFT OUTER JOIN
                     (SELECT ts_code, adddate(max(ann_date),1) ann_date 
-                    FROM {table_name} GROUP BY ts_code) income
-                ON info.ts_code = income.ts_code
+                    FROM {table_name} GROUP BY ts_code) fina_audit
+                ON info.ts_code = fina_audit.ts_code
             ) tt
             WHERE date_frm <= if(delist_date<end_date, delist_date, end_date) 
             ORDER BY ts_code""".format(table_name=table_name)
@@ -153,24 +96,20 @@ def import_tushare_stock_income(ts_code_set=None):
             ts_code_set is None or ts_code in ts_code_set}
     # 设置 dtype
     dtype = {key: val for key, val in param_list}
-    # dtype['ts_code'] = String(20)
-    # dtype['trade_date'] = Date
-
 
     data_len = len(code_date_range_dic)
     logger.info('%d stocks will been import into wind_stock_daily', data_len)
-    # 将data_df数据，添加到data_df_list
 
     Cycles=1
     try:
         for num, (ts_code, (date_from, date_to)) in enumerate(code_date_range_dic.items(), start=1):
             logger.debug('%d/%d) %s [%s - %s]', num, data_len,ts_code, date_from, date_to)
-            df = invoke_income(ts_code=ts_code, start_date=datetime_2_str(date_from,STR_FORMAT_DATE_TS),end_date=datetime_2_str(date_to,STR_FORMAT_DATE_TS))
+            df = invoke_fina_audit(ts_code=ts_code, start_date=datetime_2_str(date_from,STR_FORMAT_DATE_TS),end_date=datetime_2_str(date_to,STR_FORMAT_DATE_TS))
             data_df=df
             if len(data_df)>0:
                 while try_2_date(df['ann_date'].iloc[-1]) > date_from:
                     last_date_in_df_last, last_date_in_df_cur = try_2_date(df['ann_date'].iloc[-1]), None
-                    df2 = invoke_income(ts_code=ts_code,start_date=datetime_2_str(date_from,STR_FORMAT_DATE_TS),
+                    df2 = invoke_fina_audit(ts_code=ts_code,start_date=datetime_2_str(date_from,STR_FORMAT_DATE_TS),
                                     end_date=datetime_2_str(try_2_date(df['ann_date'].iloc[-1])-timedelta(days=1),STR_FORMAT_DATE_TS))
                     if len(df2) > 0:
                         last_date_in_df_cur = try_2_date(df2['ann_date'].iloc[-1])
@@ -200,16 +139,12 @@ def import_tushare_stock_income(ts_code_set=None):
             data_df_all = data_df
             data_count = bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md, dtype)
             logging.info("成功更新 %s 结束 %d 条信息被更新", table_name, data_count)
-            # if not has_table and engine_md.has_table(table_name):
-            #     alter_table_2_myisam(engine_md, [table_name])
-            #     build_primary_key([table_name])
+
 
 
 
 if __name__ == "__main__":
-    #DEBUG = True
+    DEBUG = True
     #import_tushare_stock_info(refresh=False)
     # 更新每日股票数据
-    import_tushare_stock_income()
-
-
+    import_tushare_stock_fina_audit()

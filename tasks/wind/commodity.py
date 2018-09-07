@@ -28,6 +28,11 @@ def build_commodity_info():
     table_name = 'wind_commodity_info'
     has_table = engine_md.has_table(table_name)
     indicators_dic = [
+        #白糖价格
+        ["S5023650", "sr_price_nn", "南宁白砂糖价格", "2001-01-03", None, '南宁糖网现货价'],
+        ["S5023651", "sr_price_lz", "柳州白砂糖价格", "2001-01-03", None, '南宁糖网现货价'],
+        ["S5023652", "sr_price_km", "昆明白砂糖价格", "2001-01-03", None, '南宁糖网现货价'],
+
         #豆粕现货价格
         ["S5006056", "m_price_dg", "东莞豆粕价格", "2009-01-04", None, ''],
         ["S5006045", "m_price_lyg", "连云港豆粕价格", "2009-01-04", None, ''],
@@ -89,6 +94,8 @@ def build_commodity_info():
         ["S0143491", "square_billet_js", "江苏方坯价格", "2007-01-31", None, '单位：元/吨'],
         ["S0143494", "square_billet_sx", "山西方坯价格", "2007-01-31", None, '单位：元/吨'],
         ["S0143504", "square_billet_MnSi_ts", "唐山MnSi方坯价格", "2007-01-31", None, '单位：元/吨,20MnSi'],
+
+
         #货币供应
         ["M0001380", "M0", "M0", "1990-12-31", None, '中国人民银行，单位：亿元'],
         ["M0001381", "M0_yoy", "M0_yoy", "1990-12-31", None, '中国人民银行'],
@@ -292,25 +299,25 @@ def build_commodity_info():
 
     ]
     dtype = {
-        'key': String(20),
+        'wind_code': String(20),
         'en_name': String(120),
         'cn_name': String(120),
         'begin_date': Date,
         'end_date': Date,
         'remark': Text,
     }
-    name_list = ['key', 'en_name', 'cn_name', 'begin_date', 'end_date', 'remark']
+    name_list = ['wind_code', 'en_name', 'cn_name', 'begin_date', 'end_date', 'remark']
     info_df = pd.DataFrame(data=indicators_dic, columns=name_list)
     data_count = bunch_insert_on_duplicate_update(info_df, table_name, engine_md, dtype)
     logger.info('%d 条记录被更新', data_count)
     if not has_table and engine_md.has_table(table_name):
         alter_table_2_myisam(engine_md, [table_name])
         create_pk_str = """ALTER TABLE {table_name}
-            CHANGE COLUMN `key` `key` VARCHAR(20) NOT NULL FIRST,
-            ADD PRIMARY KEY (`key`)""".format(table_name=table_name)
+            CHANGE COLUMN `wind_code` `wind_code` VARCHAR(20) NOT NULL FIRST,
+            ADD PRIMARY KEY (`wind_code`)""".format(table_name=table_name)
         with with_db_session(engine_md) as session:
             session.execute(create_pk_str)
-        logger.info('%s 表 `key` 主键设置完成', table_name)
+        logger.info('%s 表 `wind_code` 主键设置完成', table_name)
 
 
 @app.task
@@ -331,31 +338,31 @@ def import_edb(wind_code_set=None):
     # 进行表格判断，确定是否含有 wind_commodity_edb
     if has_table:
         sql_str = """
-                SELECT `key`, date_frm, if(end_date<end_date2, end_date, end_date2) date_to
+                SELECT `wind_code`, date_frm, if(end_date<end_date2, end_date, end_date2) date_to
                 FROM
                 (
-                SELECT info.`key`, ifnull(trade_date, begin_date) date_frm, end_date,
+                SELECT info.`wind_code`, ifnull(trade_date, begin_date) date_frm, end_date,
                 if(hour(now())<16, subdate(curdate(),1), curdate()) end_date2
                 FROM 
                     wind_commodity_info info 
                 LEFT OUTER JOIN
-                    (SELECT `key`, adddate(max(trade_date),1) trade_date FROM {table_name} GROUP BY `key`) daily
-                ON info.`key` = daily.`key`
+                    (SELECT `wind_code`, adddate(max(trade_date),1) trade_date FROM {table_name} GROUP BY `wind_code`) daily
+                ON info.`wind_code` = daily.`wind_code`
                 ) tt
                 WHERE date_frm <= if(end_date<end_date2, end_date, end_date2) 
-                ORDER BY `key`""".format(table_name=table_name)
+                ORDER BY `wind_code`""".format(table_name=table_name)
     else:
         logger.warning('%s 不存在，仅使用 wind_commodity_info 表进行计算日期范围', table_name)
         sql_str = """
-                SELECT `key`, date_frm, if(end_date<end_date2, end_date, end_date2) date_to
+                SELECT `wind_code`, date_frm, if(end_date<end_date2, end_date, end_date2) date_to
                 FROM
                   (
-                    SELECT info.`key`, begin_date date_frm, end_date,
+                    SELECT info.`wind_code`, begin_date date_frm, end_date,
                     if(hour(now())<16, subdate(curdate(),1), curdate()) end_date2
                     FROM wind_commodity_info info 
                   ) tt
                 WHERE date_frm <= if(end_date<end_date2, end_date, end_date2) 
-                ORDER BY `key`"""
+                ORDER BY `wind_code`"""
 
     with with_db_session(engine_md) as session:
         # 获取每只股票需要获取日线数据的日期区间
@@ -369,7 +376,7 @@ def import_edb(wind_code_set=None):
             wind_code_set is None or wind_code in wind_code_set}
     # 设置 dtype
     dtype = {key: val for key, val in param_list}
-    dtype['key'] = String(20)
+    dtype['wind_code'] = String(20)
     dtype['trade_date'] = Date
 
     data_df_list = []
@@ -377,12 +384,12 @@ def import_edb(wind_code_set=None):
     logger.info('%d stocks will been import into wind_commodity_edb', data_len)
     # 将data_df数据，添加到data_df_list
     try:
-        for num, (key_code, (date_from, date_to)) in enumerate(code_date_range_dic.items(), start=1):
-            logger.debug('%d/%d) %s [%s - %s]', num, data_len, key_code, date_from, date_to)
+        for num, (wind_code, (date_from, date_to)) in enumerate(code_date_range_dic.items(), start=1):
+            logger.debug('%d/%d) %s [%s - %s]', num, data_len, wind_code, date_from, date_to)
             try:
-                data_df = invoker.edb(key_code, date_from, date_to, options='')
+                data_df = invoker.edb(wind_code, date_from, date_to, options='')
             except APIError as exp:
-                logger.exception("%d/%d) %s 执行异常", num, data_len, key_code)
+                logger.exception("%d/%d) %s 执行异常", num, data_len, wind_code)
                 if exp.ret_dic.setdefault('error_code', 0) in (
                         -40520007,  # 没有可用数据
                         -40521009,  # 数据解码失败。检查输入参数是否正确，如：日期参数注意大小月月末及短二月
@@ -391,12 +398,12 @@ def import_edb(wind_code_set=None):
                 else:
                     break
             if data_df is None:
-                logger.warning('%d/%d) %s has no data during %s %s', num, data_len, key_code, date_from, date_to)
+                logger.warning('%d/%d) %s has no data during %s %s', num, data_len, wind_code, date_from, date_to)
                 continue
-            logger.info('%d/%d) %d data of %s between %s and %s', num, data_len, data_df.shape[0], key_code, date_from,
+            logger.info('%d/%d) %d data of %s between %s and %s', num, data_len, data_df.shape[0], wind_code, date_from,
                         date_to)
-            data_df['key'] = key_code
-            data_df.rename(columns={key_code.upper(): 'value'}, inplace=True)
+            data_df['wind_code'] = wind_code
+            data_df.rename(columns={wind_code.upper(): 'value'}, inplace=True)
             data_df_list.append(data_df)
             # 仅调试使用
             if DEBUG and len(data_df_list) > 2:
@@ -414,12 +421,12 @@ def import_edb(wind_code_set=None):
                 alter_table_2_myisam(engine_md, [table_name])
                 # build_primary_key([table_name])
                 create_pk_str = """ALTER TABLE {table_name}
-                    CHANGE COLUMN `key` `key` VARCHAR(20) NOT NULL FIRST,
-                    CHANGE COLUMN `trade_date` `trade_date` DATE NOT NULL AFTER `key`,
-                    ADD PRIMARY KEY (`key`, `trade_date`)""".format(table_name=table_name)
+                    CHANGE COLUMN `wind_code` wind_code` VARCHAR(20) NOT NULL FIRST,
+                    CHANGE COLUMN `trade_date` `trade_date` DATE NOT NULL AFTER `wind_code`,
+                    ADD PRIMARY KEY (`wind_code`, `trade_date`)""".format(table_name=table_name)
                 with with_db_session(engine_md) as session:
                     session.execute(create_pk_str)
-                logger.info('%s 表 `key` `trade_date` 主键设置完成', table_name)
+                logger.info('%s 表 `wind_code` `trade_date` 主键设置完成', table_name)
 
 
 if __name__ == "__main__":
