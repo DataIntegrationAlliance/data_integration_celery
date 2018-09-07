@@ -109,9 +109,10 @@ def get_stock_hk_code_set(date_fetch):
 
 
 @app.task
-def import_stock_hk_info(ths_code=None, refresh=False):
+def import_stock_hk_info(chain_param=None, ths_code=None, refresh=False):
     """
-
+    导入 info 表
+    :param chain_param: 该参数仅用于 task.chain 串行操作时，上下传递参数使用
     :param ths_code:
     :param refresh:
     :return:
@@ -203,9 +204,10 @@ def import_stock_hk_info(ths_code=None, refresh=False):
 
 
 @app.task
-def import_stock_hk_daily_ds(ths_code_set: set = None, begin_time=None):
+def import_stock_hk_daily_ds(chain_param=None, ths_code_set: set = None, begin_time=None):
     """
     通过date_serise接口将历史数据保存到 ifind_stock_hk_daily_ds，该数据作为 History数据的补充数据 例如：复权因子af、涨跌停标识、停牌状态、原因等
+    :param chain_param: 该参数仅用于 task.chain 串行操作时，上下传递参数使用
     :param ths_code_set:
     :param begin_time:
     :return:
@@ -301,9 +303,10 @@ def import_stock_hk_daily_ds(ths_code_set: set = None, begin_time=None):
 
 
 @app.task
-def import_stock_hk_daily_his(ths_code_set: set = None, begin_time=None):
+def import_stock_hk_daily_his(chain_param=None, ths_code_set: set = None, begin_time=None):
     """
     通过history接口将历史数据保存到 ifind_stock_hk_daily_his
+    :param chain_param: 该参数仅用于 task.chain 串行操作时，上下传递参数使用
     :param ths_code_set:
     :param begin_time: 默认为None，如果非None则代表所有数据更新日期不得晚于该日期
     :return:
@@ -398,14 +401,14 @@ def save_ifind_stock_hk_daily_his(table_name, data_df_list, dtype):
 
 
 @app.task
-def add_new_col_data(col_name, param, db_col_name=None, col_type_str='DOUBLE', ths_code_set: set = None):
+def add_new_col_data(col_name, param, chain_param=None, db_col_name=None, col_type_str='DOUBLE', ths_code_set: set = None):
     """
     1）修改 daily 表，增加字段
     2）ckpv表增加数据
     3）第二部不见得1天能够完成，当第二部完成后，将ckvp数据更新daily表中
+    :param chain_param: 该参数仅用于 task.chain 串行操作时，上下传递参数使用
     :param col_name:增加字段名称
     :param param: 参数
-    :param dtype: 数据库字段类型
     :param db_col_name: 默认为 None，此时与col_name相同
     :param col_type_str: DOUBLE, VARCHAR(20), INTEGER, etc. 不区分大小写
     :param ths_code_set: 默认 None， 否则仅更新指定 ths_code
@@ -552,9 +555,10 @@ def add_data_2_ckdvp(json_indicator, json_param, ths_code_set: set = None, begin
 
 
 @app.task
-def import_stock_hk_report_date(ths_code_set: set = None, begin_time=None, interval='Q'):
+def import_stock_hk_report_date(chain_param=None, ths_code_set: set = None, begin_time=None, interval='Q'):
     """
     通过date_serise接口将历史财务数据保存到 ifind_stock_fin，国内财务数据按季度发布，因此获取周期为季度（默认）
+    :param chain_param: 该参数仅用于 task.chain 串行操作时，上下传递参数使用
     :param ths_code_set:
     :param begin_time:
     :param interval: Q 季度 M 月 W 周 D 日
@@ -646,7 +650,7 @@ def import_stock_hk_report_date(ths_code_set: set = None, begin_time=None, inter
 
 
 @app.task
-def import_stock_hk_fin_quarterly(ths_code_set: set = None, begin_time=None):
+def import_stock_hk_fin_quarterly(chain_param=None, ths_code_set: set = None, begin_time=None):
     """
     通过date_serise接口将历史数据保存到 import_stock_hk_fin
     该数据作为 为季度获取
@@ -742,11 +746,12 @@ def import_stock_hk_fin_quarterly(ths_code_set: set = None, begin_time=None):
 
 
 @app.task
-def import_stock_hk_fin_by_report_date_weekly(ths_code_set: set = None, begin_time=None, refresh=False):
+def import_stock_hk_fin_by_report_date_weekly(chain_param=None, ths_code_set: set = None, begin_time=None, refresh=False):
     """
     通过date_serise接口将历史数据保存到 import_stock_hk_fin
     该数据作为 为周度获取
     以财务报表发布日期为进准，[ 财务报表发布日-14天 ~ 财务报表发布日]，周度获取财务数据
+    :param chain_param: 该参数仅用于 task.chain 串行操作时，上下传递参数使用
     :param ths_code_set:
     :param begin_time:
     :param refresh: 全部刷新
@@ -902,21 +907,21 @@ if __name__ == "__main__":
     # 股票基本信息数据加载
     ths_code = None  # '600006.SH,600009.SH'
     refresh = False
-    import_stock_hk_info(ths_code, refresh=refresh)
+    import_stock_hk_info(None, ths_code, refresh=refresh)
 
     # 股票日K历史数据加载
     ths_code_set = None  # {'600006.SH', '600009.SH'}
-    import_stock_hk_daily_his(ths_code_set)
+    import_stock_hk_daily_his(None, ths_code_set)
     # 股票日K数据加载
     ths_code_set = None  # {'600006.SH', '600009.SH'}
-    import_stock_hk_daily_ds(ths_code_set)
+    import_stock_hk_daily_ds(None, ths_code_set)
     # 添加新字段
-    # add_new_col_data('ths_pe_ttm_stock', '101', ths_code_set=ths_code_set)
+    # add_new_col_data('ths_pe_ttm_stock', '101', None, ths_code_set=ths_code_set)
     # 股票财务报告日期
     interval = 'Q'
-    import_stock_hk_report_date(interval=interval)
+    import_stock_hk_report_date(None, interval=interval)
     # 股票财务数据
-    # import_stock_hk_fin_quarterly()
+    # import_stock_hk_fin_quarterly(None)
     # 补充股票财务数据
     refresh = True
-    import_stock_hk_fin_by_report_date_weekly()
+    import_stock_hk_fin_by_report_date_weekly(None)

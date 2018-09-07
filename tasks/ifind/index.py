@@ -116,8 +116,10 @@ def get_stock_code_set(date_fetch):
 
 
 @app.task
-def import_index_info(ths_code=None):
+def import_index_info(chain_param=None, ths_code=None):
     """
+    导入 info 表
+    :param chain_param: 该参数仅用于 task.chain 串行操作时，上下传递参数使用
     :param ths_code:
     :param refresh:
     :return:
@@ -165,9 +167,10 @@ def import_index_info(ths_code=None):
 
 
 @app.task
-def import_index_daily_ds(ths_code_set: set = None, begin_time=None):
+def import_index_daily_ds(chain_param=None, ths_code_set: set = None, begin_time=None):
     """
     通过date_serise接口将历史数据保存到 ifind_index_daily_ds，该数据作为 History数据的补充数据 例如：复权因子af、涨跌停标识、停牌状态、原因等
+    :param chain_param: 该参数仅用于 task.chain 串行操作时，上下传递参数使用
     :param ths_code_set:
     :param begin_time:
     :return:
@@ -258,9 +261,10 @@ def import_index_daily_ds(ths_code_set: set = None, begin_time=None):
 
 
 @app.task
-def import_index_daily_his(ths_code_set: set = None, begin_time=None):
+def import_index_daily_his(chain_param=None, ths_code_set: set = None, begin_time=None):
     """
     通过history接口将历史数据保存到 ifind_index_daily_his
+    :param chain_param: 该参数仅用于 task.chain 串行操作时，上下传递参数使用
     :param ths_code_set:
     :param begin_time: 默认为None，如果非None则代表所有数据更新日期不得晚于该日期
     :return:
@@ -354,14 +358,14 @@ def import_index_daily_his(ths_code_set: set = None, begin_time=None):
 
 
 @app.task
-def add_new_col_data(col_name, param, db_col_name=None, col_type_str='DOUBLE', ths_code_set: set = None):
+def add_new_col_data(col_name, param, chain_param=None, db_col_name=None, col_type_str='DOUBLE', ths_code_set: set = None):
     """
     1）修改 daily 表，增加字段
     2）ckpv表增加数据
     3）第二部不见得1天能够完成，当第二部完成后，将ckvp数据更新daily表中
+    :param chain_param: 该参数仅用于 task.chain 串行操作时，上下传递参数使用
     :param col_name:增加字段名称
     :param param: 参数
-    :param dtype: 数据库字段类型
     :param db_col_name: 默认为 None，此时与col_name相同
     :param col_type_str: DOUBLE, VARCHAR(20), INTEGER, etc. 不区分大小写
     :param ths_code_set: 默认 None， 否则仅更新指定 ths_code
@@ -511,12 +515,12 @@ if __name__ == "__main__":
     TRIAL = True
     # 股票基本信息数据加载
     ths_code = None  # '600006.SH,600009.SH'
-    import_index_info(ths_code)
+    import_index_info(None, ths_code)
     # 股票日K历史数据加载
     ths_code_set = None  # {'600006.SH', '600009.SH'}
-    import_index_daily_his(ths_code_set)
+    import_index_daily_his(None, ths_code_set)
     # 股票日K数据加载
     ths_code_set = None  # {'600006.SH', '600009.SH'}
-    import_index_daily_ds(ths_code_set)
+    import_index_daily_ds(None, ths_code_set)
     # 添加新字段
-    # add_new_col_data('ths_annual_volatility_index', '101', ths_code_set=ths_code_set)
+    # add_new_col_data('ths_annual_volatility_index', '101', None, ths_code_set=ths_code_set)

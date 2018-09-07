@@ -32,7 +32,7 @@ def get_pub_fund_code_set(date_fetch):
     date_fetch_str = date_fetch.strftime(STR_FORMAT_DATE)
     # 中国公募基金-基金市场类-全部基金(含未成立、已到期):051001039
     stock_df = invoker.THS_DataPool('block', date_fetch_str + ';051001039', 'thscode:Y,security_name:Y')
-    if stock_df is None:
+    if stock_df is None or stock_df.shape[0]:
         logging.warning('%s 获取基金代码失败', date_fetch_str)
         return None
     stock_count = stock_df.shape[0]
@@ -41,9 +41,10 @@ def get_pub_fund_code_set(date_fetch):
 
 
 @app.task
-def import_pub_fund_info(ths_code=None, refresh=False):
+def import_pub_fund_info(chain_param=None, ths_code=None, refresh=False):
     """
-
+    导入 info 表
+    :param chain_param: 该参数仅用于 task.chain 串行操作时，上下传递参数使用
     :param ths_code:
     :param refresh:
     :return:
@@ -168,9 +169,10 @@ def import_pub_fund_info(ths_code=None, refresh=False):
 
 
 @app.task
-def import_pub_fund_daily(ths_code_set: set = None, begin_time=None):
+def import_pub_fund_daily(chain_param=None, ths_code_set: set = None, begin_time=None):
     """
     通过history接口将历史数据保存到 ifind_pub_fund_daily
+    :param chain_param: 该参数仅用于 task.chain 串行操作时，上下传递参数使用
     :param ths_code_set:
     :param begin_time: 默认为None，如果非None则代表所有数据更新日期不得晚于该日期
     :return:
@@ -277,10 +279,9 @@ def import_pub_fund_daily(ths_code_set: set = None, begin_time=None):
 if __name__ == "__main__":
     TRIAL = True
     # DEBUG = True
-    ths_code = None  # '600006.SH,600009.SH'
     # 股票基本信息数据加载
-    import_pub_fund_info(ths_code)
-    # 股票日K数据加载
-    ths_code_set = None  # {'600006.SH', '600009.SH'}
+    ths_code = None  # '600006.SH,600009.SH'
+    import_pub_fund_info(None, ths_code)
     # 股票日K历史数据加载
-    import_pub_fund_daily(ths_code_set)
+    ths_code_set = None  # {'600006.SH', '600009.SH'}
+    import_pub_fund_daily(None, ths_code_set)

@@ -16,11 +16,12 @@ logger = logging.getLogger()
 
 
 @app.task
-def import_trade_date():
+def import_trade_date(chain_param=None):
     """
     增量导入交易日数据导数据库表 wind_trade_date，默认导入未来300天的交易日数据
     2018-01-17 增加港股交易日数据，眼前考虑对减少对已有代码的冲击，新建一张 wind_trade_date_hk表
     日后将会考虑将两张表进行合并
+    :param chain_param: 该参数仅用于 task.chain 串行操作时，上下传递参数使用
     :return: 
     """
     table_name = 'ifind_trade_date'

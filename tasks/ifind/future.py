@@ -91,8 +91,12 @@ def import_variety_info():
 
 
 @app.task
-def import_future_info():
-    """更新期货合约列表信息"""
+def import_future_info(chain_param=None):
+    """
+    更新期货合约列表信息
+    :param chain_param: 该参数仅用于 task.chain 串行操作时，上下传递参数使用
+    :return:
+    """
     table_name = 'ifind_future_info'
     logger.info("更新 %s 开始", table_name)
     # 获取已存在合约列表
@@ -274,9 +278,10 @@ def save_future_daily_df_list(data_df_list):
 
 
 @app.task
-def import_future_daily_his(ths_code_set: set = None, begin_time=None):
+def import_future_daily_his(chain_param=None, ths_code_set: set = None, begin_time=None):
     """
     更新期货合约日级别行情信息
+    :param chain_param: 该参数仅用于 task.chain 串行操作时，上下传递参数使用
     :param ths_code_set:
     :param begin_time:
     :return:
