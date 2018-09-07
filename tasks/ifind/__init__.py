@@ -10,6 +10,7 @@
 from tasks.utils.fh_utils import zip_split
 from tasks.config import config
 from direstinvoker.ifind import IFinDInvoker
+
 invoker = IFinDInvoker(config.IFIND_REST_URL)
 
 
@@ -20,6 +21,7 @@ def print_indicator_param_dic(*args):
         print(str(item) + ',')
     print(']')
 
+
 # 以下语句不能够提前，将会导致循环引用异常
 from tasks.ifind.edb import *
 from tasks.ifind.future import *
@@ -28,6 +30,40 @@ from tasks.ifind.pub_fund import *
 from tasks.ifind.stock import *
 from tasks.ifind.stock_hk import *
 from tasks.ifind.trade_date import *
+from tasks.ifind.index import *
+
+# 日级别加载的程序
+ifind_daily_task = (
+        import_edb.s() |
+        import_future_daily_his.s() |
+        import_index_daily_his.s() |
+        import_index_daily_ds.s() |
+        import_private_fund_daily.s() |
+        import_pub_fund_daily.s() |
+        import_stock_daily_his.s() |
+        import_stock_daily_ds.s() |
+        import_stock_hk_daily_ds.s() |
+        import_stock_hk_daily_his.s()
+)
+# 周级别加载的程序
+ifind_weekly_task = (
+        import_future_info.s() |
+        import_private_fund_info.s() |
+        import_pub_fund_info.s() |
+        import_stock_info.s() |
+        import_stock_report_date.s() |
+        import_stock_fin.s() |
+        import_stock_hk_info.s() |
+        import_stock_hk_report_date.s() |
+        import_stock_hk_fin_by_report_date_weekly.s() |
+        import_stock_hk_fin_quarterly.s()
+)
+# 一次性加载的程序
+ifind_import_once = (
+        import_edb.s() |
+        import_index_info.s() |
+        import_trade_date.s()
+)
 
 if __name__ == '__main__':
     print_indicator_param_dic(
