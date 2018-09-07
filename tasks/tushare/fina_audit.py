@@ -96,13 +96,9 @@ def import_tushare_stock_income(ts_code_set=None):
             ts_code_set is None or ts_code in ts_code_set}
     # 设置 dtype
     dtype = {key: val for key, val in param_list}
-    # dtype['ts_code'] = String(20)
-    # dtype['trade_date'] = Date
-
 
     data_len = len(code_date_range_dic)
     logger.info('%d stocks will been import into wind_stock_daily', data_len)
-    # 将data_df数据，添加到data_df_list
 
     Cycles=1
     try:
@@ -143,9 +139,7 @@ def import_tushare_stock_income(ts_code_set=None):
             data_df_all = data_df
             data_count = bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md, dtype)
             logging.info("成功更新 %s 结束 %d 条信息被更新", table_name, data_count)
-            # if not has_table and engine_md.has_table(table_name):
-            #     alter_table_2_myisam(engine_md, [table_name])
-            #     build_primary_key([table_name])
+
 
 
 

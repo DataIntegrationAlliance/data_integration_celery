@@ -123,8 +123,8 @@ def import_tushare_stock_income(ts_code_set=None):
                   tushare_stock_info info 
                 LEFT OUTER JOIN
                     (SELECT ts_code, adddate(max(ann_date),1) ann_date 
-                    FROM {table_name} GROUP BY ts_code) balancesheet
-                ON info.ts_code = balancesheet.ts_code
+                    FROM {table_name} GROUP BY ts_code) income
+                ON info.ts_code = income.ts_code
             ) tt
             WHERE date_frm <= if(delist_date<end_date, delist_date, end_date) 
             ORDER BY ts_code""".format(table_name=table_name)
