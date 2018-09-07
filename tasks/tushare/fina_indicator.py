@@ -343,8 +343,8 @@ if __name__ == "__main__":
 # logging.info("更新 %s 结束 %d 条信息被更新", table_name, data_count)
 
 
-#下面代码是生成fields和par的
+# 下面代码是生成fields和par的
 # sub=pd.read_excel('tasks/tushare/fina_indicator.xlsx',header=0)[['code','types']]
 # for a, b in [tuple(x) for x in sub.values]:
-#     #print("('%s', %s)," % (a, b))
+#     print("('%s', %s)," % (a, b))
 #     print("'%s'," % (a))
