@@ -1,7 +1,8 @@
 """
-Created on 2018/9/3
+Created on 2018/8/23
 @author: yby
 @desc    : 2018-09-3
+contact author:ybychem@gmail.com
 """
 
 import tushare as ts
