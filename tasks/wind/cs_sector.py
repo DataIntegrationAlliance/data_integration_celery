@@ -18,7 +18,11 @@ from tasks.backend.orm import build_primary_key
 
 
 @app.task
-def wind_CS_sector_update():
+def wind_CS_sector_update(chain_param=None):
+    """
+    :param chain_param:  在celery 中將前面結果做爲參數傳給後面的任務
+    :return:
+    """
     dic = {u'CS石油石化': 'b101000000000000',
            u'CS煤炭': 'b102000000000000',
            u'CS有色金属': 'b103000000000000',

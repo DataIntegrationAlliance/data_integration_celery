@@ -26,8 +26,11 @@ BASE_LINE_HOUR = 16
 
 
 @app.task
-def import_index_daily():
-    """导入指数数据"""
+def import_index_daily(chain_param=None):
+    """导入指数数据
+    :param chain_param:  在celery 中將前面結果做爲參數傳給後面的任務
+    :return:
+    """
     table_name = "wind_index_daily"
     has_table = engine_md.has_table(table_name)
     col_name_param_list = [
@@ -139,7 +142,7 @@ def import_index_daily():
 
 
 @app.task
-def import_index_info(wind_codes):
+def import_index_info(wind_codes, chain_param=None):
     """
     导入指数信息
     :param wind_codes: 
@@ -197,10 +200,10 @@ if __name__ == '__main__':
                   '399102.SZ',
                   ]
     # wind_codes = ['CES120.CSI']
-    # import_index_info(wind_codes)
+    # import_index_info(wind_codes, None)
     wind_code_set = None
     # 每日更新指数信息
-    import_index_daily()
+    import_index_daily(chain_param=None)
     # 每日生成指数导出文件给王淳
     wind_code_list = ['HSI.HI', 'HSCEI.HI']
     wind_code = "CES120.CSI"

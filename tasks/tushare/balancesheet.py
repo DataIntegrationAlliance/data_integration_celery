@@ -36,7 +36,7 @@ def invoke_balancesheet(ts_code, start_date, end_date):
 
 
 @app.task
-def import_tushare_stock_balancesheet(ts_code_set=None):
+def import_tushare_stock_balancesheet(chain_param=None,ts_code_set=None):
     """
     插入股票日线数据到最近一个工作日-1。
     如果超过 BASE_LINE_HOUR 时间，则获取当日的数据

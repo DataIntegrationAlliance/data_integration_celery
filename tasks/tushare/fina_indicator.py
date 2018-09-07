@@ -38,7 +38,7 @@ def invoke_fina_indicator(ts_code,start_date,end_date,fields):
 
 
 @app.task
-def import_tushare_stock_fina_indicator(ts_code_set=None):
+def import_tushare_stock_fina_indicator(chain_param=None,ts_code_set=None):
     """
     插入股票日线数据到最近一个工作日-1。
     如果超过 BASE_LINE_HOUR 时间，则获取当日的数据
@@ -343,8 +343,8 @@ if __name__ == "__main__":
 # logging.info("更新 %s 结束 %d 条信息被更新", table_name, data_count)
 
 
-#下面代码是生成fields和par的
+# 下面代码是生成fields和par的
 # sub=pd.read_excel('tasks/tushare/fina_indicator.xlsx',header=0)[['code','types']]
 # for a, b in [tuple(x) for x in sub.values]:
-#     #print("('%s', %s)," % (a, b))
+#     print("('%s', %s)," % (a, b))
 #     print("'%s'," % (a))

@@ -43,9 +43,10 @@ def get_wind_code_set(date_fetch):
 
 
 @app.task
-def import_pub_fund_info(first_time=False):
+def import_pub_fund_info(chain_param=None, first_time=False):
     """
     获取全市场可转债基本信息
+    :param chain_param:  在celery 中將前面結果做爲參數傳給後面的任務
     :param first_time: 第一次执行时将从2004年开始查找全部公募基金数据
     :return: 
     """
@@ -135,9 +136,10 @@ def import_pub_fund_info(first_time=False):
 
 
 @app.task
-def import_pub_fund_daily():
+def import_pub_fund_daily(chain_param=None):
     """
     导入公募基金日线数据
+    :param chain_param:  在celery 中將前面結果做爲參數傳給後面的任務
     :return: 
     """
     logging.info("更新 wind_pub_fund_daily 开始")
@@ -285,5 +287,5 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG, format='%(asctime)s: %(levelname)s [%(name)s:%(funcName)s] %(message)s')
     DEBUG = True
     wind_code_set = None
-    # import_pub_fund_info(first_time=True)
-    import_pub_fund_daily()
+    # import_pub_fund_info(None, first_time=True)
+    import_pub_fund_daily(chain_param=None)

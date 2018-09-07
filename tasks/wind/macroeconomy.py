@@ -25,14 +25,16 @@ BASE_LINE_HOUR = 16
 
 
 @app.task
-def import_macroeconomy_info():
+def import_macroeconomy_info(chain_param=None):
+    """
+    :param chain_param:  在celery 中將前面結果做爲參數傳給後面的任務
+    :return:
+    """
     table_name = 'wind_macroeconomy_info'
     has_table = engine_md.has_table(table_name)
     indicators_dic = [
-        #人民币汇率
+        # 人民币汇率
         ["M0067855", "us2rmb", "美元兑人民币即期汇率", "1994-01-04", None, '中国货币网'],
-
-
 
     ]
     dtype = {
@@ -58,9 +60,10 @@ def import_macroeconomy_info():
 
 
 @app.task
-def import_macroeconom_edb(wind_code_set=None):
+def import_macroeconom_edb(chain_param=None, wind_code_set=None):
     """
     通过wind接口获取并导入EDB数据
+    :param chain_param:  在celery 中將前面結果做爲參數傳給後面的任務
     :return:
     """
     table_name = 'wind_macroeconomy_edb'
@@ -68,9 +71,8 @@ def import_macroeconom_edb(wind_code_set=None):
     logging.info("更新 %s 开始", table_name)
     param_list = [
         ('close', DOUBLE),
-     ]
+    ]
     rename_col_dic = {key.upper(): key.lower() for key, _ in param_list}
-
 
     # 进行表格判断，确定是否含有 wind_macroeconomy_edb
     if has_table:
@@ -168,6 +170,6 @@ def import_macroeconom_edb(wind_code_set=None):
 
 if __name__ == "__main__":
     DEBUG = True
-    import_macroeconomy_info()
+    import_macroeconomy_info(chain_param=None)
     # 更新每日股票数据
-    import_macroeconom_edb()
+    import_macroeconom_edb(chain_param=None)

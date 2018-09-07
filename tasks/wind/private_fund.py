@@ -27,7 +27,7 @@ logger = logging.getLogger()
 
 
 @app.task
-def import_private_fund_info(table_name, get_df=False):
+def import_private_fund_info(table_name, chain_param=None, get_df=False):
     # 初始化服务器接口，用于下载万得数据
     # table_name = 'fund_info'
     has_table = engine_md.has_table(table_name)
@@ -118,7 +118,11 @@ def import_private_fund_info(table_name, get_df=False):
 
 
 @app.task
-def import_private_wind_fund_info():
+def import_private_fund_info(chain_param=None):
+    """
+    :param chain_param:  在celery 中將前面結果做爲參數傳給後面的任務
+    :return:
+    """
     # 更新 基金信息
     table_name = 'wind_fund_info'
     # 初始化服务器接口，用于下载万得数据
@@ -338,7 +342,13 @@ def update_trade_date_latest(wind_code_trade_date_latest):
 
 
 @app.task
-def update_private_fund_nav(get_df=False, wind_code_list=None):
+def update_private_fund_nav(chain_param=None, get_df=False, wind_code_list=None):
+    """
+    :param chain_param:  在celery 中將前面結果做爲參數傳給後面的任務
+    :param get_df:
+    :param wind_code_list:
+    :return:
+    """
     table_name = 'wind_fund_nav'
     # 初始化数据下载端口
     # 初始化数据库engine
@@ -527,7 +537,12 @@ def import_wind_fund_nav_to_nav():
 
 
 @app.task
-def import_private_fund_nav_daily(wind_code_list=None):
+def import_private_fund_nav_daily(chain_param=None, wind_code_list=None):
+    """
+    :param chain_param:  在celery 中將前面結果做爲參數傳給後面的任務
+    :param wind_code_list:
+    :return:
+    """
     table_name = 'wind_fund_nav_daily'
     # 初始化数据下载端口
     # 初始化数据库engine
@@ -723,10 +738,9 @@ if __name__ == '__main__':
     table_name = "fund_info"
     # 调用wind接口更新基金净值
     # update_wind_fund_nav(get_df=False)  # , wind_code_list=['XT1513361.XT']
-    import_private_fund_info(table_name, get_df=False)
+    import_private_fund_info(table_name, None, get_df=False)
     import_wind_fund_nav_to_nav()
     wind_code_list = ['XT1513361.XT']
-    update_private_fund_nav()  # , wind_code_list=['XT1513361.XT']
+    update_private_fund_nav(chain_param=None)  # , wind_code_list=['XT1513361.XT']
     DEBUG = True
-    import_private_fund_info()
     col_name = None

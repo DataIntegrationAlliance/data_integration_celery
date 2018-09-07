@@ -30,59 +30,60 @@ STR_FORMAT_DATE_TS = '%Y%m%d'
 
 df=pro.moneyflow_hsgt(trade_date='20141117')
 
-@try_n_times(times=3, sleep_time=6)
-def invoke_ggt_top10(ts_code, trade_date):
-    moneyflow_hsgt = pro.ggt_top10(ts_code=ts_code, trade_date=trade_date)
-    return moneyflow_hsgt
+@try_n_times(times=5, sleep_time=0,exception_sleep_time=60)
+def invoke_ggt_top10(trade_date,market_type):
+    invoke_ggt_top10 = pro.ggt_top10(trade_date=trade_date,market_type=market_type)
+    return invoke_ggt_top10
 
 @app.task
-def import_tushare_ggt_top10():
+def import_tushare_ggt_top10(chain_param=None):
     """
     插入股票日线数据到最近一个工作日-1。
     如果超过 BASE_LINE_HOUR 时间，则获取当日的数据
     :return:
     """
-    table_name = 'tushare_moneyflow_hsgt'
+    table_name = 'tushare_ggt_top10'
     logging.info("更新 %s 开始", table_name)
     param_list = [
-        ('ts_code', String(20)),
         ('trade_date', Date),
+        ('ts_code', String(20)),
+        ('name', String(20)),
         ('close', DOUBLE),
-        ('turnover_rate', DOUBLE),
-        ('volume_ratio', DOUBLE),
-        ('pe', DOUBLE),
-        ('pe_ttm', DOUBLE),
-        ('pb', DOUBLE),
-        ('ps', DOUBLE),
-        ('pb_ttm', DOUBLE),
-        ('total_share', DOUBLE),
-        ('float_share', DOUBLE),
-        ('free_share', DOUBLE),
-        ('total_mv', DOUBLE),
-        ('circ_mv', DOUBLE),
+        ('p_change', DOUBLE),
+        ('rank', Integer),
+        ('market_type', Integer),
+        ('amount', DOUBLE),
+        ('net_amount', DOUBLE),
+        ('sh_amount', DOUBLE),
+        ('sh_net_amount', DOUBLE),
+        ('sh_buy', DOUBLE),
+        ('sh_sell', DOUBLE),
+        ('sz_amount', DOUBLE),
+        ('sz_net_amount', DOUBLE),
+        ('sz_buy', DOUBLE),
+        ('sz_sell', DOUBLE),
     ]
 
     has_table = engine_md.has_table(table_name)
     # 进行表格判断，确定是否含有tushare_daily_basic
 
-    #下面一定要注意引用表的来源，否则可能是串，提取混乱！！！比如本表是tushare_daily_basic，所以引用的也是这个，如果引用错误，就全部乱了l
     if has_table:
         sql_str = """
-               select cal_date            
-               FROM
-                (
-                 select * from tushare_trade_date trddate 
-                 where( cal_date>(SELECT max(trade_date) FROM  {table_name}))
-               )tt
-               where (is_open=1 
-                      and cal_date <= if(hour(now())<16, subdate(curdate(),1), curdate()) 
-                      and exchange_id='SSE') """.format(table_name=table_name)
+                     select cal_date            
+                     FROM
+                      (
+                       select * from tushare_trade_date trddate 
+                       where( cal_date>(SELECT max(trade_date) FROM  {table_name}))
+                     )tt
+                     where (is_open=1 
+                            and cal_date <= if(hour(now())<16, subdate(curdate(),1), curdate()) 
+                            and exchange_id='SSE') """.format(table_name=table_name)
     else:
         sql_str = """
-               select cal_date from tushare_trade_date trddate where (trddate.is_open=1 
-            and cal_date <= if(hour(now())<16, subdate(curdate(),1), curdate()) 
-            and exchange_id='SSE') order by cal_date"""
-        logger.warning('%s 不存在，仅使用 tushare_stock_info 表进行计算日期范围', table_name)
+                     select cal_date from tushare_trade_date trddate where (trddate.is_open=1 
+                  and cal_date <= if(hour(now())<16, subdate(curdate(),1), curdate()) 
+                  and exchange_id='SSE'  and cal_date>='2014-11-17') order by cal_date"""
+        logger.warning('%s 不存在，仅使用 tushare_trade_date 表进行计算日期范围', table_name)
 
     with with_db_session(engine_md) as session:
         # 获取交易日数据
@@ -94,12 +95,13 @@ def import_tushare_ggt_top10():
     try:
         for i in range(len(trddate)):
             trade_date = datetime_2_str(trddate[i], STR_FORMAT_DATE_TS)
-            data_df = invoke_moneyflow_hsgt(trade_date=trade_date)
-            if len(data_df) > 0:
-                data_count = bunch_insert_on_duplicate_update(data_df, table_name, engine_md, dtype)
-                logging.info("%s更新 %s 结束 %d 条信息被更新", trade_date,table_name, data_count)
-            else:
-                logging.info("无数据信息可被更新")
+            for market_type in list(['2', '4']):
+                data_df = invoke_ggt_top10(trade_date=trade_date,market_type=market_type)
+                if len(data_df) > 0:
+                    data_count = bunch_insert_on_duplicate_update(data_df, table_name, engine_md, dtype)
+                    logging.info("%s更新 %s 结束 %d 条信息被更新", trade_date,table_name, data_count)
+                else:
+                    logging.info("无数据信息可被更新")
     finally:
         if not has_table and engine_md.has_table(table_name):
             alter_table_2_myisam(engine_md, [table_name])
@@ -114,4 +116,4 @@ def import_tushare_ggt_top10():
 
 if __name__ == "__main__":
     # DEBUG = True
-    import_tushare_moneyflow_hsgt()
+    import_tushare_ggt_top10()

@@ -1,3 +1,9 @@
+"""
+Created on 2018/9/3
+@author: yby
+@desc    : 2018-09-3
+contact author:ybychem@gmail.com
+"""
 import tushare as ts
 import pandas as pd
 import logging
@@ -24,7 +30,7 @@ STR_FORMAT_DATE_TS = '%Y%m%d'
 # df=pro.daily_basic(ts_code='', trade_date='19941209')
 
 @app.task
-def import_tushare_adj_factor():
+def import_tushare_adj_factor(chain_param=None,):
     """
     插入股票日线数据到最近一个工作日-1。
     如果超过 BASE_LINE_HOUR 时间，则获取当日的数据
