@@ -28,13 +28,13 @@ ONE_DAY = timedelta(days=1)
 BASE_LINE_HOUR = 16
 STR_FORMAT_DATE_TS = '%Y%m%d'
 
-@try_n_times(times=5,sleep_time=0,logger=logger,exception=Exception,exception_sleep_time=1)
+@try_n_times(times=5,sleep_time=0,logger=logger,exception=Exception,exception_sleep_time=60)
 def invoke_cashflow(ts_code,start_date,end_date):
     invoke_cashflow=pro.cashflow(ts_code=ts_code,start_date=start_date,end_date=end_date)
     return invoke_cashflow
 
 @app.task
-def import_tushare_stock_cashflow(ts_code_set=None):
+def import_tushare_stock_cashflow(chain_param=None,ts_code_set=None):
     """
     插入股票日线数据到最近一个工作日-1。
     如果超过 BASE_LINE_HOUR 时间，则获取当日的数据
