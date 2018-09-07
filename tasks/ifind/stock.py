@@ -100,6 +100,7 @@ DTYPE_STOCK_REPORT_DATE = {key: val for key, _, val in INDICATOR_PARAM_LIST_STOC
 DTYPE_STOCK_REPORT_DATE['ths_code'] = String(20)
 DTYPE_STOCK_REPORT_DATE['time'] = Date
 
+
 def get_stock_code_set(date_fetch):
     date_fetch_str = date_fetch.strftime(STR_FORMAT_DATE)
     stock_df = invoker.THS_DataPool('block', date_fetch_str + ';001005010', 'thscode:Y,security_name:Y')
@@ -112,9 +113,10 @@ def get_stock_code_set(date_fetch):
 
 
 @app.task
-def import_stock_info(ths_code=None, refresh=False):
+def import_stock_info(chain_param=None, ths_code=None, refresh=False):
     """
 
+    :param chain_param: 该参数仅用于 task.chain 串行操作时，上下传递参数使用
     :param ths_code:
     :param refresh:
     :return:
@@ -582,8 +584,8 @@ def add_data_2_ckdvp_aginst_report_date(json_indicator, json_param, ths_code_set
             WHERE date_frm <= if(ths_delist_date_stock<end_date, ths_delist_date_stock, end_date) 
             ORDER BY ths_code"""
 
-    report_date_sql_str = """select distinct ths_code, ths_periodic_report_fore_dd_stock 
-        from ifind_stock_report_date where ths_periodic_report_fore_dd_stock is not null"""
+    report_date_sql_str = """SELECT DISTINCT ths_code, ths_periodic_report_fore_dd_stock 
+        FROM ifind_stock_report_date WHERE ths_periodic_report_fore_dd_stock IS NOT NULL"""
     # 计算每只股票需要获取日线数据的日期区间
     with with_db_session(engine_md) as session:
         # 获取每只股票需要获取日线数据的日期区间
@@ -680,7 +682,8 @@ def import_stock_report_date(ths_code_set: set = None, begin_time=None, interval
 
     # jsonIndicator='ths_regular_report_actual_dd_stock;ths_periodic_report_fore_dd_stock'
     # jsonparam=';'
-    json_indicator, json_param = unzip_join([(key, val) for key, val, _ in INDICATOR_PARAM_LIST_STOCK_REPORT_DATE], sep=';')
+    json_indicator, json_param = unzip_join([(key, val) for key, val, _ in INDICATOR_PARAM_LIST_STOCK_REPORT_DATE],
+                                            sep=';')
     if has_table:
         sql_str = """SELECT ths_code, date_frm, if(ths_delist_date_stock<end_date, ths_delist_date_stock, end_date) date_to
             FROM
@@ -740,7 +743,8 @@ def import_stock_report_date(ths_code_set: set = None, begin_time=None, interval
             if data_count >= 10000:
                 data_df_all = pd.concat(data_df_list)
                 # data_df_all.to_sql(table_name, engine_md, if_exists='append', index=False, dtype=dtype)
-                data_count = bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md, DTYPE_STOCK_REPORT_DATE)
+                data_count = bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md,
+                                                              DTYPE_STOCK_REPORT_DATE)
                 tot_data_count += data_count
                 data_df_list, data_count = [], 0
 
