@@ -27,7 +27,7 @@ ONE_DAY = timedelta(days=1)
 BASE_LINE_HOUR = 16
 STR_FORMAT_DATE_TS = '%Y%m%d'
 
-@try_n_times(times=600,sleep_time=1,logger=logger,exception=Exception,exception_sleep_time=120)
+@try_n_times(times=5,sleep_time=0,logger=logger,exception=Exception,exception_sleep_time=1)
 def invoke_cashflow(ts_code,start_date,end_date):
     invoke_cashflow=pro.cashflow(ts_code=ts_code,start_date=start_date,end_date=end_date)
     return invoke_cashflow
@@ -214,7 +214,7 @@ def import_tushare_stock_cashflow(ts_code_set=None):
                 #数据插入数据库
                 data_count = bunch_insert_on_duplicate_update(data_df, table_name, engine_md, dtype)
                 logging.info("更新 %s 结束 %d 条信息被更新", table_name, data_count)
-                data_df=[]
+
             #仅调试使用
             Cycles=Cycles+1
             if DEBUG and Cycles > 10:
