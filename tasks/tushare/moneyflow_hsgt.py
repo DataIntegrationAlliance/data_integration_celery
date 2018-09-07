@@ -1,7 +1,7 @@
 """
 Created on 2018/9/7
 @author: yby
-@desc    : 2018-09-7
+@desc    : 2018-09-7可正常运行
 contact author:ybychem@gmail.com
 """
 import tushare as ts
@@ -81,7 +81,7 @@ def import_tushare_moneyflow_hsgt():
         sql_str = """
                select cal_date from tushare_trade_date trddate where (trddate.is_open=1 
             and cal_date <= if(hour(now())<16, subdate(curdate(),1), curdate()) 
-            and exchange_id='SSE') order by cal_date"""
+            and exchange_id='SSE'  and cal_date>='2014-11-17') order by cal_date"""
         logger.warning('%s 不存在，仅使用 tushare_stock_info 表进行计算日期范围', table_name)
 
     with with_db_session(engine_md) as session:
