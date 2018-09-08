@@ -28,7 +28,7 @@ BASE_LINE_HOUR = 16
 STR_FORMAT_DATE_TS = '%Y%m%d'
 
 
-df=pro.moneyflow_hsgt(trade_date='20141117')
+#df=pro.moneyflow_hsgt(trade_date='20141117')
 
 @try_n_times(times=5, sleep_time=0,exception_sleep_time=60)
 def invoke_ggt_top10(trade_date,market_type):
@@ -117,3 +117,10 @@ def import_tushare_ggt_top10(chain_param=None):
 if __name__ == "__main__":
     # DEBUG = True
     import_tushare_ggt_top10()
+
+
+# sql_str = """SELECT * FROM old_tushare_ggt_top10 """
+# df=pd.read_sql(sql_str,engine_md)
+# #将数据插入新表
+# data_count = bunch_insert_on_duplicate_update(df, table_name, engine_md, dtype)
+# logging.info("更新 %s 结束 %d 条信息被更新", table_name, data_count)
