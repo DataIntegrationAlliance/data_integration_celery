@@ -28,7 +28,7 @@ BASE_LINE_HOUR = 16
 STR_FORMAT_DATE_TS = '%Y%m%d'
 
 
-@try_n_times(times=3, sleep_time=0, logger=logger, exception=Exception, exception_sleep_time=15)
+@try_n_times(times=3, sleep_time=0.5, logger=logger, exception=Exception, exception_sleep_time=120)
 def invoke_fina_mainbz(ts_code, start_date, end_date, type):
     invoke_fina_mainbz = pro.fina_mainbz(ts_code=ts_code, start_date=start_date, end_date=end_date, type=type)
     return invoke_fina_mainbz
@@ -129,7 +129,7 @@ def import_tushare_stock_fina_mainbz(ts_code_set,chain_param=None):
                             if last_date_in_df_cur<last_date_in_df_last:
                                 data_df = pd.concat([data_df, df2])
                                 df = df2
-                            elif last_date_in_df_cur==last_date_in_df_last:
+                            elif last_date_in_df_cur<=last_date_in_df_last:
                                 break
                             if data_df is None:
                                 logger.warning('%d/%d) %s has no data during %s %s', num, data_len, ts_code, date_from, date_to)
@@ -159,7 +159,7 @@ if __name__ == "__main__":
     #DEBUG = True
     #import_tushare_stock_info(refresh=False)
     # 更新每日股票数据
-    SQL = """SELECT ts_code FROM md_integration.tushare_stock_info where ts_code>'000031.SZ'"""
+    SQL = """SELECT ts_code FROM md_integration.tushare_stock_info where ts_code>'000509.SZ'"""
     with with_db_session(engine_md) as session:
         # 获取每只股票需要获取日线数据的日期区间
         table = session.execute(SQL)
@@ -174,15 +174,5 @@ if __name__ == "__main__":
 # logging.info("更新 %s 结束 %d 条信息被更新", table_name, data_count)
 
 
-#下面代码是生成fields和par的
-# sub=pd.read_excel('tasks/tushare/fina_indicator.xlsx',header=0)[['code','types']]
-# for a, b in [tuple(x) for x in sub.values]:
-#     #print("('%s', %s)," % (a, b))
-#     print("'%s'," % (a))
-
-
-# for mainbz_type in list(['P','D']):
-#     df = pro.fina_mainbz(ts_code='000001.SZ',start_date='19911231',end_date='20171231',type='P')
-#     df.to_excel(r'd:\dfp.xlsx')
 
 
