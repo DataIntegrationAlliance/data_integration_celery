@@ -12,7 +12,7 @@ from tasks.backend.orm import build_primary_key
 from datetime import date, datetime, timedelta
 from tasks.utils.fh_utils import try_2_date,STR_FORMAT_DATE,datetime_2_str,split_chunk,try_n_times
 from tasks import app
-from sqlalchemy.types import String, Date, Integer
+from sqlalchemy.types import String, Date, Integer,Text
 from sqlalchemy.dialects.mysql import DOUBLE
 from tasks.backend import engine_md
 from tasks.merge.code_mapping import update_from_info_table
@@ -29,13 +29,13 @@ BASE_LINE_HOUR = 16
 STR_FORMAT_DATE_TS = '%Y%m%d'
 
 @try_n_times(times=5, sleep_time=0,exception_sleep_time=60)
-def invoke_fina_audit(ts_code,start_date,end_date,fields):
-    invoke_fina_audit=pro.fina_audit(ts_code=ts_code,start_date=start_date,end_date=end_date,fields=fields)
+def invoke_fina_audit(ts_code,start_date,end_date):
+    invoke_fina_audit=pro.fina_audit(ts_code=ts_code,start_date=start_date,end_date=end_date)
     return invoke_fina_audit
 
 
 @app.task
-def import_tushare_stock_income(chain_param=None,ts_code_set=None):
+def import_tushare_stock_fina_audit(chain_param=None,ts_code_set=None):
     """
     插入股票日线数据到最近一个工作日-1。
     如果超过 BASE_LINE_HOUR 时间，则获取当日的数据
@@ -46,13 +46,13 @@ def import_tushare_stock_income(chain_param=None,ts_code_set=None):
     param_list = [
         ('ts_code', String(20)),
         ('ann_date', Date),
-        ('f_ann_date', Date),
         ('end_date', Date),
-        ('report_type', DOUBLE),
-        ('comp_type', DOUBLE),
+        ('audit_result', Text),
+        ('audit_fees', DOUBLE),
+        ('audit_agency',  String(100)),
+        ('audit_sign', String(100)),
     ]
-    # wind_indictor_str = ",".join([key for key, _ in param_list])
-    # rename_col_dic = {key.upper(): key.lower() for key, _ in param_list}
+
     has_table = engine_md.has_table(table_name)
     # 进行表格判断，确定是否含有tushare_stock_daily
     if has_table:
@@ -60,7 +60,7 @@ def import_tushare_stock_income(chain_param=None,ts_code_set=None):
             SELECT ts_code, date_frm, if(delist_date<end_date, delist_date, end_date) date_to
             FROM
             (
-                SELECT info.ts_code, ifnull(ann_date, subdate(list_date,365*10)) date_frm, delist_date,
+                SELECT info.ts_code, ifnull(ann_date, subdate(list_date,365*8)) date_frm, delist_date,
                 if(hour(now())<16, subdate(curdate(),1), curdate()) end_date
                 FROM 
                   tushare_stock_info info 
@@ -144,7 +144,13 @@ def import_tushare_stock_income(chain_param=None,ts_code_set=None):
 
 
 if __name__ == "__main__":
-    DEBUG = True
+    #DEBUG = True
     #import_tushare_stock_info(refresh=False)
-    # 更新每日股票数据
-    import_tushare_stock_fina_audit()
+    # # 更新每日股票数据
+    # SQL = """SELECT ts_code FROM md_integration.tushare_stock_info where ts_code>'600267.SH'"""
+    # with with_db_session(engine_md) as session:
+    #     # 获取每只股票需要获取日线数据的日期区间
+    #     table = session.execute(SQL)
+    #     ts_code_set = list([row[0] for row in table.fetchall()])
+    import_tushare_stock_fina_audit(ts_code_set)
+

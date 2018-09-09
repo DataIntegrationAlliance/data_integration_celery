@@ -27,7 +27,7 @@ ONE_DAY = timedelta(days=1)
 BASE_LINE_HOUR = 16
 STR_FORMAT_DATE_TS = '%Y%m%d'
 
-@try_n_times(times=60, sleep_time=0,exception_sleep_time=120)
+@try_n_times(times=5, sleep_time=0,exception_sleep_time=120)
 def invoke_fina_indicator(ts_code,start_date,end_date,fields):
     invoke_fina_indicator=pro.fina_indicator(ts_code=ts_code,start_date=start_date,end_date=end_date,fields=fields)
     return invoke_fina_indicator

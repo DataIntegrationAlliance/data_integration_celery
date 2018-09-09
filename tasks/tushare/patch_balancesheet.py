@@ -28,7 +28,7 @@ BASE_LINE_HOUR = 16
 STR_FORMAT_DATE_TS = '%Y%m%d'
 
 
-@try_n_times(times=120, sleep_time=0, logger=logger, exception=Exception, exception_sleep_time=120)
+@try_n_times(times=3, sleep_time=0, logger=logger, exception=Exception, exception_sleep_time=60)
 def invoke_balancesheet(ts_code, start_date, end_date):
     invoke_balancesheet = pro.balancesheet(ts_code=ts_code, start_date=start_date, end_date=end_date)
     return invoke_balancesheet
@@ -259,7 +259,12 @@ if __name__ == "__main__":
     # DEBUG = True
     # import_tushare_stock_info(refresh=False)
     # 更新每日股票数据
-    import_tushare_stock_balancesheet()
+    # SQL = """SELECT ts_code FROM md_integration.tushare_stock_info where ts_code>'002538.SZ'"""
+    # with with_db_session(engine_md) as session:
+    #     # 获取每只股票需要获取日线数据的日期区间
+    #     table = session.execute(SQL)
+    #     ts_code_set = list([row[0] for row in table.fetchall()])
+    import_tushare_stock_balancesheet(ts_code_set)
 
 #去除重复数据用的
 # sql_str = """SELECT * FROM old_tushare_stock_balancesheet """

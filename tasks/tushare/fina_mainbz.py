@@ -1,7 +1,7 @@
 """
 Created on 2018/9/6
 @author: yby
-@desc    : 2018-09-6
+@desc    : 2018-09-6  主键无法解决 实际不重复数据被当作重复数据
 """
 
 import tushare as ts
@@ -28,7 +28,7 @@ BASE_LINE_HOUR = 16
 STR_FORMAT_DATE_TS = '%Y%m%d'
 
 
-@try_n_times(times=600, sleep_time=0, logger=logger, exception=Exception, exception_sleep_time=120)
+@try_n_times(times=3, sleep_time=0, logger=logger, exception=Exception, exception_sleep_time=15)
 def invoke_fina_mainbz(ts_code, start_date, end_date, type):
     invoke_fina_mainbz = pro.fina_mainbz(ts_code=ts_code, start_date=start_date, end_date=end_date, type=type)
     return invoke_fina_mainbz
@@ -39,7 +39,7 @@ def invoke_fina_mainbz(ts_code, start_date, end_date, type):
 
 
 @app.task
-def import_tushare_stock_fina_mainbz(chain_param=None,ts_code_set=None):
+def import_tushare_stock_fina_mainbz(ts_code_set,chain_param=None):
     """
     插入股票日线数据到最近一个工作日-1。
     如果超过 BASE_LINE_HOUR 时间，则获取当日的数据
@@ -49,202 +49,44 @@ def import_tushare_stock_fina_mainbz(chain_param=None,ts_code_set=None):
     logging.info("更新 %s 开始", table_name)
     param_list = [
         ('ts_code', String(20)),
-        ('ann_date', Date),
         ('end_date', Date),
-        ('eps', DOUBLE),
-        ('dt_eps', DOUBLE),
-        ('total_revenue_ps', DOUBLE),
-        ('revenue_ps', DOUBLE),
-        ('capital_rese_ps', DOUBLE),
-        ('surplus_rese_ps', DOUBLE),
-        ('undist_profit_ps', DOUBLE),
-        ('extra_item', DOUBLE),
-        ('profit_dedt', DOUBLE),
-        ('gross_margin', DOUBLE),
-        ('current_ratio', DOUBLE),
-        ('quick_ratio', DOUBLE),
-        ('cash_ratio', DOUBLE),
-        ('invturn_days', DOUBLE),
-        ('arturn_days', DOUBLE),
-        ('inv_turn', DOUBLE),
-        ('ar_turn', DOUBLE),
-        ('ca_turn', DOUBLE),
-        ('fa_turn', DOUBLE),
-        ('assets_turn', DOUBLE),
-        ('op_income', DOUBLE),
-        ('valuechange_income', DOUBLE),
-        ('interst_income', DOUBLE),
-        ('daa', DOUBLE),
-        ('ebit', DOUBLE),
-        ('ebitda', DOUBLE),
-        ('fcff', DOUBLE),
-        ('fcfe', DOUBLE),
-        ('current_exint', DOUBLE),
-        ('noncurrent_exint', DOUBLE),
-        ('interestdebt', DOUBLE),
-        ('netdebt', DOUBLE),
-        ('tangible_asset', DOUBLE),
-        ('working_capital', DOUBLE),
-        ('networking_capital', DOUBLE),
-        ('invest_capital', DOUBLE),
-        ('retained_earnings', DOUBLE),
-        ('diluted2_eps', DOUBLE),
-        ('bps', DOUBLE),
-        ('ocfps', DOUBLE),
-        ('retainedps', DOUBLE),
-        ('cfps', DOUBLE),
-        ('ebit_ps', DOUBLE),
-        ('fcff_ps', DOUBLE),
-        ('fcfe_ps', DOUBLE),
-        ('netprofit_margin', DOUBLE),
-        ('grossprofit_margin', DOUBLE),
-        ('cogs_of_sales', DOUBLE),
-        ('expense_of_sales', DOUBLE),
-        ('profit_to_gr', DOUBLE),
-        ('saleexp_to_gr', DOUBLE),
-        ('adminexp_of_gr', DOUBLE),
-        ('finaexp_of_gr', DOUBLE),
-        ('impai_ttm', DOUBLE),
-        ('gc_of_gr', DOUBLE),
-        ('op_of_gr', DOUBLE),
-        ('ebit_of_gr', DOUBLE),
-        ('roe', DOUBLE),
-        ('roe_waa', DOUBLE),
-        ('roe_dt', DOUBLE),
-        ('roa', DOUBLE),
-        ('npta', DOUBLE),
-        ('roic', DOUBLE),
-        ('roe_yearly', DOUBLE),
-        ('roa2_yearly', DOUBLE),
-        ('roe_avg', DOUBLE),
-        ('opincome_of_ebt', DOUBLE),
-        ('investincome_of_ebt', DOUBLE),
-        ('n_op_profit_of_ebt', DOUBLE),
-        ('tax_to_ebt', DOUBLE),
-        ('dtprofit_to_profit', DOUBLE),
-        ('salescash_to_or', DOUBLE),
-        ('ocf_to_or', DOUBLE),
-        ('ocf_to_opincome', DOUBLE),
-        ('capitalized_to_da', DOUBLE),
-        ('debt_to_assets', DOUBLE),
-        ('assets_to_eqt', DOUBLE),
-        ('dp_assets_to_eqt', DOUBLE),
-        ('ca_to_assets', DOUBLE),
-        ('nca_to_assets', DOUBLE),
-        ('tbassets_to_totalassets', DOUBLE),
-        ('int_to_talcap', DOUBLE),
-        ('eqt_to_talcapital', DOUBLE),
-        ('currentdebt_to_debt', DOUBLE),
-        ('longdeb_to_debt', DOUBLE),
-        ('ocf_to_shortdebt', DOUBLE),
-        ('debt_to_eqt', DOUBLE),
-        ('eqt_to_debt', DOUBLE),
-        ('eqt_to_interestdebt', DOUBLE),
-        ('tangibleasset_to_debt', DOUBLE),
-        ('tangasset_to_intdebt', DOUBLE),
-        ('tangibleasset_to_netdebt', DOUBLE),
-        ('ocf_to_debt', DOUBLE),
-        ('ocf_to_interestdebt', DOUBLE),
-        ('ocf_to_netdebt', DOUBLE),
-        ('ebit_to_interest', DOUBLE),
-        ('longdebt_to_workingcapital', DOUBLE),
-        ('ebitda_to_debt', DOUBLE),
-        ('turn_days', DOUBLE),
-        ('roa_yearly', DOUBLE),
-        ('roa_dp', DOUBLE),
-        ('fixed_assets', DOUBLE),
-        ('profit_prefin_exp', DOUBLE),
-        ('non_op_profit', DOUBLE),
-        ('op_to_ebt', DOUBLE),
-        ('nop_to_ebt', DOUBLE),
-        ('ocf_to_profit', DOUBLE),
-        ('cash_to_liqdebt', DOUBLE),
-        ('cash_to_liqdebt_withinterest', DOUBLE),
-        ('op_to_liqdebt', DOUBLE),
-        ('op_to_debt', DOUBLE),
-        ('roic_yearly', DOUBLE),
-        ('total_fa_trun', DOUBLE),
-        ('profit_to_op', DOUBLE),
-        ('q_opincome', DOUBLE),
-        ('q_investincome', DOUBLE),
-        ('q_dtprofit', DOUBLE),
-        ('q_eps', DOUBLE),
-        ('q_netprofit_margin', DOUBLE),
-        ('q_gsprofit_margin', DOUBLE),
-        ('q_exp_to_sales', DOUBLE),
-        ('q_profit_to_gr', DOUBLE),
-        ('q_saleexp_to_gr', DOUBLE),
-        ('q_adminexp_to_gr', DOUBLE),
-        ('q_finaexp_to_gr', DOUBLE),
-        ('q_impair_to_gr_ttm', DOUBLE),
-        ('q_gc_to_gr', DOUBLE),
-        ('q_op_to_gr', DOUBLE),
-        ('q_roe', DOUBLE),
-        ('q_dt_roe', DOUBLE),
-        ('q_npta', DOUBLE),
-        ('q_opincome_to_ebt', DOUBLE),
-        ('q_investincome_to_ebt', DOUBLE),
-        ('q_dtprofit_to_profit', DOUBLE),
-        ('q_salescash_to_or', DOUBLE),
-        ('q_ocf_to_sales', DOUBLE),
-        ('q_ocf_to_or', DOUBLE),
-        ('basic_eps_yoy', DOUBLE),
-        ('dt_eps_yoy', DOUBLE),
-        ('cfps_yoy', DOUBLE),
-        ('op_yoy', DOUBLE),
-        ('ebt_yoy', DOUBLE),
-        ('netprofit_yoy', DOUBLE),
-        ('dt_netprofit_yoy', DOUBLE),
-        ('ocf_yoy', DOUBLE),
-        ('roe_yoy', DOUBLE),
-        ('bps_yoy', DOUBLE),
-        ('assets_yoy', DOUBLE),
-        ('eqt_yoy', DOUBLE),
-        ('tr_yoy', DOUBLE),
-        ('or_yoy', DOUBLE),
-        ('q_gr_yoy', DOUBLE),
-        ('q_gr_qoq', DOUBLE),
-        ('q_sales_yoy', DOUBLE),
-        ('q_sales_qoq', DOUBLE),
-        ('q_op_yoy', DOUBLE),
-        ('q_op_qoq', DOUBLE),
-        ('q_profit_yoy', DOUBLE),
-        ('q_profit_qoq', DOUBLE),
-        ('q_netprofit_yoy', DOUBLE),
-        ('q_netprofit_qoq', DOUBLE),
-        ('equity_yoy', DOUBLE),
-        ('rd_exp', DOUBLE),
-
+        ('bz_item', String(200)),
+        ('bz_sales', DOUBLE),
+        ('bz_profit', DOUBLE),
+        ('bz_cost', DOUBLE),
+        ('curr_type',String(20)),
+        ('update_flag', String(20)),
+        ('market_type', String(20)),
     ]
 
     has_table = engine_md.has_table(table_name)
     # 进行表格判断，确定是否含有tushare_stock_daily
     if has_table:
         sql_str = """
-               SELECT ts_code, date_frm, if(delist_date<end_date, delist_date, end_date) date_to
+               SELECT ts_code, date_frm, if(delist_date<end_date2, delist_date, end_date2) date_to
                FROM
                (
-                   SELECT info.ts_code, ifnull(ann_date, subdate(list_date,365*10)) date_frm, delist_date,
-                   if(hour(now())<16, subdate(curdate(),1), curdate()) end_date
+                   SELECT info.ts_code, ifnull(end_date, subdate(list_date,365*10)) date_frm, delist_date,
+                   if(hour(now())<16, subdate(curdate(),1), curdate()) end_date2
                    FROM 
                      tushare_stock_info info 
                    LEFT OUTER JOIN
-                       (SELECT ts_code, adddate(max(ann_date),1) ann_date 
+                       (SELECT ts_code, adddate(max(end_date),1) end_date 
                        FROM {table_name} GROUP BY ts_code) mainbz
                    ON info.ts_code = mainbz.ts_code
                ) tt
-               WHERE date_frm <= if(delist_date<end_date, delist_date, end_date) 
+               WHERE date_frm <= if(delist_date<end_date2, delist_date, end_date2) 
                ORDER BY ts_code""".format(table_name=table_name)
     else:
         sql_str = """
-               SELECT ts_code, date_frm, if(delist_date<end_date, delist_date, end_date) date_to
+               SELECT ts_code, date_frm, if(delist_date<end_date2, delist_date, end_date2) date_to
                FROM
                  (
                    SELECT info.ts_code, subdate(list_date,365*10) date_frm, delist_date,
-                   if(hour(now())<16, subdate(curdate(),1), curdate()) end_date
+                   if(hour(now())<16, subdate(curdate(),1), curdate()) end_date2
                    FROM tushare_stock_info info 
                  ) tt
-               WHERE date_frm <= if(delist_date<end_date, delist_date, end_date) 
+               WHERE date_frm <= if(delist_date<end_date2, delist_date, end_date2) 
                ORDER BY ts_code """
         logger.warning('%s 不存在，仅使用 tushare_stock_info 表进行计算日期范围', table_name)
 
@@ -273,13 +115,15 @@ def import_tushare_stock_fina_mainbz(chain_param=None,ts_code_set=None):
             for mainbz_type in list(['P','D']):
                 logger.debug('%d/%d) %s [%s - %s] %s', num, data_len,ts_code, date_from, date_to,mainbz_type)
                 df = invoke_fina_mainbz(ts_code=ts_code, start_date=datetime_2_str(date_from,STR_FORMAT_DATE_TS),end_date=datetime_2_str(date_to,STR_FORMAT_DATE_TS),type=mainbz_type)
+                df['market_type']=mainbz_type
                 # logger.info(' %d data of %s between %s and %s', df.shape[0], ts_code, date_from, date_to)
                 data_df=df
                 if len(data_df)>0:
                     while try_2_date(df['end_date'].iloc[-1]) > date_from:
                         last_date_in_df_last, last_date_in_df_cur = try_2_date(df['end_date'].iloc[-1]), None
                         df2 = invoke_fina_mainbz(ts_code=ts_code,start_date=datetime_2_str(date_from,STR_FORMAT_DATE_TS),
-                                        end_date=datetime_2_str(try_2_date(df['end_date'].iloc[-1])-timedelta(days=1),STR_FORMAT_DATE_TS),type=mainbz_type)
+                                        end_date=datetime_2_str(try_2_date(df['end_date'].iloc[-1]),STR_FORMAT_DATE_TS),type=mainbz_type)
+                        df2['market_type'] = mainbz_type
                         if len(df2)>0:
                             last_date_in_df_cur = try_2_date(df2['end_date'].iloc[-1])
                             if last_date_in_df_cur<last_date_in_df_last:
@@ -312,12 +156,18 @@ def import_tushare_stock_fina_mainbz(chain_param=None,ts_code_set=None):
 
 
 if __name__ == "__main__":
-    DEBUG = True
+    #DEBUG = True
     #import_tushare_stock_info(refresh=False)
     # 更新每日股票数据
-    import_tushare_stock_fina_mainbz()
+    SQL = """SELECT ts_code FROM md_integration.tushare_stock_info where ts_code>'000031.SZ'"""
+    with with_db_session(engine_md) as session:
+        # 获取每只股票需要获取日线数据的日期区间
+        table = session.execute(SQL)
+        ts_code_set = list([row[0] for row in table.fetchall()])
 
-# sql_str = """SELECT * FROM old_tushare_stock_balancesheet """
+    import_tushare_stock_fina_mainbz(ts_code_set)
+
+# sql_str = """SELECT * FROM old_tushare_stock_fina_mainbz """
 # df=pd.read_sql(sql_str,engine_md)
 # #将数据插入新表
 # data_count = bunch_insert_on_duplicate_update(df, table_name, engine_md, dtype)
@@ -331,5 +181,8 @@ if __name__ == "__main__":
 #     print("'%s'," % (a))
 
 
+# for mainbz_type in list(['P','D']):
+#     df = pro.fina_mainbz(ts_code='000001.SZ',start_date='19911231',end_date='20171231',type='P')
+#     df.to_excel(r'd:\dfp.xlsx')
 
-#df = pro.fina_mainbz(ts_code='000627.SZ',start_date='19911231',end_date='20171231',type='P')
+

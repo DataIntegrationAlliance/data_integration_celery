@@ -208,8 +208,9 @@ def import_tushare_stock_income(chain_param=None,ts_code_set=None):
 
 if __name__ == "__main__":
     #DEBUG = True
-    #import_tushare_stock_info(refresh=False)
+    #import_tushare_stock_info(refresh=True)
     # 更新每日股票数据
-    import_tushare_stock_income()
+    ts_code_set = list(['603297.SH'])
+    import_tushare_stock_income(ts_code_set)
 
 
