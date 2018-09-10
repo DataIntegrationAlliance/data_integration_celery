@@ -48,11 +48,24 @@ def import_tushare_adj_factor(chain_param=None,):
     has_table = engine_md.has_table(table_name)
     # 进行表格判断，确定是否含有tushare_stock_daily
 
-    sql_str = """
-        select cal_date from tushare_trade_date trddate where (trddate.is_open=1 
-        and cal_date <= if(hour(now())<16, subdate(curdate(),1), curdate()) 
-        and exchange_id='SSE') order by cal_date"""
-    logger.warning('使用 tushare_stock_info 表获取交易日')
+    #下面一定要注意引用表的来源，否则可能是串，提取混乱！！！比如本表是tushare_daily_basic，所以引用的也是这个，如果引用错误，就全部乱了l
+    if has_table:
+        sql_str = """
+               select cal_date            
+               FROM
+                (
+                 select * from tushare_trade_date trddate 
+                 where( cal_date>(SELECT max(trade_date) FROM  {table_name}))
+               )tt
+               where (is_open=1 
+                      and cal_date <= if(hour(now())<16, subdate(curdate(),1), curdate()) 
+                      and exchange_id='SSE') """.format(table_name='tushare_adj_factor')
+    else:
+        sql_str = """
+               select cal_date from tushare_trade_date trddate where (trddate.is_open=1 
+            and cal_date <= if(hour(now())<16, subdate(curdate(),1), curdate()) 
+            and exchange_id='SSE') order by cal_date"""
+        logger.warning('%s 不存在，仅使用 tushare_stock_info 表进行计算日期范围', table_name)
 
 
     with with_db_session(engine_md) as session:
@@ -71,7 +84,7 @@ def import_tushare_adj_factor(chain_param=None,):
             data_df = pro.adj_factor(ts_code='', trade_date=trade_date)
             if len(data_df)>0:
                 data_count = bunch_insert_on_duplicate_update(data_df, table_name, engine_md, dtype)
-                logging.info("更新 %s 结束 %d 条信息被更新", table_name, data_count)
+                logging.info(" %s 表 %s 日 %d 条信息被更新", table_name, trade_date,data_count)
             else:
                 logging.info("无数据信息可被更新")
     finally:
