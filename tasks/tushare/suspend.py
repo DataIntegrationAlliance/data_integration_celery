@@ -11,7 +11,7 @@ from tasks.backend.orm import build_primary_key
 from datetime import date, datetime, timedelta
 from tasks.utils.fh_utils import try_2_date, STR_FORMAT_DATE, datetime_2_str, split_chunk
 from tasks import app
-from sqlalchemy.types import String, Date, Text,Integer
+from sqlalchemy.types import String, Date, Text, Integer
 from sqlalchemy.dialects.mysql import DOUBLE
 from tasks.backend import engine_md
 from tasks.merge.code_mapping import update_from_info_table
@@ -20,12 +20,28 @@ from tasks.utils.db_utils import with_db_session, add_col_2_table, alter_table_2
 
 DEBUG = False
 logger = logging.getLogger()
-pro = ts.pro_api()
+try:
+    pro = ts.pro_api()
+except AttributeError:
+    logger.exception('獲取pro_api失敗,但是不影響合並')
+    pro = None
 DATE_BASE = datetime.strptime('2005-01-01', STR_FORMAT_DATE).date()
 ONE_DAY = timedelta(days=1)
 # 标示每天几点以后下载当日行情数据
 BASE_LINE_HOUR = 16
 STR_FORMAT_DATE_TS = '%Y%m%d'
+
+INDICATOR_PARAM_LIST_TUSHARE_DAILY = [
+    ('ts_code', String(20)),
+    ('suspend_date', Date),
+    ('resume_date', Date),
+    ('ann_date', Date),
+    ('suspend_reason', Text),
+    ('reason_type', Text),
+]
+# 设置 dtype
+DTYPE_TUSHARE_SUSPEND = {key: val for key, val in INDICATOR_PARAM_LIST_TUSHARE_DAILY}
+
 
 @app.task
 def import_tushare_suspend(chain_param=None):
@@ -36,15 +52,6 @@ def import_tushare_suspend(chain_param=None):
     """
     table_name = 'tushare_suspend'
     logging.info("更新 %s 开始", table_name)
-    param_list = [
-        ('ts_code', String(20)),
-        ('suspend_date', Date),
-        ('resume_date', Date),
-        ('ann_date', Date),
-        ('suspend_reason', Text),
-        ('reason_type', Text),
-
-    ]
 
     has_table = engine_md.has_table(table_name)
     # 进行表格判断，确定是否含有tushare_suspend
@@ -72,19 +79,16 @@ def import_tushare_suspend(chain_param=None):
         # 获取交易日数据
         table = session.execute(sql_str)
         trddate = list(row[0] for row in table.fetchall())
-    # 设置 dtype
-    dtype = {key: val for key, val in param_list}
-
 
     try:
         for i in range(len(trddate)):
             suspend_date = datetime_2_str(trddate[i], STR_FORMAT_DATE_TS)
-            data_df = pro.suspend(ts_code='', suspend_date=suspend_date, resume_date='',fields='')
+            data_df = pro.suspend(ts_code='', suspend_date=suspend_date, resume_date='', fields='')
             if len(data_df) > 0:
-                data_count = bunch_insert_on_duplicate_update(data_df, table_name, engine_md, dtype)
-                logging.info("%s 更新停复牌信息表 %s 结束 %d 条信息被更新", suspend_date,table_name, data_count)
+                data_count = bunch_insert_on_duplicate_update(data_df, table_name, engine_md, DTYPE_TUSHARE_SUSPEND)
+                logging.info("%s 更新停复牌信息表 %s 结束 %d 条信息被更新", suspend_date, table_name, data_count)
             else:
-                logging.info("%s 当日无停牌股票",suspend_date)
+                logging.info("%s 当日无停牌股票", suspend_date)
 
     finally:
         if not has_table and engine_md.has_table(table_name):
@@ -102,6 +106,3 @@ def import_tushare_suspend(chain_param=None):
 if __name__ == "__main__":
     # DEBUG = True
     import_tushare_suspend()
-
-
-

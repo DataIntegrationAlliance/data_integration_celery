@@ -21,30 +21,18 @@ from tasks.utils.db_utils import with_db_session, add_col_2_table, alter_table_2
 
 DEBUG = False
 logger = logging.getLogger()
-pro = ts.pro_api()
+try:
+    pro = ts.pro_api()
+except AttributeError:
+    logger.exception('獲取pro_api失敗,但是不影響合並')
+    pro = None
 DATE_BASE = datetime.strptime('2005-01-01', STR_FORMAT_DATE).date()
 ONE_DAY = timedelta(days=1)
 # 标示每天几点以后下载当日行情数据
 BASE_LINE_HOUR = 16
 STR_FORMAT_DATE_TS = '%Y%m%d'
 
-
-@try_n_times(times=120, sleep_time=0, logger=logger, exception=Exception, exception_sleep_time=120)
-def invoke_balancesheet(ts_code, start_date, end_date):
-    invoke_balancesheet = pro.balancesheet(ts_code=ts_code, start_date=start_date, end_date=end_date)
-    return invoke_balancesheet
-
-
-@app.task
-def import_tushare_stock_balancesheet(chain_param=None,ts_code_set=None):
-    """
-    插入股票日线数据到最近一个工作日-1。
-    如果超过 BASE_LINE_HOUR 时间，则获取当日的数据
-    :return:
-    """
-    table_name = 'tushare_stock_balancesheet'
-    logging.info("更新 %s 开始", table_name)
-    param_list = [
+INDICATOR_PARAM_LIST_TUSHARE_STOCK_BALABCESHEET=[
         ('ts_code', String(20)),
         ('ann_date', Date),
         ('f_ann_date', Date),
@@ -181,8 +169,27 @@ def import_tushare_stock_balancesheet(chain_param=None,ts_code_set=None):
         ('payables', DOUBLE),
         ('hfs_assets', DOUBLE),
         ('hfs_sales', DOUBLE),
+]
+# 设置 dtype
+DTYPE_TUSHARE_STOCK_BALABCESHEET = {key: val for key, val in INDICATOR_PARAM_LIST_TUSHARE_STOCK_BALABCESHEET}
+# DTYPE_TUSHARE_STOCK_BALABCESHEET['ts_code'] = String(20)
+# DTYPE_TUSHARE_STOCK_BALABCESHEET['trade_date'] = Date
 
-    ]
+@try_n_times(times=120, sleep_time=0, logger=logger, exception=Exception, exception_sleep_time=120)
+def invoke_balancesheet(ts_code, start_date, end_date):
+    invoke_balancesheet = pro.balancesheet(ts_code=ts_code, start_date=start_date, end_date=end_date)
+    return invoke_balancesheet
+
+
+@app.task
+def import_tushare_stock_balancesheet(chain_param=None,ts_code_set=None):
+    """
+    插入股票日线数据到最近一个工作日-1。
+    如果超过 BASE_LINE_HOUR 时间，则获取当日的数据
+    :return:
+    """
+    table_name = 'tushare_stock_balancesheet'
+    logging.info("更新 %s 开始", table_name)
 
     has_table = engine_md.has_table(table_name)
     # 进行表格判断，确定是否含有tushare_stock_daily
@@ -225,10 +232,6 @@ def import_tushare_stock_balancesheet(chain_param=None,ts_code_set=None):
             ts_code: (date_from if begin_time is None else min([date_from, begin_time]), date_to)
             for ts_code, date_from, date_to in table.fetchall() if
             ts_code_set is None or ts_code in ts_code_set}
-    # 设置 dtype
-    dtype = {key: val for key, val in param_list}
-    # dtype['ts_code'] = String(20)
-    # dtype['trade_date'] = Date
 
     data_len = len(code_date_range_dic)
     logger.info('%d stocks will been import into wind_stock_daily', data_len)
@@ -265,7 +268,7 @@ def import_tushare_stock_balancesheet(chain_param=None,ts_code_set=None):
                     elif len(df2) <= 0:
                         break
                 # 数据插入数据库
-                data_count = bunch_insert_on_duplicate_update(data_df, table_name, engine_md, dtype)
+                data_count = bunch_insert_on_duplicate_update(data_df, table_name, engine_md, DTYPE_TUSHARE_STOCK_BALABCESHEET)
                 logging.info("更新 %s 结束 %d 条信息被更新", table_name, data_count)
                 data_df = []
             # 仅调试使用
@@ -275,7 +278,7 @@ def import_tushare_stock_balancesheet(chain_param=None,ts_code_set=None):
     finally:
         # 导入数据库
         if len(data_df) > 0:
-            data_count = bunch_insert_on_duplicate_update(data_df, table_name, engine_md, dtype)
+            data_count = bunch_insert_on_duplicate_update(data_df, table_name, engine_md, DTYPE_TUSHARE_STOCK_BALABCESHEET)
             logging.info("更新 %s 结束 %d 条信息被更新", table_name, data_count)
             # if not has_table and engine_md.has_table(table_name):
             #     alter_table_2_myisam(engine_md, [table_name])

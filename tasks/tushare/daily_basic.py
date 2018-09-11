@@ -9,7 +9,7 @@ import pandas as pd
 import logging
 from tasks.backend.orm import build_primary_key
 from datetime import date, datetime, timedelta
-from tasks.utils.fh_utils import try_2_date, STR_FORMAT_DATE, datetime_2_str, split_chunk,try_n_times
+from tasks.utils.fh_utils import try_2_date, STR_FORMAT_DATE, datetime_2_str, split_chunk, try_n_times
 from tasks import app
 from sqlalchemy.types import String, Date, Integer
 from sqlalchemy.dialects.mysql import DOUBLE
@@ -20,17 +20,43 @@ from tasks.utils.db_utils import with_db_session, add_col_2_table, alter_table_2
 
 DEBUG = False
 logger = logging.getLogger()
-pro = ts.pro_api()
+try:
+    pro = ts.pro_api()
+except AttributeError:
+    logger.exception('獲取pro_api失敗,但是不影響合並')
+    pro = None
 DATE_BASE = datetime.strptime('2005-01-01', STR_FORMAT_DATE).date()
 ONE_DAY = timedelta(days=1)
 # 标示每天几点以后下载当日行情数据
 BASE_LINE_HOUR = 16
 STR_FORMAT_DATE_TS = '%Y%m%d'
 
+INDICATOR_PARAM_LIST_TUSHARE_DAILY = [
+    ('ts_code', String(20)),
+    ('trade_date', Date),
+    ('close', DOUBLE),
+    ('turnover_rate', DOUBLE),
+    ('volume_ratio', DOUBLE),
+    ('pe', DOUBLE),
+    ('pe_ttm', DOUBLE),
+    ('pb', DOUBLE),
+    ('ps', DOUBLE),
+    ('pb_ttm', DOUBLE),
+    ('total_share', DOUBLE),
+    ('float_share', DOUBLE),
+    ('free_share', DOUBLE),
+    ('total_mv', DOUBLE),
+    ('circ_mv', DOUBLE),
+]
+# 设置 dtype
+DTYPE_TUSHARE_DAILY_BASIC = {key: val for key, val in INDICATOR_PARAM_LIST_TUSHARE_DAILY}
+
+
 @try_n_times(times=3, sleep_time=6)
 def invoke_daily_basic(ts_code, trade_date):
     df = pro.daily_basic(ts_code=ts_code, trade_date=trade_date)
     return df
+
 
 @app.task
 def import_tushare_daily_basic(chain_param=None):
@@ -41,26 +67,9 @@ def import_tushare_daily_basic(chain_param=None):
     """
     table_name = 'tushare_daily_basic'
     logging.info("更新 %s 开始", table_name)
-    param_list = [
-        ('ts_code', String(20)),
-        ('trade_date', Date),
-        ('close', DOUBLE),
-        ('turnover_rate', DOUBLE),
-        ('volume_ratio', DOUBLE),
-        ('pe', DOUBLE),
-        ('pe_ttm', DOUBLE),
-        ('pb', DOUBLE),
-        ('ps', DOUBLE),
-        ('pb_ttm', DOUBLE),
-        ('total_share', DOUBLE),
-        ('float_share', DOUBLE),
-        ('free_share', DOUBLE),
-        ('total_mv', DOUBLE),
-        ('circ_mv', DOUBLE),
-    ]
 
     has_table = engine_md.has_table(table_name)
-    #下面一定要注意引用表的来源，否则可能是串，提取混乱！！！比如本表是tushare_daily_basic，所以引用的也是这个，如果引用错误，就全部乱了l
+    # 下面一定要注意引用表的来源，否则可能是串，提取混乱！！！比如本表是tushare_daily_basic，所以引用的也是这个，如果引用错误，就全部乱了l
     if has_table:
         sql_str = """
                select cal_date            
@@ -83,16 +92,14 @@ def import_tushare_daily_basic(chain_param=None):
         # 获取交易日数据
         table = session.execute(sql_str)
         trddate = list(row[0] for row in table.fetchall())
-    # 设置 dtype
-    dtype = {key: val for key, val in param_list}
 
     try:
         for i in range(len(trddate)):
             trade_date = datetime_2_str(trddate[i], STR_FORMAT_DATE_TS)
             data_df = invoke_daily_basic(ts_code='', trade_date=trade_date)
             if len(data_df) > 0:
-                data_count = bunch_insert_on_duplicate_update(data_df, table_name, engine_md, dtype)
-                logging.info("%s更新 %s 结束 %d 条信息被更新", trade_date,table_name, data_count)
+                data_count = bunch_insert_on_duplicate_update(data_df, table_name, engine_md, DTYPE_TUSHARE_DAILY_BASIC)
+                logging.info("%s更新 %s 结束 %d 条信息被更新", trade_date, table_name, data_count)
             else:
                 logging.info("无数据信息可被更新")
     finally:
