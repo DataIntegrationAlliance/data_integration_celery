@@ -3,7 +3,6 @@ Created on 2018/8/31
 @author: yby
 @desc    : 2018-08-31
 """
-
 import tushare as ts
 import pandas as pd
 import logging
@@ -20,28 +19,18 @@ from tasks.utils.db_utils import with_db_session, add_col_2_table, alter_table_2
 
 DEBUG = False
 logger = logging.getLogger()
-pro = ts.pro_api()
+try:
+    pro = ts.pro_api()
+except AttributeError:
+    logger.exception('獲取pro_api失敗,但是不影響合並')
+    pro = None
 DATE_BASE = datetime.strptime('2005-01-01', STR_FORMAT_DATE).date()
 ONE_DAY = timedelta(days=1)
 # 标示每天几点以后下载当日行情数据
 BASE_LINE_HOUR = 16
 STR_FORMAT_DATE_TS = '%Y%m%d'
 
-@try_n_times(times=300, sleep_time=0, logger=logger, exception=Exception, exception_sleep_time=120)
-def invoke_income(ts_code,start_date,end_date):
-    invoke_income= pro.income(ts_code=ts_code,start_date=start_date,end_date=end_date)
-    return invoke_income
-
-@app.task
-def import_tushare_stock_income(chain_param=None,ts_code_set=None):
-    """
-    插入股票日线数据到最近一个工作日-1。
-    如果超过 BASE_LINE_HOUR 时间，则获取当日的数据
-    :return:
-    """
-    table_name = 'tushare_stock_income'
-    logging.info("更新 %s 开始", table_name)
-    param_list = [
+INDICATOR_PARAM_LIST_TUSHARE_STOCK_INCOME = [
         ('ts_code', String(20)),
         ('ann_date', Date),
         ('f_ann_date', Date),
@@ -107,7 +96,29 @@ def import_tushare_stock_income(chain_param=None,ts_code_set=None):
         ('insurance_exp', DOUBLE),
         ('undist_profit', DOUBLE),
         ('distable_profit', DOUBLE),
-    ]
+
+]
+# 设置 dtype
+DTYPE_TUSHARE_STOCK_INCOME = {key: val for key, val in INDICATOR_PARAM_LIST_TUSHARE_STOCK_INCOME}
+
+
+# dtype['ts_code'] = String(20)
+# dtype['trade_date'] = Date
+
+@try_n_times(times=300, sleep_time=0, logger=logger, exception=Exception, exception_sleep_time=120)
+def invoke_income(ts_code,start_date,end_date):
+    invoke_income= pro.income(ts_code=ts_code,start_date=start_date,end_date=end_date)
+    return invoke_income
+
+@app.task
+def import_tushare_stock_income(chain_param=None,ts_code_set=None):
+    """
+    插入股票日线数据到最近一个工作日-1。
+    如果超过 BASE_LINE_HOUR 时间，则获取当日的数据
+    :return:
+    """
+    table_name = 'tushare_stock_income'
+    logging.info("更新 %s 开始", table_name)
     # wind_indictor_str = ",".join([key for key, _ in param_list])
     # rename_col_dic = {key.upper(): key.lower() for key, _ in param_list}
     has_table = engine_md.has_table(table_name)
@@ -151,10 +162,7 @@ def import_tushare_stock_income(chain_param=None,ts_code_set=None):
             ts_code: (date_from if begin_time is None else min([date_from, begin_time]), date_to)
             for ts_code, date_from, date_to in table.fetchall() if
             ts_code_set is None or ts_code in ts_code_set}
-    # 设置 dtype
-    dtype = {key: val for key, val in param_list}
-    # dtype['ts_code'] = String(20)
-    # dtype['trade_date'] = Date
+
 
 
     data_len = len(code_date_range_dic)
@@ -187,7 +195,7 @@ def import_tushare_stock_income(chain_param=None,ts_code_set=None):
                         break
                 #数据插入数据库
                 data_df_all = data_df
-                data_count = bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md, dtype)
+                data_count = bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md, DTYPE_TUSHARE_STOCK_INCOME)
                 logging.info("成功更新 %s 结束 %d 条信息被更新", table_name, data_count)
 
             #仅调试使用
@@ -198,7 +206,7 @@ def import_tushare_stock_income(chain_param=None,ts_code_set=None):
         # 导入数据库
         if len(data_df) > 0:
             data_df_all = data_df
-            data_count = bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md, dtype)
+            data_count = bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md, DTYPE_TUSHARE_STOCK_INCOME)
             logging.info("成功更新 %s 结束 %d 条信息被更新", table_name, data_count)
             # if not has_table and engine_md.has_table(table_name):
             #     alter_table_2_myisam(engine_md, [table_name])

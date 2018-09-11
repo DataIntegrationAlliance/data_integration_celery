@@ -21,8 +21,13 @@ from datetime import date
 
 DEBUG = False
 logger = logging.getLogger()
-ts.set_token(config.TUSHARE_TOKEN)
-pro = ts.pro_api()
+try:
+    ts.set_token(config.TUSHARE_TOKEN)
+    pro = ts.pro_api()
+except AttributeError:
+    logger.exception('獲取set_token失敗,但是不影響合並')
+    pro = None
+
 DATE_FORMAT_STR = '%Y%m%d'
 
 
@@ -618,12 +623,12 @@ def import_coinbar_on_freq_min(freq, code_set=None, base_begin_time=None):
 
 
 if __name__ == "__main__":
-    # DEBUG = True
+    DEBUG = True
     # 交易所基本信息
-    # import_exchange_info()
+    import_exchange_info()
     # 获取全球交易币基本信息
-    # import_coin_info()
+    import_coin_info()
     # 获取交易对信息
-    # import_coin_pair_info()
+    import_coin_pair_info()
     # 获取行情数据
     import_coinbar()
