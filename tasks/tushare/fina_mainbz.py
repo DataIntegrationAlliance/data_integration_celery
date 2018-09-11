@@ -28,7 +28,7 @@ BASE_LINE_HOUR = 16
 STR_FORMAT_DATE_TS = '%Y%m%d'
 
 
-@try_n_times(times=3, sleep_time=0.5, logger=logger, exception=Exception, exception_sleep_time=120)
+@try_n_times(times=3, sleep_time=0, logger=logger, exception=Exception, exception_sleep_time=10)
 def invoke_fina_mainbz(ts_code, start_date, end_date, type):
     invoke_fina_mainbz = pro.fina_mainbz(ts_code=ts_code, start_date=start_date, end_date=end_date, type=type)
     return invoke_fina_mainbz
@@ -159,7 +159,7 @@ if __name__ == "__main__":
     #DEBUG = True
     #import_tushare_stock_info(refresh=False)
     # 更新每日股票数据
-    SQL = """SELECT ts_code FROM md_integration.tushare_stock_info where ts_code>'000509.SZ'"""
+    SQL = """SELECT ts_code FROM md_integration.tushare_stock_info where ts_code>'603320.SH'"""
     with with_db_session(engine_md) as session:
         # 获取每只股票需要获取日线数据的日期区间
         table = session.execute(SQL)
