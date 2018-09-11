@@ -136,7 +136,7 @@ def import_pub_fund_info(chain_param=None, first_time=False):
 
 
 @app.task
-def import_pub_fund_daily(chain_param=None):
+def import_pub_fund_daily(wind_code_set,chain_param=None):
     """
     导入公募基金日线数据
     :param chain_param:  在celery 中將前面結果做爲參數傳給後面的任務
@@ -173,6 +173,7 @@ def import_pub_fund_daily(chain_param=None):
             WHERE date_frm <= if(fund_maturitydate<end_date, fund_maturitydate, end_date) 
             ORDER BY wind_code
         """
+
     # with with_db_session(engine_md) as session:
     #     # 获取每只股票最新交易日数据
     #     sql_str = 'select wind_code, max(nav_date) from wind_pub_fund_daily group by wind_code'
@@ -285,7 +286,24 @@ def import_pub_fund_daily(chain_param=None):
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG, format='%(asctime)s: %(levelname)s [%(name)s:%(funcName)s] %(message)s')
-    DEBUG = True
-    wind_code_set = None
+    #DEBUG = True
+    # 更新每日股票数据
+    sql_str = """
+               SELECT wind_code, date_frm, if(fund_maturitydate<end_date, fund_maturitydate, end_date) date_to
+               FROM
+                 (
+                   SELECT info.wind_code, fund_setupdate date_frm, fund_maturitydate,
+                   if(hour(now())<16, subdate(curdate(),1), curdate()) end_date
+                   FROM wind_pub_fund_info info 
+                 ) tt
+               WHERE date_frm <= if(fund_maturitydate<end_date, fund_maturitydate, end_date) 
+               and wind_code>'420001.OF'
+               ORDER BY wind_code
+           """
+    with with_db_session(engine_md) as session:
+        # 获取每只股票需要获取日线数据的日期区间
+        table = session.execute(sql_str)
+        wind_code_set = list([row[0] for row in table.fetchall()])
+    #wind_code_set = None
     # import_pub_fund_info(None, first_time=True)
-    import_pub_fund_daily(chain_param=None)
+    import_pub_fund_daily(wind_code_set,chain_param=None)
