@@ -63,11 +63,11 @@ def import_tushare_suspend(chain_param=None):
                   FROM
                    (
                     select * from tushare_trade_date trddate 
-                    where( cal_date>(SELECT max(suspend_date) FROM  tushare_suspend))
+                    where( cal_date>(SELECT max(suspend_date) FROM {table_name} ))
                   )tt
                   where (is_open=1 
                          and cal_date <= if(hour(now())<16, subdate(curdate(),1), curdate()) 
-                         and exchange_id='SSE') """
+                         and exchange_id='SSE') """.format(table_name='tushare_suspend')
     else:
         sql_str = """
                   select cal_date from tushare_trade_date trddate where (trddate.is_open=1 
