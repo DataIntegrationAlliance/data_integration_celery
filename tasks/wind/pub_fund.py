@@ -287,7 +287,7 @@ def import_pub_fund_daily(wind_code_set,chain_param=None):
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG, format='%(asctime)s: %(levelname)s [%(name)s:%(funcName)s] %(message)s')
     #DEBUG = True
-    # 更新每日股票数据
+    # 选择要更新的每日基金数据
     sql_str = """
                SELECT wind_code, date_frm, if(fund_maturitydate<end_date, fund_maturitydate, end_date) date_to
                FROM
