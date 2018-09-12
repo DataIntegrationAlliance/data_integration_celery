@@ -8,26 +8,18 @@
 @desc    : 2018-08-23 已经正式运行测试完成，可以正常使用
 """
 import pandas as pd
-import tushare as ts
 from tasks import app
 from tasks.utils.fh_utils import date_2_str, str_2_date, str_2_datetime, try_n_times
-from tasks.config import config
 from sqlalchemy.types import String, Date, Integer, DateTime
 from sqlalchemy.dialects.mysql import DOUBLE
 from tasks.utils.db_utils import with_db_session, bunch_insert_on_duplicate_update, alter_table_2_myisam
 from tasks.backend import engine_md
 import logging
 from datetime import date
+from tasks.tushare import pro
 
 DEBUG = False
 logger = logging.getLogger()
-try:
-    ts.set_token(config.TUSHARE_TOKEN)
-    pro = ts.pro_api()
-except AttributeError:
-    logger.exception('獲取set_token失敗,但是不影響合並')
-    pro = None
-
 DATE_FORMAT_STR = '%Y%m%d'
 
 

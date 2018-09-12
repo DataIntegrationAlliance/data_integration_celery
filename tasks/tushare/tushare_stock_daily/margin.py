@@ -4,7 +4,6 @@ Created on 2018/9/7
 @desc    : 2018-09-7
 contact author:ybychem@gmail.com
 """
-import tushare as ts
 import pandas as pd
 import logging
 from tasks.backend.orm import build_primary_key
@@ -17,10 +16,10 @@ from tasks.backend import engine_md
 from tasks.merge.code_mapping import update_from_info_table
 from tasks.utils.db_utils import with_db_session, add_col_2_table, alter_table_2_myisam, \
     bunch_insert_on_duplicate_update
+from tasks.tushare import pro
 
 DEBUG = False
 logger = logging.getLogger()
-pro = ts.pro_api()
 DATE_BASE = datetime.strptime('2005-01-01', STR_FORMAT_DATE).date()
 ONE_DAY = timedelta(days=1)
 # 标示每天几点以后下载当日行情数据

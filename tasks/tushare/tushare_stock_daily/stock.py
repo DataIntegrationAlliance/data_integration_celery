@@ -3,7 +3,7 @@ Created on 2018/8/14
 @author: yby
 @desc    : 2018-08-21 已经正式运行测试完成，可以正常使用
 """
-import tushare as ts
+from tasks.tushare import pro
 import pandas as pd
 import logging
 from tasks.backend.orm import build_primary_key
@@ -19,11 +19,6 @@ from tasks.utils.db_utils import with_db_session, add_col_2_table, alter_table_2
 
 DEBUG = False
 logger = logging.getLogger()
-try:
-    pro = ts.pro_api()
-except AttributeError:
-    logger.exception('獲取pro_api失敗,但是不影響合並')
-    pro = None
 DATE_BASE = datetime.strptime('2005-01-01', STR_FORMAT_DATE).date()
 ONE_DAY = timedelta(days=1)
 # 标示每天几点以后下载当日行情数据
