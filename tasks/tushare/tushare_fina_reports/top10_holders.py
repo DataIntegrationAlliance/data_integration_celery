@@ -36,7 +36,7 @@ INDICATOR_PARAM_LIST_TUSHARE_STOCK_TOP10_HOLDERS = [
     ('ts_code', String(20)),
     ('ann_date', Date),
     ('end_date', Date),
-    ('holder_name',Text),
+    ('holder_name',String(220)),
     ('hold_amount', DOUBLE),
     ('hold_ratio', DOUBLE),
 
