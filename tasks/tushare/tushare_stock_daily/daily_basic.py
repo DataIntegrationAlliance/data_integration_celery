@@ -78,9 +78,9 @@ def import_tushare_daily_basic(chain_param=None):
                       and exchange_id='SSE') """.format(table_name=table_name)
     else:
         sql_str = """
-               select cal_date from tushare_trade_date trddate where (trddate.is_open=1 
-            and cal_date <= if(hour(now())<16, subdate(curdate(),1), curdate()) 
-            and exchange_id='SSE') order by cal_date"""
+               SELECT cal_date FROM tushare_trade_date trddate WHERE (trddate.is_open=1 
+            AND cal_date <= if(hour(now())<16, subdate(curdate(),1), curdate()) 
+            AND exchange_id='SSE') ORDER BY cal_date"""
         logger.warning('%s 不存在，仅使用 tushare_stock_info 表进行计算日期范围', table_name)
 
     with with_db_session(engine_md) as session:

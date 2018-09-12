@@ -354,9 +354,9 @@ def import_coinbar_on_freq_daily(freq, code_set=None, base_begin_time=None):
 
     # 更新 info 表 trade_date_latest 字段
     trade_date_latest_list = []
-    update_trade_date_latest_str = """update tushare_coin_pair_info info
-        set info.trade_date_latest_daily = :trade_date_latest
-        where info.exchange = :exchange and exchange_pair=:exchange_pair"""
+    update_trade_date_latest_str = """UPDATE tushare_coin_pair_info info
+        SET info.trade_date_latest_daily = :trade_date_latest
+        WHERE info.exchange = :exchange AND exchange_pair=:exchange_pair"""
 
     data_df_list, data_count, tot_data_count, code_count = [], 0, 0, len(code_date_range_dic)
     try:
@@ -523,9 +523,9 @@ def import_coinbar_on_freq_min(freq, code_set=None, base_begin_time=None):
 
     # 更新 info 表 trade_date_latest 字段
     trade_date_latest_list = []
-    update_trade_date_latest_str = """update tushare_coin_pair_info info
-        set info.trade_date_latest_daily = :trade_date_latest
-        where info.exchange = :exchange and exchange_pair=:exchange_pair"""
+    update_trade_date_latest_str = """UPDATE tushare_coin_pair_info info
+        SET info.trade_date_latest_daily = :trade_date_latest
+        WHERE info.exchange = :exchange AND exchange_pair=:exchange_pair"""
 
     data_df_list, data_count, tot_data_count, code_count = [], 0, 0, len(code_date_range_dic)
     try:

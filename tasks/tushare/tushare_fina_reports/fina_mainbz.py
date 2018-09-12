@@ -7,7 +7,7 @@ import pandas as pd
 import logging
 from tasks.backend.orm import build_primary_key
 from datetime import date, datetime, timedelta
-from tasks.utils.fh_utils import try_2_date,STR_FORMAT_DATE,datetime_2_str,split_chunk,try_n_times
+from tasks.utils.fh_utils import try_2_date, STR_FORMAT_DATE, datetime_2_str, split_chunk, try_n_times
 from tasks import app
 from sqlalchemy.types import String, Date, Integer
 from sqlalchemy.dialects.mysql import DOUBLE
@@ -31,13 +31,9 @@ def invoke_fina_mainbz(ts_code, start_date, end_date, type):
     invoke_fina_mainbz = pro.fina_mainbz(ts_code=ts_code, start_date=start_date, end_date=end_date, type=type)
     return invoke_fina_mainbz
 
-#测试接口和数据提取用
-# df = invoke_fina_indicator(ts_code='600000.SH',start_date='19980801',end_date='20180820',fields=fields)
-# df0=pro.fina_indicator(ts_code='600000.SH',start_date='19980801',end_date='20180820',fields=fields)
-
 
 @app.task
-def import_tushare_stock_fina_mainbz(ts_code_set,chain_param=None):
+def import_tushare_stock_fina_mainbz(ts_code_set, chain_param=None):
     """
     插入股票日线数据到最近一个工作日-1。
     如果超过 BASE_LINE_HOUR 时间，则获取当日的数据
@@ -52,7 +48,7 @@ def import_tushare_stock_fina_mainbz(ts_code_set,chain_param=None):
         ('bz_sales', DOUBLE),
         ('bz_profit', DOUBLE),
         ('bz_cost', DOUBLE),
-        ('curr_type',String(20)),
+        ('curr_type', String(20)),
         ('update_flag', String(20)),
         ('market_type', String(20)),
     ]
@@ -107,44 +103,49 @@ def import_tushare_stock_fina_mainbz(ts_code_set,chain_param=None):
     logger.info('%d data will been import into %s', data_len, table_name)
     # 将data_df数据，添加到data_df_list
 
-    Cycles=1
+    Cycles = 1
     try:
         for num, (ts_code, (date_from, date_to)) in enumerate(code_date_range_dic.items(), start=1):
-            for mainbz_type in list(['P','D']):
-                logger.debug('%d/%d) %s [%s - %s] %s', num, data_len,ts_code, date_from, date_to,mainbz_type)
-                df = invoke_fina_mainbz(ts_code=ts_code, start_date=datetime_2_str(date_from,STR_FORMAT_DATE_TS),end_date=datetime_2_str(date_to,STR_FORMAT_DATE_TS),type=mainbz_type)
-                df['market_type']=mainbz_type
+            for mainbz_type in list(['P', 'D']):
+                logger.debug('%d/%d) %s [%s - %s] %s', num, data_len, ts_code, date_from, date_to, mainbz_type)
+                df = invoke_fina_mainbz(ts_code=ts_code, start_date=datetime_2_str(date_from, STR_FORMAT_DATE_TS),
+                                        end_date=datetime_2_str(date_to, STR_FORMAT_DATE_TS), type=mainbz_type)
+                df['market_type'] = mainbz_type
                 # logger.info(' %d data of %s between %s and %s', df.shape[0], ts_code, date_from, date_to)
-                data_df=df
-                if len(data_df)>0:
+                data_df = df
+                if len(data_df) > 0:
                     while try_2_date(df['end_date'].iloc[-1]) > date_from:
                         last_date_in_df_last, last_date_in_df_cur = try_2_date(df['end_date'].iloc[-1]), None
-                        df2 = invoke_fina_mainbz(ts_code=ts_code,start_date=datetime_2_str(date_from,STR_FORMAT_DATE_TS),
-                                        end_date=datetime_2_str(try_2_date(df['end_date'].iloc[-1]),STR_FORMAT_DATE_TS),type=mainbz_type)
+                        df2 = invoke_fina_mainbz(ts_code=ts_code,
+                                                 start_date=datetime_2_str(date_from, STR_FORMAT_DATE_TS),
+                                                 end_date=datetime_2_str(try_2_date(df['end_date'].iloc[-1]),
+                                                                         STR_FORMAT_DATE_TS), type=mainbz_type)
                         df2['market_type'] = mainbz_type
-                        if len(df2)>0:
+                        if len(df2) > 0:
                             last_date_in_df_cur = try_2_date(df2['end_date'].iloc[-1])
-                            if last_date_in_df_cur<last_date_in_df_last:
+                            if last_date_in_df_cur < last_date_in_df_last:
                                 data_df = pd.concat([data_df, df2])
                                 df = df2
-                            elif last_date_in_df_cur<=last_date_in_df_last:
+                            elif last_date_in_df_cur <= last_date_in_df_last:
                                 break
                             if data_df is None:
-                                logger.warning('%d/%d) %s has no data during %s %s', num, data_len, ts_code, date_from, date_to)
+                                logger.warning('%d/%d) %s has no data during %s %s', num, data_len, ts_code, date_from,
+                                               date_to)
                                 continue
-                            logger.info('%d/%d) %d data of %s between %s and %s', num, data_len, data_df.shape[0], ts_code, date_from,date_to)
-                        elif len(df2)<=0:
+                            logger.info('%d/%d) %d data of %s between %s and %s', num, data_len, data_df.shape[0],
+                                        ts_code, date_from, date_to)
+                        elif len(df2) <= 0:
                             break
-                    #数据插入数据库
+                    # 数据插入数据库
                     data_count = bunch_insert_on_duplicate_update(data_df, table_name, engine_md, dtype)
                     logging.info("更新 %s 结束 %d 条信息被更新", table_name, data_count)
-            #仅调试使用
-            Cycles=Cycles+1
+            # 仅调试使用
+            Cycles = Cycles + 1
             if DEBUG and Cycles > 2:
                 break
     finally:
         # 导入数据库
-        if len(data_df)>0:
+        if len(data_df) > 0:
             data_count = bunch_insert_on_duplicate_update(data_df, table_name, engine_md, dtype)
             logging.info("更新 %s 结束 %d 条信息被更新", table_name, data_count)
             # if not has_table and engine_md.has_table(table_name):
@@ -152,12 +153,11 @@ def import_tushare_stock_fina_mainbz(ts_code_set,chain_param=None):
             #     build_primary_key([table_name])
 
 
-
 if __name__ == "__main__":
-    #DEBUG = True
-    #import_tushare_stock_info(refresh=False)
+    # DEBUG = True
+    # import_tushare_stock_info(refresh=False)
     # 更新每日股票数据
-    SQL = """SELECT ts_code FROM md_integration.tushare_stock_info where ts_code>'603320.SH'"""
+    SQL = """SELECT ts_code FROM tushare_stock_info WHERE ts_code>'603320.SH'"""
     with with_db_session(engine_md) as session:
         # 获取每只股票需要获取日线数据的日期区间
         table = session.execute(SQL)
@@ -165,12 +165,12 @@ if __name__ == "__main__":
 
     import_tushare_stock_fina_mainbz(ts_code_set)
 
-# sql_str = """SELECT * FROM old_tushare_stock_fina_mainbz """
-# df=pd.read_sql(sql_str,engine_md)
-# #将数据插入新表
-# data_count = bunch_insert_on_duplicate_update(df, table_name, engine_md, dtype)
-# logging.info("更新 %s 结束 %d 条信息被更新", table_name, data_count)
+    # 测试接口和数据提取用
+    # df = invoke_fina_indicator(ts_code='600000.SH',start_date='19980801',end_date='20180820',fields=fields)
+    # df0=pro.fina_indicator(ts_code='600000.SH',start_date='19980801',end_date='20180820',fields=fields)
 
-
-
-
+    # sql_str = """SELECT * FROM old_tushare_stock_fina_mainbz """
+    # df=pd.read_sql(sql_str,engine_md)
+    # #将数据插入新表
+    # data_count = bunch_insert_on_duplicate_update(df, table_name, engine_md, dtype)
+    # logging.info("更新 %s 结束 %d 条信息被更新", table_name, data_count)

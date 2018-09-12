@@ -8,7 +8,7 @@ import pandas as pd
 import logging
 from tasks.backend.orm import build_primary_key
 from datetime import date, datetime, timedelta
-from tasks.utils.fh_utils import try_2_date,STR_FORMAT_DATE,datetime_2_str,split_chunk
+from tasks.utils.fh_utils import try_2_date, STR_FORMAT_DATE, datetime_2_str, split_chunk
 from tasks import app
 from sqlalchemy.types import String, Date, Integer
 from sqlalchemy.dialects.mysql import DOUBLE
@@ -26,10 +26,9 @@ ONE_DAY = timedelta(days=1)
 BASE_LINE_HOUR = 16
 STR_FORMAT_DATE_TS = '%Y%m%d'
 
-# df=pro.daily_basic(ts_code='', trade_date='19941209')
 
 @app.task
-def import_tushare_adj_factor(chain_param=None,):
+def import_tushare_adj_factor(chain_param=None, ):
     """
     插入股票日线数据到最近一个工作日-1。
     如果超过 BASE_LINE_HOUR 时间，则获取当日的数据
@@ -47,7 +46,7 @@ def import_tushare_adj_factor(chain_param=None,):
     has_table = engine_md.has_table(table_name)
     # 进行表格判断，确定是否含有tushare_stock_daily
 
-    #下面一定要注意引用表的来源，否则可能是串，提取混乱！！！比如本表是tushare_daily_basic，所以引用的也是这个，如果引用错误，就全部乱了l
+    # 下面一定要注意引用表的来源，否则可能是串，提取混乱！！！比如本表是tushare_daily_basic，所以引用的也是这个，如果引用错误，就全部乱了l
     if has_table:
         sql_str = """
                select cal_date            
@@ -61,16 +60,15 @@ def import_tushare_adj_factor(chain_param=None,):
                       and exchange_id='SSE') """.format(table_name=table_name)
     else:
         sql_str = """
-               select cal_date from tushare_trade_date trddate where (trddate.is_open=1 
-            and cal_date <= if(hour(now())<16, subdate(curdate(),1), curdate()) 
-            and exchange_id='SSE') order by cal_date"""
+               SELECT cal_date FROM tushare_trade_date trddate WHERE (trddate.is_open=1 
+            AND cal_date <= if(hour(now())<16, subdate(curdate(),1), curdate()) 
+            AND exchange_id='SSE') ORDER BY cal_date"""
         logger.warning('%s 不存在，仅使用 tushare_stock_info 表进行计算日期范围', table_name)
-
 
     with with_db_session(engine_md) as session:
         # 获取交易日数据
         table = session.execute(sql_str)
-        trddate=list(row[0] for row in table.fetchall())
+        trddate = list(row[0] for row in table.fetchall())
     # 设置 dtype
     dtype = {key: val for key, val in param_list}
     dtype['ts_code'] = String(20)
@@ -79,11 +77,11 @@ def import_tushare_adj_factor(chain_param=None,):
 
     try:
         for i in range(len(trddate)):
-            trade_date=datetime_2_str(trddate[i],STR_FORMAT_DATE_TS)
+            trade_date = datetime_2_str(trddate[i], STR_FORMAT_DATE_TS)
             data_df = pro.adj_factor(ts_code='', trade_date=trade_date)
-            if len(data_df)>0:
+            if len(data_df) > 0:
                 data_count = bunch_insert_on_duplicate_update(data_df, table_name, engine_md, dtype)
-                logging.info(" %s 表 %s 日 %d 条信息被更新", table_name, trade_date,data_count)
+                logging.info(" %s 表 %s 日 %d 条信息被更新", table_name, trade_date, data_count)
             else:
                 logging.info("无数据信息可被更新")
     finally:
@@ -97,6 +95,7 @@ def import_tushare_adj_factor(chain_param=None,):
             with with_db_session(engine_md) as session:
                 session.execute(create_pk_str)
             logger.info('%s 表 `ts_code`, `trade_date` 主键设置完成', table_name)
+
 
 if __name__ == "__main__":
     # DEBUG = True

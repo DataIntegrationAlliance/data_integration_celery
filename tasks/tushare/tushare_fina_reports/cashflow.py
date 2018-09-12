@@ -123,9 +123,6 @@ INDICATOR_PARAM_LIST_TUSHARE_STOCK_CASHFLOW = [
 DTYPE_TUSHARE_CASHFLOW = {key: val for key, val in INDICATOR_PARAM_LIST_TUSHARE_STOCK_CASHFLOW}
 
 
-# dtype['ts_code'] = String(20)
-# dtype['trade_date'] = Date
-
 @try_n_times(times=5, sleep_time=0, logger=logger, exception=Exception, exception_sleep_time=60)
 def invoke_cashflow(ts_code, start_date, end_date):
     invoke_cashflow = pro.cashflow(ts_code=ts_code, start_date=start_date, end_date=end_date)
@@ -242,10 +239,10 @@ if __name__ == "__main__":
     # 更新每日股票数据
     import_tushare_stock_cashflow()
 
-# sql_str = """SELECT * FROM old_tushare_stock_cashflow """
-# df=pd.read_sql(sql_str,engine_md)
-# #将数据插入新表
-# data_count = bunch_insert_on_duplicate_update(df, table_name, engine_md, dtype)
-# logging.info("更新 %s 结束 %d 条信息被更新", table_name, data_count)
+    # sql_str = """SELECT * FROM old_tushare_stock_cashflow """
+    # df=pd.read_sql(sql_str,engine_md)
+    # #将数据插入新表
+    # data_count = bunch_insert_on_duplicate_update(df, table_name, engine_md, dtype)
+    # logging.info("更新 %s 结束 %d 条信息被更新", table_name, data_count)
 
-# df = invoke_cashflow(ts_code='000001.SZ', start_date='19900101', end_date='20180830')
+    # df = invoke_cashflow(ts_code='000001.SZ', start_date='19900101', end_date='20180830')

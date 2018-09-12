@@ -181,11 +181,10 @@ def import_tushare_stock_balancesheet(ts_code_set=None):
 
     ]
 
-
     # 进行表格判断，确定是否含有tushare_stock_daily
-    sql_str="""SELECT ts_code,subdate(list_date,365*10) date_frm,list_date date_to FROM md_integration.tushare_stock_info;"""
+    sql_str = """SELECT ts_code,subdate(list_date,365*10) date_frm,list_date date_to FROM tushare_stock_info"""
     logger.warning('%s 打补丁，使用 tushare_stock_info 表进行计算需要补充提取的日期范围', table_name)
-    #ts_code_set = None
+    # ts_code_set = None
     with with_db_session(engine_md) as session:
         # 获取每只股票需要获取日线数据的日期区间
         table = session.execute(sql_str)
@@ -210,16 +209,16 @@ def import_tushare_stock_balancesheet(ts_code_set=None):
         for num, (ts_code, (date_from, date_to)) in enumerate(code_date_range_dic.items(), start=1):
             logger.debug('%d/%d) %s [%s - %s]', num, data_len, ts_code, date_from, date_to)
             df = invoke_balancesheet(ts_code=ts_code, start_date=datetime_2_str(date_from, STR_FORMAT_DATE_TS),
-                                  end_date=datetime_2_str(date_to, STR_FORMAT_DATE_TS))
+                                     end_date=datetime_2_str(date_to, STR_FORMAT_DATE_TS))
             # logger.info(' %d data of %s between %s and %s', df.shape[0], ts_code, date_from, date_to)
             data_df = df
             if len(data_df) > 0:
                 while try_2_date(df['ann_date'].iloc[-1]) > date_from:
                     last_date_in_df_last, last_date_in_df_cur = try_2_date(df['ann_date'].iloc[-1]), None
                     df2 = invoke_balancesheet(ts_code=ts_code, start_date=datetime_2_str(date_from, STR_FORMAT_DATE_TS),
-                                           end_date=datetime_2_str(
-                                               try_2_date(df['ann_date'].iloc[-1]) - timedelta(days=1),
-                                               STR_FORMAT_DATE_TS))
+                                              end_date=datetime_2_str(
+                                                  try_2_date(df['ann_date'].iloc[-1]) - timedelta(days=1),
+                                                  STR_FORMAT_DATE_TS))
                     if len(df2) > 0:
                         last_date_in_df_cur = try_2_date(df2['ann_date'].iloc[-1])
                         if last_date_in_df_cur < last_date_in_df_last:
@@ -257,16 +256,16 @@ if __name__ == "__main__":
     # DEBUG = True
     # import_tushare_stock_info(refresh=False)
     # 更新每日股票数据
-    # SQL = """SELECT ts_code FROM md_integration.tushare_stock_info where ts_code>'002538.SZ'"""
+    # SQL = """SELECT ts_code FROM tushare_stock_info where ts_code>'002538.SZ'"""
     # with with_db_session(engine_md) as session:
     #     # 获取每只股票需要获取日线数据的日期区间
     #     table = session.execute(SQL)
     #     ts_code_set = list([row[0] for row in table.fetchall()])
     import_tushare_stock_balancesheet(ts_code_set)
 
-#去除重复数据用的
-# sql_str = """SELECT * FROM old_tushare_stock_balancesheet """
-# df=pd.read_sql(sql_str,engine_md)
-# #将数据插入新表
-# data_count = bunch_insert_on_duplicate_update(df, table_name, engine_md, dtype)
-# logging.info("更新 %s 结束 %d 条信息被更新", table_name, data_count)
+    # 去除重复数据用的
+    # sql_str = """SELECT * FROM old_tushare_stock_balancesheet """
+    # df=pd.read_sql(sql_str,engine_md)
+    # #将数据插入新表
+    # data_count = bunch_insert_on_duplicate_update(df, table_name, engine_md, dtype)
+    # logging.info("更新 %s 结束 %d 条信息被更新", table_name, data_count)

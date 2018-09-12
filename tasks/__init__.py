@@ -75,8 +75,8 @@ try:
 except ImportError:
     logger.exception("加载 tasks.tushare 失败，该异常不影响其他功能正常使用")
 
-daily_task_group = group([wind_daily_task, ifind_daily_task])
+daily_task_group = group([wind_daily_task, ifind_daily_task, tushare_daily_task])
 
-weekly_task_group = group([wind_weekly_task, ifind_weekly_task])
+weekly_task_group = group([wind_weekly_task, ifind_weekly_task, tushare_weekly_task])
 
-once_task_group = group([wind_import_once, ifind_import_once])
+once_task_group = group([wind_import_once, ifind_import_once, tushare_import_once])
