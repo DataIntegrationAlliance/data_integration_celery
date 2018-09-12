@@ -120,8 +120,7 @@ INDICATOR_PARAM_LIST_TUSHARE_STOCK_CASHFLOW = [
 ]
 # 设置 dtype
 DTYPE_TUSHARE_STOCK_CASHFLOW = {key: val for key, val in INDICATOR_PARAM_LIST_TUSHARE_STOCK_CASHFLOW}
-# DTYPE_TUSHARE_STOCK_CASHFLOW['ts_code'] = String(20)
-# DTYPE_TUSHARE_STOCK_CASHFLOW['trade_date'] = Date
+
 
 @try_n_times(times=5, sleep_time=0, logger=logger, exception=Exception, exception_sleep_time=60)
 def invoke_cashflow(ts_code, start_date, end_date):
@@ -138,7 +137,7 @@ def import_tushare_stock_cashflow(ts_code_set=None):
     """
     table_name = 'tushare_stock_cashflow'
     logging.info("更新 %s 开始", table_name)
-    sql_str = """SELECT ts_code,subdate(list_date,365*10) date_frm,list_date date_to FROM md_integration.tushare_stock_info;"""
+    sql_str = """SELECT ts_code,subdate(list_date,365*10) date_frm,list_date date_to FROM tushare_stock_info;"""
     logger.warning('%s 打补丁，使用 tushare_stock_info 表进行计算需要补充提取的日期范围', table_name)
     with with_db_session(engine_md) as session:
         # 获取每只股票需要获取日线数据的日期区间
@@ -210,10 +209,10 @@ if __name__ == "__main__":
     # 更新每日股票数据
     import_tushare_stock_cashflow()
 
-# sql_str = """SELECT * FROM old_tushare_stock_cashflow """
-# df=pd.read_sql(sql_str,engine_md)
-# #将数据插入新表
-# data_count = bunch_insert_on_duplicate_update(df, table_name, engine_md, dtype)
-# logging.info("更新 %s 结束 %d 条信息被更新", table_name, data_count)
+    # sql_str = """SELECT * FROM old_tushare_stock_cashflow """
+    # df=pd.read_sql(sql_str,engine_md)
+    # #将数据插入新表
+    # data_count = bunch_insert_on_duplicate_update(df, table_name, engine_md, dtype)
+    # logging.info("更新 %s 结束 %d 条信息被更新", table_name, data_count)
 
-# df = invoke_cashflow(ts_code='000001.SZ', start_date='19900101', end_date='20180830')
+    # df = invoke_cashflow(ts_code='000001.SZ', start_date='19900101', end_date='20180830')

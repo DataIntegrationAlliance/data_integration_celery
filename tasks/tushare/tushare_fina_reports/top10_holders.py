@@ -159,10 +159,10 @@ if __name__ == "__main__":
     # 更新每日股票数据
     import_tushare_stock_top10_holders()
 
-# sql_str = """SELECT * FROM old_tushare_stock_cashflow """
-# df=pd.read_sql(sql_str,engine_md)
-# #将数据插入新表
-# data_count = bunch_insert_on_duplicate_update(df, table_name, engine_md, dtype)
-# logging.info("更新 %s 结束 %d 条信息被更新", table_name, data_count)
+    # sql_str = """SELECT * FROM old_tushare_stock_cashflow """
+    # df=pd.read_sql(sql_str,engine_md)
+    # #将数据插入新表
+    # data_count = bunch_insert_on_duplicate_update(df, table_name, engine_md, dtype)
+    # logging.info("更新 %s 结束 %d 条信息被更新", table_name, data_count)
 
-# df = invoke_cashflow(ts_code='000001.SZ', start_date='19900101', end_date='20180830')
+    # df = invoke_cashflow(ts_code='000001.SZ', start_date='19900101', end_date='20180830')
