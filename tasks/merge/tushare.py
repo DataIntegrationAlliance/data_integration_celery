@@ -1,20 +1,16 @@
 import pandas as pd
 import logging
-from tasks import app
 # import tushare as ts
 from direstinvoker.utils.fh_utils import date_2_str
 from tasks.backend import engine_md
 from tasks.utils.db_utils import with_db_session
-from sqlalchemy.types import String, Date, Integer, Text
+from sqlalchemy.types import Date
 from tasks.utils.fh_utils import is_nan_or_none
 from tasks.merge import generate_range
-from tasks.tushare.stock import DTYPE_TUSHARE_DAILY
-from tasks.tushare.income import DTYPE_TUSHARE_STOCK_INCOME
-from tasks.tushare.balancesheet import DTYPE_TUSHARE_STOCK_BALABCESHEET
-from tasks.tushare.cashflow import DTYPE_TUSHARE_CASHFLOW
-from tasks.tushare.daily_basic import DTYPE_TUSHARE_DAILY_BASIC
-from tasks.tushare.suspend import DTYPE_TUSHARE_SUSPEND
-from tasks.tushare.fina_indicator import DTYPE_STOCK_FINA_INDICATOR
+from tasks.tushare.tushare_stock_daily.stock import DTYPE_TUSHARE_DAILY
+from tasks.tushare.tushare_fina_reports.cashflow import DTYPE_TUSHARE_CASHFLOW
+from tasks.tushare.tushare_stock_daily.daily_basic import DTYPE_TUSHARE_DAILY_BASIC
+from tasks.tushare.tushare_stock_daily.suspend import DTYPE_TUSHARE_SUSPEND
 from tasks import bunch_insert_on_duplicate_update, alter_table_2_myisam, build_primary_key
 
 logger = logging.getLogger()
