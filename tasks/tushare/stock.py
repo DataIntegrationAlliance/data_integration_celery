@@ -114,7 +114,7 @@ def import_tushare_stock_info(chain_param=None, refresh=False):
 
 
 @app.task
-def import_tushare_stock_daily(chain_param=None, ts_code_set=None):
+def import_tushare_stock_daily( ts_code_set,chain_param=None):
     """
     插入股票日线数据到最近一个工作日-1。
     如果超过 BASE_LINE_HOUR 时间，则获取当日的数据
@@ -221,7 +221,13 @@ if __name__ == "__main__":
     # DEBUG = True
     # import_tushare_stock_info(refresh=False)
     # 更新每日股票数据
-    import_tushare_stock_daily()
+    # SQL = """SELECT ts_code FROM md_integration.tushare_stock_info where ts_code>'603033.SH'"""
+    # with with_db_session(engine_md) as session:
+    #     # 获取每只股票需要获取日线数据的日期区间
+    #     table = session.execute(SQL)
+    #     ts_code_set = list([row[0] for row in table.fetchall()])
+    import_tushare_stock_daily(ts_code_set=None)
+
     # import_stock_daily_wch()
     # wind_code_set = None
     # add_new_col_data('ebitdaps', '',wind_code_set=wind_code_set)

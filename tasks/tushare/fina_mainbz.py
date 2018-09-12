@@ -45,7 +45,7 @@ def import_tushare_stock_fina_mainbz(ts_code_set,chain_param=None):
     如果超过 BASE_LINE_HOUR 时间，则获取当日的数据
     :return:
     """
-    table_name = 'tushare_stock_fina_mainbz'
+    table_name = 'tushare_stock_fin_mainbz'
     logging.info("更新 %s 开始", table_name)
     param_list = [
         ('ts_code', String(20)),

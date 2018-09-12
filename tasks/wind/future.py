@@ -25,7 +25,7 @@ logger = logging.getLogger()
 RE_PATTERN_MFPRICE = re.compile(r'\d*\.*\d*')
 ONE_DAY = timedelta(days=1)
 # 标示每天几点以后下载当日行情数据
-BASE_LINE_HOUR = 16
+BASE_LINE_HOUR = 17
 DEBUG = False
 
 

@@ -65,7 +65,7 @@ def import_tushare_daily_basic(chain_param=None):
     如果超过 BASE_LINE_HOUR 时间，则获取当日的数据
     :return:
     """
-    table_name = 'tushare_daily_basic'
+    table_name = 'tushare_stock_daily_basic'
     logging.info("更新 %s 开始", table_name)
 
     has_table = engine_md.has_table(table_name)
@@ -80,7 +80,7 @@ def import_tushare_daily_basic(chain_param=None):
                )tt
                where (is_open=1 
                       and cal_date <= if(hour(now())<16, subdate(curdate(),1), curdate()) 
-                      and exchange_id='SSE') """.format(table_name='tushare_daily_basic')
+                      and exchange_id='SSE') """.format(table_name='tushare_stock_daily_basic')
     else:
         sql_str = """
                select cal_date from tushare_trade_date trddate where (trddate.is_open=1 
