@@ -31,26 +31,28 @@ STR_FORMAT_DATE_TS = '%Y%m%d'
 #df=pro.moneyflow_hsgt(trade_date='20141117')
 
 @try_n_times(times=5, sleep_time=0,exception_sleep_time=60)
-def invoke_margin(trade_date,exchange_id):
-    invoke_margin = pro.margin(trade_date=trade_date,exchange_id=exchange_id)
-    return invoke_margin
+def invoke_margin_detail(trade_date):
+    invoke_margin_detail = pro.margin_detail(trade_date=trade_date)
+    return invoke_margin_detail
 
 @app.task
-def import_tushare_margin(chain_param=None):
+def import_tushare_margin_detail(chain_param=None):
     """
     插入股票日线数据到最近一个工作日-1。
     如果超过 BASE_LINE_HOUR 时间，则获取当日的数据
     :return:
     """
-    table_name = 'tushare_stock_margin'
+    table_name = 'tushare_stock_margin_detail'
     logging.info("更新 %s 开始", table_name)
     param_list = [
         ('trade_date', Date),
-        ('exchange_id', String(20)),
+        ('ts_code', String(20)),
         ('rzye', DOUBLE),
-        ('rzmre', DOUBLE),
-        ('rzche', DOUBLE),
         ('rqye', DOUBLE),
+        ('rzmre', DOUBLE),
+        ('rqyl', DOUBLE),
+        ('rzche', DOUBLE),
+        ('rqchl', DOUBLE),
         ('rqmcl', DOUBLE),
         ('rzrqye', DOUBLE),
 
@@ -87,13 +89,12 @@ def import_tushare_margin(chain_param=None):
     try:
         for i in range(len(trddate)):
             trade_date = datetime_2_str(trddate[i], STR_FORMAT_DATE_TS)
-            for exchange_id in list(['SSE','SZSE']):
-                data_df = invoke_margin(trade_date=trade_date,exchange_id=exchange_id)
-                if len(data_df) > 0:
-                    data_count = bunch_insert_on_duplicate_update(data_df, table_name, engine_md, dtype)
-                    logging.info("%s更新 %s %s 结束 %d 条信息被更新", trade_date,table_name,exchange_id, data_count)
-                else:
-                    logging.info("无数据信息可被更新")
+            data_df = invoke_margin_detail(trade_date=trade_date)
+            if len(data_df) > 0:
+                data_count = bunch_insert_on_duplicate_update(data_df, table_name, engine_md, dtype)
+                logging.info("%s更新 %s 结束 %d 条信息被更新", trade_date,table_name, data_count)
+            else:
+                logging.info("无数据信息可被更新")
     finally:
         if not has_table and engine_md.has_table(table_name):
             alter_table_2_myisam(engine_md, [table_name])
@@ -108,7 +109,7 @@ def import_tushare_margin(chain_param=None):
 
 if __name__ == "__main__":
     # DEBUG = True
-    import_tushare_margin()
+    import_tushare_margin_detail()
 
 
 # sql_str = """SELECT * FROM old_tushare_ggt_top10 """
