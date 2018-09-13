@@ -36,7 +36,7 @@ INDICATOR_PARAM_LIST_TUSHARE_DAILY = [
     ('pe_ttm', DOUBLE),
     ('pb', DOUBLE),
     ('ps', DOUBLE),
-    ('pb_ttm', DOUBLE),
+    ('ps_ttm', DOUBLE),
     ('total_share', DOUBLE),
     ('float_share', DOUBLE),
     ('free_share', DOUBLE),
