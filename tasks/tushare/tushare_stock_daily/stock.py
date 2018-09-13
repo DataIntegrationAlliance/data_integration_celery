@@ -34,10 +34,9 @@ INDICATOR_PARAM_LIST_TUSHARE_STOCK_DAILY_MD = [
     ('close', DOUBLE),
     ('pre_close', DOUBLE),
     ('change', DOUBLE),
-    ('pch_change', DOUBLE),
+    ('pct_change', DOUBLE),
     ('vol', DOUBLE),
     ('amount', DOUBLE),
-    ('pct_chg', DOUBLE),
 ]
 # 设置 dtype
 DTYPE_TUSHARE_STOCK_DAILY_MD = {key: val for key, val in INDICATOR_PARAM_LIST_TUSHARE_STOCK_DAILY_MD}
