@@ -154,7 +154,7 @@ def import_tushare_stock_top10_holders(chain_param=None, ts_code_set=None):
 
 
 if __name__ == "__main__":
-    DEBUG = True
+    #DEBUG = True
     # import_tushare_stock_info(refresh=False)
     # 更新每日股票数据
     import_tushare_stock_top10_holders()
