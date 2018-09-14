@@ -69,13 +69,13 @@ tushare_weekly_task = (
         import_tushare_stock_balancesheet.s() |
         import_tushare_stock_cashflow.s() |
         import_tushare_stock_fina_indicator.s() |
-        import_tushare_stock_top10_holders.s() |
-        import_tushare_stock_top10_floatholders()
+        import_tushare_stock_top10_holders.s()|
+        import_tushare_stock_top10_floatholders.s()
         # import_coin_info.s() |
         # import_coin_pair_info.s()
 )
 # 一次性加载的程序
 tushare_import_once = (
-        import_exchange_info.s() |
+        import_tushare_stock_info.s() |
         import_trade_date.s()
 )
