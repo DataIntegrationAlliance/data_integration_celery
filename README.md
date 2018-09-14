@@ -37,7 +37,8 @@ rabbitmq-plugins enable rabbitmq_management
 ```commandline
 celery -A tasks worker --loglevel=info -c 1 -P eventlet
 ```
-其中 -P 命令只要是为了在win10 下可以正常运行 [issue](https://github.com/celery/celery/issues/4081) 其他环境下可以去除
+> -P 命令只要是为了在win10 下可以正常运行 [issue](https://github.com/celery/celery/issues/4081) 其他环境下可以去除
+-c 命令后面的数字表示平行运行的 worker 数量，建议不要超过CPU核数
 
 #### 启动 beat
 ```commandline
@@ -60,11 +61,11 @@ class CeleryConfig:
     imports = ('tasks',)
     beat_schedule = {
         'daily_task': {
-            'task': 'tasks.grouped_task_test',
+            'task': 'tasks.grouped_task_daily',
             'schedule': crontab(hour='16', minute=0, day_of_week='1-5'),
         },
         'weekly_task': {
-            'task': 'tasks.weekly_task_group',
+            'task': 'tasks.grouped_task_weekly',
             'schedule': crontab(hour='10', day_of_week='6'),
         },
     }

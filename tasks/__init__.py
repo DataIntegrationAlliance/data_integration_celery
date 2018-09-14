@@ -80,7 +80,7 @@ except ImportError:
 def grouped_task_daily():
     """only for test use"""
     group([
-        wind_daily_task,
+        # wind_daily_task,
         # ifind_daily_task,
         tushare_daily_task]
     ).delay()
@@ -90,7 +90,7 @@ def grouped_task_daily():
 def grouped_task_weekly():
     """only for test use"""
     group([
-        wind_weekly_task,
+        # wind_weekly_task,
         # ifind_weekly_task,
         tushare_weekly_task]
     ).delay()
@@ -100,7 +100,7 @@ def grouped_task_weekly():
 def grouped_task_once():
     """only for test use"""
     group([
-        wind_import_once,
+        # wind_import_once,
         # ifind_import_once,
         tushare_import_once]
     ).delay()
