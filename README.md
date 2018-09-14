@@ -39,4 +39,9 @@ celery -A tasks worker --loglevel=info -c 1 -P eventlet
 ```
 其中 -P 命令只要是为了在win10 下可以正常运行 [issue](https://github.com/celery/celery/issues/4081) 其他环境下可以去除
 
+#### 启动 beat
+```commandline
+celery beat -A tasks
+```
+CeleryConfig 中的定时任务将通过 beat 自动启动
 
