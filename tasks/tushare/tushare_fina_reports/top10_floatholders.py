@@ -70,7 +70,7 @@ def import_tushare_stock_top10_floatholders(chain_param=None, ts_code_set=None):
                    FROM 
                      tushare_stock_info info 
                    LEFT OUTER JOIN
-                       (SELECT ts_code, adddate(max(end_date),1) end_date 
+                       (SELECT ts_code, adddate(max(ann_date),1) end_date 
                        FROM {table_name} GROUP BY ts_code) top10_floatholders
                    ON info.ts_code = top10_floatholders.ts_code
                ) tt
@@ -113,14 +113,14 @@ def import_tushare_stock_top10_floatholders(chain_param=None, ts_code_set=None):
             # logger.info(' %d data of %s between %s and %s', df.shape[0], ts_code, date_from, date_to)
             data_df = df
             if len(data_df) > 0:
-                while try_2_date(df['end_date'].iloc[-1]) > date_from:
-                    last_date_in_df_last, last_date_in_df_cur = try_2_date(df['end_date'].iloc[-1]), None
+                while try_2_date(df['ann_date'].iloc[-1]) > date_from:
+                    last_date_in_df_last, last_date_in_df_cur = try_2_date(df['ann_date'].iloc[-1]), None
                     df2 = invoke_top10_floatholders(ts_code=ts_code, start_date=datetime_2_str(date_from, STR_FORMAT_DATE_TS),
                                           end_date=datetime_2_str(
-                                              try_2_date(df['end_date'].iloc[-1]) - timedelta(days=1),
+                                              try_2_date(df['ann_date'].iloc[-1]) - timedelta(days=1),
                                               STR_FORMAT_DATE_TS))
                     if len(df2) > 0:
-                        last_date_in_df_cur = try_2_date(df2['end_date'].iloc[-1])
+                        last_date_in_df_cur = try_2_date(df2['ann_date'].iloc[-1])
                         if last_date_in_df_cur < last_date_in_df_last:
                             data_df = pd.concat([data_df, df2])
                             df = df2
@@ -140,7 +140,7 @@ def import_tushare_stock_top10_floatholders(chain_param=None, ts_code_set=None):
 
             # 仅调试使用
             Cycles = Cycles + 1
-            if DEBUG and Cycles > 2:
+            if DEBUG and Cycles > 5:
                 break
     finally:
         # 导入数据库
@@ -153,7 +153,7 @@ def import_tushare_stock_top10_floatholders(chain_param=None, ts_code_set=None):
 
 
 if __name__ == "__main__":
-    # DEBUG = True
+    DEBUG = True
     # import_tushare_stock_info(refresh=False)
     # 更新每日股票数据
     import_tushare_stock_top10_floatholders()
