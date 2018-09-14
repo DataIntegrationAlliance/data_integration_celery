@@ -42,7 +42,6 @@ from tasks.tushare.tushare_fina_reports.top10_holders import *
 
 # 日级别加载的程序
 tushare_daily_task = (
-        import_coinbar.s() |
         import_tushare_adj_factor.s() |
         import_tushare_daily_basic.s() |
         import_tushare_ggt_top10.s() |
