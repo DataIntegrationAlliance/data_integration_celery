@@ -25,7 +25,7 @@ ONE_DAY = timedelta(days=1)
 BASE_LINE_HOUR = 16
 STR_FORMAT_DATE_TS = '%Y%m%d'
 
-INDICATOR_PARAM_LIST_TUSHARE_DAILY = [
+INDICATOR_PARAM_LIST_TUSHARE_STOCK_DAILY_MD = [
     ('ts_code', String(20)),
     ('trade_date', Date),
     ('open', DOUBLE),
@@ -34,15 +34,14 @@ INDICATOR_PARAM_LIST_TUSHARE_DAILY = [
     ('close', DOUBLE),
     ('pre_close', DOUBLE),
     ('change', DOUBLE),
-    ('pch_change', DOUBLE),
+    ('pct_change', DOUBLE),
     ('vol', DOUBLE),
     ('amount', DOUBLE),
-    ('pct_chg', DOUBLE),
 ]
 # 设置 dtype
-DTYPE_TUSHARE_DAILY = {key: val for key, val in INDICATOR_PARAM_LIST_TUSHARE_DAILY}
-DTYPE_TUSHARE_DAILY['ts_code'] = String(20)
-DTYPE_TUSHARE_DAILY['trade_date'] = Date
+DTYPE_TUSHARE_STOCK_DAILY_MD = {key: val for key, val in INDICATOR_PARAM_LIST_TUSHARE_STOCK_DAILY_MD}
+DTYPE_TUSHARE_STOCK_DAILY_MD['ts_code'] = String(20)
+DTYPE_TUSHARE_STOCK_DAILY_MD['trade_date'] = Date
 
 
 @try_n_times(times=5, sleep_time=0, exception_sleep_time=60)
@@ -193,7 +192,7 @@ def import_tushare_stock_daily(ts_code_set, chain_param=None):
 
                 # 数据插入数据库
                 data_df_all = data_df
-                data_count = bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md, DTYPE_TUSHARE_DAILY)
+                data_count = bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md, DTYPE_TUSHARE_STOCK_DAILY_MD)
                 logging.info("更新 %s 结束 %d 条信息被更新", table_name, data_count)
                 data_df = []
             # 仅调试使用
@@ -205,7 +204,7 @@ def import_tushare_stock_daily(ts_code_set, chain_param=None):
         # 导入数据库
         if len(data_df) > 0:
             data_df_all = data_df
-            data_count = bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md, DTYPE_TUSHARE_DAILY)
+            data_count = bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md, DTYPE_TUSHARE_STOCK_DAILY_MD)
             logging.info("更新 %s 结束 %d 条信息被更新", table_name, data_count)
             if not has_table and engine_md.has_table(table_name):
                 alter_table_2_myisam(engine_md, [table_name])
