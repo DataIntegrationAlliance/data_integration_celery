@@ -26,7 +26,7 @@ ONE_DAY = timedelta(days=1)
 BASE_LINE_HOUR = 16
 STR_FORMAT_DATE_TS = '%Y%m%d'
 
-INDICATOR_PARAM_LIST_TUSHARE_DAILY = [
+INDICATOR_PARAM_LIST_TUSHARE_STOCK_DAILY_BASIC = [
     ('ts_code', String(20)),
     ('trade_date', Date),
     ('close', DOUBLE),
@@ -36,7 +36,7 @@ INDICATOR_PARAM_LIST_TUSHARE_DAILY = [
     ('pe_ttm', DOUBLE),
     ('pb', DOUBLE),
     ('ps', DOUBLE),
-    ('pb_ttm', DOUBLE),
+    ('ps_ttm', DOUBLE),
     ('total_share', DOUBLE),
     ('float_share', DOUBLE),
     ('free_share', DOUBLE),
@@ -44,7 +44,7 @@ INDICATOR_PARAM_LIST_TUSHARE_DAILY = [
     ('circ_mv', DOUBLE),
 ]
 # 设置 dtype
-DTYPE_TUSHARE_DAILY_BASIC = {key: val for key, val in INDICATOR_PARAM_LIST_TUSHARE_DAILY}
+DTYPE_TUSHARE_STOCK_DAILY_BASIC = {key: val for key, val in INDICATOR_PARAM_LIST_TUSHARE_STOCK_DAILY_BASIC}
 
 
 @try_n_times(times=3, sleep_time=6)
@@ -93,7 +93,7 @@ def import_tushare_daily_basic(chain_param=None):
             trade_date = datetime_2_str(trddate[i], STR_FORMAT_DATE_TS)
             data_df = invoke_daily_basic(ts_code='', trade_date=trade_date)
             if len(data_df) > 0:
-                data_count = bunch_insert_on_duplicate_update(data_df, table_name, engine_md, DTYPE_TUSHARE_DAILY_BASIC)
+                data_count = bunch_insert_on_duplicate_update(data_df, table_name, engine_md, DTYPE_TUSHARE_STOCK_DAILY_BASIC)
                 logging.info("%s更新 %s 结束 %d 条信息被更新", trade_date, table_name, data_count)
             else:
                 logging.info("无数据信息可被更新")

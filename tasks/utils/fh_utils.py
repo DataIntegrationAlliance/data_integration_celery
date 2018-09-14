@@ -27,13 +27,27 @@ PATTERN_DATE_FORMAT_RESTRICT = re.compile(r"\d{4}(\D)*\d{2}(\D)*\d{2}")
 PATTERN_DATE_FORMAT = re.compile(r"\d{4}(\D)*\d{1,2}(\D)*\d{1,2}")
 
 
+def is_any(iterable, func):
+    """
+    查找是否存在任何一个为True的结果，否则返回False
+    :param iterable:
+    :param func:
+    :return:
+    """
+    for x in iterable:
+        if func(x):
+            return True
+    else:
+        return False
+
+
 def is_not_nan_or_none(x):
     """
     判断是否不是 NAN 或 None
     :param x:
     :return:
     """
-    return False if x is None else not(isinstance(x, float) and np.isnan(x))
+    return False if x is None else not((isinstance(x, float) and np.isnan(x)) or isinstance(x, pd.tslib.NaTType))
 
 
 def is_nan_or_none(x):
@@ -42,7 +56,7 @@ def is_nan_or_none(x):
     :param x:
     :return:
     """
-    return True if x is None else isinstance(x, float) and np.isnan(x)
+    return True if x is None else (isinstance(x, float) and np.isnan(x)) or isinstance(x, pd.tslib.NaTType)
 
 
 def try_2_float(data):

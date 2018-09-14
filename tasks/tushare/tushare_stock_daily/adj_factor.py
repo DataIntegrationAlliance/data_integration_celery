@@ -26,6 +26,14 @@ ONE_DAY = timedelta(days=1)
 BASE_LINE_HOUR = 16
 STR_FORMAT_DATE_TS = '%Y%m%d'
 
+INDICATOR_PARAM_LIST_TUSHARE_STOCK_DAILY_ADJ_FACTOR = [
+    ('ts_code', String(20)),
+    ('trade_date', Date),
+    ('adj_factor', DOUBLE),
+]
+# 设置 dtype
+DTYPE_TUSHARE_STOCK_DAILY_ADJ_FACTOR = {key: val for key, val in INDICATOR_PARAM_LIST_TUSHARE_STOCK_DAILY_ADJ_FACTOR}
+
 
 @app.task
 def import_tushare_adj_factor(chain_param=None, ):
@@ -36,13 +44,6 @@ def import_tushare_adj_factor(chain_param=None, ):
     """
     table_name = 'tushare_stock_daily_adj_factor'
     logging.info("更新 %s 开始", table_name)
-    param_list = [
-        ('ts_code', String(20)),
-        ('trade_date', Date),
-        ('adj_factor', DOUBLE),
-
-    ]
-
     has_table = engine_md.has_table(table_name)
     # 进行表格判断，确定是否含有tushare_stock_daily
 
@@ -69,18 +70,13 @@ def import_tushare_adj_factor(chain_param=None, ):
         # 获取交易日数据
         table = session.execute(sql_str)
         trddate = list(row[0] for row in table.fetchall())
-    # 设置 dtype
-    dtype = {key: val for key, val in param_list}
-    dtype['ts_code'] = String(20)
-    dtype['trade_date'] = Date
-    dtype['adj_factor'] = DOUBLE
 
     try:
         for i in range(len(trddate)):
             trade_date = datetime_2_str(trddate[i], STR_FORMAT_DATE_TS)
             data_df = pro.adj_factor(ts_code='', trade_date=trade_date)
             if len(data_df) > 0:
-                data_count = bunch_insert_on_duplicate_update(data_df, table_name, engine_md, dtype)
+                data_count = bunch_insert_on_duplicate_update(data_df, table_name, engine_md, DTYPE_TUSHARE_STOCK_DAILY_ADJ_FACTOR)
                 logging.info(" %s 表 %s 日 %d 条信息被更新", table_name, trade_date, data_count)
             else:
                 logging.info("无数据信息可被更新")

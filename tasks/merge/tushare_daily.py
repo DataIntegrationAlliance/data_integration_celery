@@ -1,4 +1,3 @@
-import tushare as ts
 import pandas as pd
 import logging
 from tasks.backend.orm import build_primary_key
@@ -7,6 +6,9 @@ from datetime import date, datetime, timedelta
 from tasks.merge import generate_range
 from tasks.tushare.tushare_stock_daily.daily_basic import DTYPE_TUSHARE_DAILY_BASIC
 from tasks.tushare.tushare_stock_daily.stock import DTYPE_TUSHARE_DAILY
+from tasks.tushare.tushare_stock_daily.adj_factor import DTYPE_TUSHARE_STOCK_DAILY_ADJ_FACTOR
+from tasks.tushare.tushare_stock_daily.daily_basic import DTYPE_TUSHARE_STOCK_DAILY_BASIC
+from tasks.tushare.tushare_stock_daily.stock import DTYPE_TUSHARE_STOCK_DAILY_MD
 from tasks.tushare.tushare_stock_daily.suspend import DTYPE_TUSHARE_SUSPEND
 from tasks.utils.fh_utils import try_2_date, STR_FORMAT_DATE, datetime_2_str, split_chunk, is_nan_or_none
 from tasks import app, DTYPE_TUSHARE_STOCK_BALABCESHEET
