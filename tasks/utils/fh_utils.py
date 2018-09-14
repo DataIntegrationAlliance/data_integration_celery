@@ -27,6 +27,20 @@ PATTERN_DATE_FORMAT_RESTRICT = re.compile(r"\d{4}(\D)*\d{2}(\D)*\d{2}")
 PATTERN_DATE_FORMAT = re.compile(r"\d{4}(\D)*\d{1,2}(\D)*\d{1,2}")
 
 
+def is_any(iterable, func):
+    """
+    查找是否存在任何一个为True的结果，否则返回False
+    :param iterable:
+    :param func:
+    :return:
+    """
+    for x in iterable:
+        if func(x):
+            return True
+    else:
+        return False
+
+
 def is_not_nan_or_none(x):
     """
     判断是否不是 NAN 或 None
