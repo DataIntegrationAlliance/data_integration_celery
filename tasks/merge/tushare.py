@@ -7,9 +7,9 @@ from tasks.utils.db_utils import with_db_session
 from sqlalchemy.types import Date
 from tasks.utils.fh_utils import is_nan_or_none
 from tasks.merge import generate_range
-from tasks.tushare.tushare_stock_daily.stock import DTYPE_TUSHARE_DAILY
+from tasks.tushare.tushare_stock_daily.stock import DTYPE_TUSHARE_STOCK_DAILY_MD
 from tasks.tushare.tushare_fina_reports.cashflow import DTYPE_TUSHARE_CASHFLOW
-from tasks.tushare.tushare_stock_daily.daily_basic import DTYPE_TUSHARE_DAILY_BASIC
+from tasks.tushare.tushare_stock_daily.daily_basic import DTYPE_TUSHARE_STOCK_DAILY_BASIC
 from tasks.tushare.tushare_stock_daily.suspend import DTYPE_TUSHARE_SUSPEND
 from tasks import bunch_insert_on_duplicate_update, alter_table_2_myisam, build_primary_key
 
@@ -98,7 +98,7 @@ def merge_tushare_daily(ths_code_set: set = None, date_from=None):
     # # 設置dtype
     dtype = {'ann_date': Date}
 
-    for dic in [DTYPE_TUSHARE_DAILY, DTYPE_TUSHARE_DAILY_BASIC, DTYPE_TUSHARE_SUSPEND,
+    for dic in [DTYPE_TUSHARE_STOCK_DAILY_MD, DTYPE_TUSHARE_STOCK_DAILY_BASIC, DTYPE_TUSHARE_SUSPEND,
                 # DTYPE_TUSHARE_STOCK_INCOME,
                 # DTYPE_TUSHARE_STOCK_BALABCESHEET,
                 DTYPE_TUSHARE_CASHFLOW]:
@@ -137,7 +137,7 @@ def merge_tushare_daily(ths_code_set: set = None, date_from=None):
                     continue
                 fin_s = report_date_dic[report_date_from] if report_date_from is not None else None
                 #################################################
-                for key in (DTYPE_TUSHARE_DAILY.keys() and DTYPE_TUSHARE_DAILY_BASIC.keys() and
+                for key in (DTYPE_TUSHARE_STOCK_DAILY_MD.keys() and DTYPE_TUSHARE_STOCK_DAILY_BASIC.keys() and
                             DTYPE_TUSHARE_SUSPEND.keys() and DTYPE_TUSHARE_CASHFLOW.keys()
                         # and
                         #  DTYPE_TUSHARE_STOCK_BALABCESHEET.keys() and DTYPE_TUSHARE_STOCK_INCOME.keys()
