@@ -14,8 +14,8 @@ import logging
 logger = logging.getLogger()
 app = Celery('tasks',
              config_source=celery_config,
-             # broker='amqp://mg:123456@localhost:3306/celery_tasks',
-             # backend='amqp://mg:123456@localhost:3306/backend',
+             # broker='amqp://mg:123456@localhost:5672/celery_tasks',
+             # backend='amqp://mg:123456@localhost:5672/backend',
              # backend='rpc://',
              )
 app.config_from_object(celery_config)
@@ -75,8 +75,41 @@ try:
 except ImportError:
     logger.exception("加载 tasks.tushare 失败，该异常不影响其他功能正常使用")
 
-daily_task_group = group([wind_daily_task, ifind_daily_task, tushare_daily_task])
 
-weekly_task_group = group([wind_weekly_task, ifind_weekly_task, tushare_weekly_task])
+@app.task
+def grouped_task_daily():
+    """only for test use"""
+    group([
+        wind_daily_task,
+        # ifind_daily_task,
+        tushare_daily_task]
+    ).delay()
 
-once_task_group = group([wind_import_once, ifind_import_once, tushare_import_once])
+
+@app.task
+def grouped_task_weekly():
+    """only for test use"""
+    group([
+        wind_weekly_task,
+        # ifind_weekly_task,
+        tushare_weekly_task]
+    ).delay()
+
+
+@app.task
+def grouped_task_once():
+    """only for test use"""
+    group([
+        wind_import_once,
+        # ifind_import_once,
+        tushare_import_once]
+    ).delay()
+
+
+@app.task
+def grouped_task_test():
+    """only for test use"""
+    group([
+        (test_task.s() | test_task_n.s()),
+        (test_task.s() | test_task_n.s(n=2))
+    ]).delay()
