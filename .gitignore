@@ -109,3 +109,9 @@ venv.bak/
 
 # temp files
 *.csv
+
+# Celery files
+celerybeat.pid
+celerybeat-schedule.dat
+celerybeat-schedule.bak
+celerybeat-schedule.dir
