@@ -1,7 +1,7 @@
 """
-Created on 2018/8/23
+Created on 2018/9/12
 @author: yby
-@desc    : 2018-09-3
+@desc    : 2018-09-13
 contact author:ybychem@gmail.com
 """
 
@@ -31,7 +31,7 @@ INDICATOR_PARAM_LIST_TUSHARE_STOCK_TOP10_HOLDERS = [
     ('ts_code', String(20)),
     ('ann_date', Date),
     ('end_date', Date),
-    ('holder_name',Text),
+    ('holder_name',String(220)),
     ('hold_amount', DOUBLE),
     ('hold_ratio', DOUBLE),
 
@@ -114,14 +114,14 @@ def import_tushare_stock_top10_holders(chain_param=None, ts_code_set=None):
             # logger.info(' %d data of %s between %s and %s', df.shape[0], ts_code, date_from, date_to)
             data_df = df
             if len(data_df) > 0:
-                while try_2_date(df['ann_date'].iloc[-1]) > date_from:
-                    last_date_in_df_last, last_date_in_df_cur = try_2_date(df['ann_date'].iloc[-1]), None
+                while try_2_date(df['end_date'].iloc[-1]) > date_from:
+                    last_date_in_df_last, last_date_in_df_cur = try_2_date(df['end_date'].iloc[-1]), None
                     df2 = invoke_top10_holders(ts_code=ts_code, start_date=datetime_2_str(date_from, STR_FORMAT_DATE_TS),
                                           end_date=datetime_2_str(
-                                              try_2_date(df['ann_date'].iloc[-1]) - timedelta(days=1),
+                                              try_2_date(df['end_date'].iloc[-1]) - timedelta(days=1),
                                               STR_FORMAT_DATE_TS))
                     if len(df2) > 0:
-                        last_date_in_df_cur = try_2_date(df2['ann_date'].iloc[-1])
+                        last_date_in_df_cur = try_2_date(df2['end_date'].iloc[-1])
                         if last_date_in_df_cur < last_date_in_df_last:
                             data_df = pd.concat([data_df, df2])
                             df = df2
@@ -154,7 +154,7 @@ def import_tushare_stock_top10_holders(chain_param=None, ts_code_set=None):
 
 
 if __name__ == "__main__":
-    DEBUG = True
+    #DEBUG = True
     # import_tushare_stock_info(refresh=False)
     # 更新每日股票数据
     import_tushare_stock_top10_holders()
