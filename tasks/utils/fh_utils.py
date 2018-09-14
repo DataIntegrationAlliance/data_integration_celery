@@ -47,7 +47,7 @@ def is_not_nan_or_none(x):
     :param x:
     :return:
     """
-    return False if x is None else not(isinstance(x, float) and np.isnan(x))
+    return False if x is None else not((isinstance(x, float) and np.isnan(x)) or isinstance(x, pd.tslib.NaTType))
 
 
 def is_nan_or_none(x):
@@ -56,7 +56,7 @@ def is_nan_or_none(x):
     :param x:
     :return:
     """
-    return True if x is None else isinstance(x, float) and np.isnan(x)
+    return True if x is None else (isinstance(x, float) and np.isnan(x)) or isinstance(x, pd.tslib.NaTType)
 
 
 def try_2_float(data):
