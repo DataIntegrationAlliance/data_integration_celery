@@ -102,7 +102,7 @@ def import_tushare_stock_index_daily(chain_param=None,ts_code_set=None):
             ts_code_set is None or ts_code in ts_code_set}
 
     data_len = len(code_date_range_dic)
-    logger.info('%d stocks will been import into wind_stock_daily', data_len)
+    logger.info('%d stocks will been import into tushare_stock_index_daily_md', data_len)
     # 将data_df数据，添加到data_df_list
 
     try:
