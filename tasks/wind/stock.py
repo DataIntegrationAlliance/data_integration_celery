@@ -580,15 +580,16 @@ def import_stock_quertarly(chain_param=None, wind_code_set=None):
             wind_code_set is None or wind_code in wind_code_set}
     # 获取股票量价等行情数据
     param_list = [
-        ('roic_ttm', String(20)),
-        ('yoyprofit', String(20)),
-        ('ebit', String(20)),
-        ('ebit2', String(20)),
-        ('ebit2_ttm', String(20)),
-        ('surpluscapitalps', String(20)),
-        ('undistributedps', String(20)),
-        ('stm_issuingdate', String(20)),
+        ('roic_ttm', DOUBLE),
+        ('yoyprofit', DOUBLE),
+        ('ebit', DOUBLE),
+        ('ebit2', DOUBLE),
+        ('ebit2_ttm', DOUBLE),
+        ('surpluscapitalps', DOUBLE),
+        ('undistributedps', DOUBLE),
+        ('stm_issuingdate', DOUBLE),
     ]
+
     # 获取参数列表
     wind_indictor_str = ",".join(key for key, _ in param_list)
     dtype = {key: val for key, val in param_list}
@@ -655,7 +656,7 @@ if __name__ == "__main__":
     # DEBUG = True
     # import_wind_stock_info(chain_param=None, refresh=False)
     # 更新每日股票数据
-    import_stock_daily(chain_param=None)
+    #import_stock_daily(chain_param=None)
     # import_stock_daily_wch()
     # wind_code_set = None
     # add_new_col_data('ev', '', None, wind_code_set=wind_code_set)
