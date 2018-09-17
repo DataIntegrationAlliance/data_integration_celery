@@ -660,16 +660,16 @@ if __name__ == "__main__":
     # wind_code_set = None
     # add_new_col_data('ev', '', None, wind_code_set=wind_code_set)
 
-    wind_code_set = None
-    import_count = 1
-    while import_count > 0:
-        try:
-            # 更新每日股票数据
-            import_count = import_stock_tick(wind_code_set, None)
-        except IntegrityError:
-            logger.exception("import_stock_tick exception")
-
-    logging.basicConfig(level=logging.DEBUG, format='%(asctime)s: %(levelname)s [%(name)s:%(funcName)s] %(message)s')
+    # wind_code_set = None
+    # import_count = 1
+    # while import_count > 0:
+    #     try:
+    #         # 更新每日股票数据
+    #         import_count = import_stock_tick(wind_code_set, None)
+    #     except IntegrityError:
+    #         logger.exception("import_stock_tick exception")
+    #
+    # logging.basicConfig(level=logging.DEBUG, format='%(asctime)s: %(levelname)s [%(name)s:%(funcName)s] %(message)s')
     # 更新股票季报数据
     # DEBUG = True
     wind_code_set = None

@@ -49,7 +49,6 @@ def invoke_daily(ts_code, start_date, end_date):
     invoke_daily = pro.daily(ts_code=ts_code, start_date=start_date, end_date=end_date)
     return invoke_daily
 
-
 def get_stock_code_set():
     """
      # 通过接口获取股票代码
@@ -108,7 +107,7 @@ def import_tushare_stock_info(chain_param=None, refresh=False):
 
 
 @app.task
-def import_tushare_stock_daily(ts_code_set, chain_param=None):
+def import_tushare_stock_daily(chain_param=None,ts_code_set=None):
     """
     插入股票日线数据到最近一个工作日-1。
     如果超过 BASE_LINE_HOUR 时间，则获取当日的数据
@@ -159,7 +158,7 @@ def import_tushare_stock_daily(ts_code_set, chain_param=None):
             ts_code_set is None or ts_code in ts_code_set}
 
     data_len = len(code_date_range_dic)
-    logger.info('%d stocks will been import into wind_stock_daily', data_len)
+    logger.info('%d stocks will been import into tushare_stock_daily_md', data_len)
     # 将data_df数据，添加到data_df_list
 
     try:
