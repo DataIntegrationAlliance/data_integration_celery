@@ -36,9 +36,9 @@ from tasks.tushare.tushare_fina_reports.fina_audit import *
 from tasks.tushare.tushare_fina_reports.fina_indicator import *
 from tasks.tushare.tushare_fina_reports.fina_mainbz import *
 from tasks.tushare.tushare_fina_reports.income import *
-from tasks.tushare.tushare_fina_reports.patch_balancesheet import *
-from tasks.tushare.tushare_fina_reports.patch_cashflow import *
-from tasks.tushare.tushare_fina_reports.patch_fina_indicator import *
+# from tasks.tushare.tushare_fina_reports.patch_balancesheet import *
+# from tasks.tushare.tushare_fina_reports.patch_cashflow import *
+# from tasks.tushare.tushare_fina_reports.patch_fina_indicator import *
 from tasks.tushare.tushare_fina_reports.top10_holders import *
 from tasks.tushare.tushare_fina_reports.top10_floatholders import *
 
