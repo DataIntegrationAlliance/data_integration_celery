@@ -656,7 +656,7 @@ if __name__ == "__main__":
     # DEBUG = True
     # import_wind_stock_info(chain_param=None, refresh=False)
     # 更新每日股票数据
-    #import_stock_daily(chain_param=None)
+    import_stock_daily(chain_param=None)
     # import_stock_daily_wch()
     # wind_code_set = None
     # add_new_col_data('ev', '', None, wind_code_set=wind_code_set)
@@ -673,8 +673,8 @@ if __name__ == "__main__":
     # logging.basicConfig(level=logging.DEBUG, format='%(asctime)s: %(levelname)s [%(name)s:%(funcName)s] %(message)s')
     # 更新股票季报数据
     # DEBUG = True
-    wind_code_set = None
-    import_stock_quertarly(wind_code_set, None)
+    # wind_code_set = None
+    # import_stock_quertarly(wind_code_set, None)
 
     # 添加某列信息
     # fill_history()
