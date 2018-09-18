@@ -19,6 +19,7 @@ from tasks.tushare.tushare_stock_daily.stock import DTYPE_TUSHARE_STOCK_DAILY_MD
 
 
 def get_tushare_daily_merged_df(date_from=None) -> pd.DataFrame:
+    """获取tushre合并后的日级别数据"""
     col_names = [col_name for col_name in itertools.chain(
         DTYPE_TUSHARE_STOCK_DAILY_BASIC, DTYPE_TUSHARE_STOCK_DAILY_MD, DTYPE_TUSHARE_STOCK_DAILY_ADJ_FACTOR)
                  if col_name not in ('ts_code', 'trade_date', 'close')]
@@ -84,15 +85,23 @@ def get_suspend_to_dic():
 
 
 def is_suspend(code_date_range_dic, code_trade_date_s):
+    """判断某 ts_code 的 trade_date 是否为停牌日"""
     ts_code = code_trade_date_s['ts_code']
     date_cur = code_trade_date_s['trade_date']
     data_range_list = code_date_range_dic[ts_code]
     # print(code_trade_date_s)
-    return is_any(data_range_list, lambda date_range: date_range[0] <= date_cur <= date_range[1])
+    return 1 if is_any(data_range_list, lambda date_range: date_range[0] <= date_cur <= date_range[1]) else 0
+
+
+def concat_suspend(data_df):
+    """将停牌日信息 suspend 扩展到 日结级别数据 df 中"""
+    data_df = get_tushare_daily_merged_df()
+    code_date_range_dic = get_suspend_to_dic()
+    data_df['suspend'] = data_df[['ts_code', 'trade_date']].apply(lambda x: is_suspend(code_date_range_dic, x), axis=1)
+    return data_df
 
 
 if __name__ == "__main__":
     data_df = get_tushare_daily_merged_df()
-    code_date_range_dic = get_suspend_to_dic()
-    data_df['suspend'] = data_df[['ts_code', 'trade_date']].apply(lambda x: is_suspend(code_date_range_dic, x), axis=1)
+    data_df = concat_suspend(data_df)
 
