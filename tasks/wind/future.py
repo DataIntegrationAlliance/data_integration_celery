@@ -81,46 +81,77 @@ def import_future_info(chain_param=None):
     # w.start()
     # 初始化服务器接口，用于下载万得数据
     future_sectorid_dic_list = [
-        {'subject_name': 'CFE 沪深300', 'regex': r"IF\d{4}\.CFE",
-         'sectorid': 'a599010102000000', 'date_establish': '2010-4-16'},
-        {'subject_name': 'CFE 上证50', 'regex': r"IH\d{4}\.CFE",
-         'sectorid': '1000014871000000', 'date_establish': '2015-4-16'},
-        {'subject_name': 'CFE 中证500', 'regex': r"IC\d{4}\.CFE",
-         'sectorid': '1000014872000000', 'date_establish': '2015-4-16'},
-        {'subject_name': 'SHFE 黄金', 'regex': r"AU\d{4}\.SHF",
-         'sectorid': 'a599010205000000', 'date_establish': '2008-01-09'},
-        {'subject_name': 'SHFE 沪银', 'regex': r"AG\d{4}\.SHF",
-         'sectorid': '1000006502000000', 'date_establish': '2012-05-10'},
-        {'subject_name': 'SHFE 螺纹钢', 'regex': r"RB\d{4}\.SHF",
-         'sectorid': 'a599010206000000', 'date_establish': '2009-03-27'},
-        {'subject_name': 'SHFE 热卷', 'regex': r"HC\d{4}\.SHF",
-         'sectorid': '1000011455000000', 'date_establish': '2014-03-21'},
-        {'subject_name': 'DCE 焦炭', 'regex': r"J\d{4}\.SHF",
-         'sectorid': '1000002976000000', 'date_establish': '2011-04-15'},
-        {'subject_name': 'DCE 焦煤', 'regex': r"JM\d{4}\.SHF",
-         'sectorid': '1000009338000000', 'date_establish': '2013-03-22'},
-        {'subject_name': '铁矿石', 'regex': r"I\d{4}\.SHF",
-         'sectorid': '1000006502000000', 'date_establish': '2013-10-18'},
-        {'subject_name': '天然橡胶', 'regex': r"RU\d{4}\.SHF",
-         'sectorid': 'a599010208000000', 'date_establish': '1995-06-01'},
-        {'subject_name': '铜', 'regex': r"CU\d{4}\.SHF",
-         'sectorid': 'a599010202000000', 'date_establish': '1995-05-01'},
-        {'subject_name': '铝', 'regex': r"AL\d{4}\.SHF",
-         'sectorid': 'a599010203000000', 'date_establish': '1995-05-01'},
-        {'subject_name': '锌', 'regex': r"ZN\d{4}\.SHF",
-         'sectorid': 'a599010204000000', 'date_establish': '2007-03-26'},
-        {'subject_name': '铅', 'regex': r"PB\d{4}\.SHF",
-         'sectorid': '1000002892000000', 'date_establish': '2011-03-24'},
-        {'subject_name': '镍', 'regex': r"NI\d{4}\.SHF",
-         'sectorid': '1000011457000000', 'date_establish': '2015-03-27'},
-        {'subject_name': '锡', 'regex': r"SN\d{4}\.SHF",
-         'sectorid': '1000011458000000', 'date_establish': '2015-03-27'},
-        {'subject_name': '白糖', 'regex': r"SR\d{4}\.CZC",
-         'sectorid': 'a599010405000000', 'date_establish': '2006-01-06'},
-        {'subject_name': '棉花', 'regex': r"CF\d{4}\.CZC",
-         'sectorid': 'a599010404000000', 'date_establish': '2004-06-01'},
-        {'subject_name': '棉花', 'regex': r"CF\d{4}\.CZC",
-         'sectorid': 'a599010404000000', 'date_establish': '2004-06-01'},
+        # {'subject_name': 'CFE 沪深300', 'regex': r"IF\d{4}\.CFE",
+        #  'sectorid': 'a599010102000000', 'date_establish': '2010-4-16'},
+        # {'subject_name': 'CFE 上证50', 'regex': r"IH\d{4}\.CFE",
+        #  'sectorid': '1000014871000000', 'date_establish': '2015-4-16'},
+        # {'subject_name': 'CFE 中证500', 'regex': r"IC\d{4}\.CFE",
+        #  'sectorid': '1000014872000000', 'date_establish': '2015-4-16'},
+        {'subject_name': '2年期国债', 'regex': r"IC\d{4}\.CFE",
+         'sectorid': '1000014880000000', 'date_establish': '2018-08-17'},
+        {'subject_name': '5年期国债', 'regex': r"IC\d{4}\.CFE",
+         'sectorid': '1000010299000000', 'date_establish': '2013-09-06'},
+        {'subject_name': '10年期国债', 'regex': r"IC\d{4}\.CFE",
+         'sectorid': '1000014874000000', 'date_establish': '2015-03-20'},
+
+        # {'subject_name': 'SHFE 黄金', 'regex': r"AU\d{4}\.SHF",
+        #  'sectorid': 'a599010205000000', 'date_establish': '2008-01-09'},
+        # {'subject_name': 'SHFE 沪银', 'regex': r"AG\d{4}\.SHF",
+        #  'sectorid': '1000006502000000', 'date_establish': '2012-05-10'},
+        # {'subject_name': 'SHFE 螺纹钢', 'regex': r"RB\d{4}\.SHF",
+        #  'sectorid': 'a599010206000000', 'date_establish': '2009-03-27'},
+        # {'subject_name': 'SHFE 热卷', 'regex': r"HC\d{4}\.SHF",
+        #  'sectorid': '1000011455000000', 'date_establish': '2014-03-21'},
+        # {'subject_name': 'DCE 焦炭', 'regex': r"J\d{4}\.DCE",
+        #  'sectorid': '1000002976000000', 'date_establish': '2011-04-15'},
+        # {'subject_name': 'DCE 焦煤', 'regex': r"JM\d{4}\.DCE",
+        #  'sectorid': '1000009338000000', 'date_establish': '2013-03-22'},
+        # {'subject_name': '铁矿石', 'regex': r"I\d{4}\.DCE",
+        #  'sectorid': '1000006502000000', 'date_establish': '2013-10-18'},
+        # {'subject_name': '豆粕', 'regex': r"I\d{4}\.DCE",
+        #  'sectorid': 'a599010304000000', 'date_establish': '2000-07-17'},
+        # {'subject_name': '豆油', 'regex': r"I\d{4}\.DCE",
+        #  'sectorid': 'a599010306000000', 'date_establish': '2006-01-09'},
+        # {'subject_name': '棕榈油', 'regex': r"I\d{4}\.DCE",
+        #  'sectorid': 'a599010307000000', 'date_establish': '2007-10-29'},
+        # {'subject_name': '豆一', 'regex': r"I\d{4}\.DCE",
+        #  'sectorid': 'a599010302000000', 'date_establish': '2004-07-15'},
+        # {'subject_name': '豆二', 'regex': r"I\d{4}\.DCE",
+        #  'sectorid': 'a599010303000000', 'date_establish': '2004-12-22'},
+        # {'subject_name': '玉米', 'regex': r"I\d{4}\.DCE",
+        #  'sectorid': 'a599010305000000', 'date_establish': '2004-09-22'},
+        # {'subject_name': '玉米淀粉', 'regex': r"I\d{4}\.DCE",
+        #  'sectorid': '1000011469000000', 'date_establish': '2014-12-19'},
+        # {'subject_name': '鸡蛋', 'regex': r"I\d{4}\.DCE",
+        #  'sectorid': '1000011464000000', 'date_establish': '2013-11-08'},
+        # {'subject_name': '线型低密度聚乙烯', 'regex': r"I\d{4}\.DCE",
+        #  'sectorid': 'a599010308000000', 'date_establish': '2007-07-31'},
+        # # {'subject_name': '聚氯乙烯', 'regex': r"I\d{4}\.DCE",
+        # #  'sectorid': 'a599010309000000', 'date_establish': '2009-05-25'},
+        # {'subject_name': '聚丙烯', 'regex': r"I\d{4}\.DCE",
+        #  'sectorid': '1000011468000000', 'date_establish': '2014-02-28'},
+
+        # {'subject_name': '天然橡胶', 'regex': r"RU\d{4}\.SHF",
+        #  'sectorid': 'a599010208000000', 'date_establish': '1995-06-01'},
+        # {'subject_name': '铜', 'regex': r"CU\d{4}\.SHF",
+        #  'sectorid': 'a599010202000000', 'date_establish': '1995-05-01'},
+        # {'subject_name': '铝', 'regex': r"AL\d{4}\.SHF",
+        #  'sectorid': 'a599010203000000', 'date_establish': '1995-05-01'},
+        # {'subject_name': '锌', 'regex': r"ZN\d{4}\.SHF",
+        #  'sectorid': 'a599010204000000', 'date_establish': '2007-03-26'},
+        # {'subject_name': '铅', 'regex': r"PB\d{4}\.SHF",
+        #  'sectorid': '1000002892000000', 'date_establish': '2011-03-24'},
+        # {'subject_name': '镍', 'regex': r"NI\d{4}\.SHF",
+        #  'sectorid': '1000011457000000', 'date_establish': '2015-03-27'},
+        # {'subject_name': '锡', 'regex': r"SN\d{4}\.SHF",
+        #  'sectorid': '1000011458000000', 'date_establish': '2015-03-27'},
+
+        # {'subject_name': '白糖', 'regex': r"SR\d{4}\.CZC",
+        #  'sectorid': 'a599010405000000', 'date_establish': '2006-01-06'},
+        # {'subject_name': '棉花', 'regex': r"CF\d{4}\.CZC",
+        #  'sectorid': 'a599010404000000', 'date_establish': '2004-06-01'},
+        # {'subject_name': '棉花', 'regex': r"CF\d{4}\.CZC",
+        #  'sectorid': 'a599010404000000', 'date_establish': '2004-06-01'},
     ]
     wind_code_set = set()
     ndays_per_update = 60
@@ -183,7 +214,7 @@ def import_future_info(chain_param=None):
             alter_table_2_myisam(engine_md, [table_name])
             build_primary_key([table_name])
 
-        logger.info("更新 wind_future_info_hk 结束 %d 条记录被更新", future_info_count)
+        logger.info("更新 wind_future_info 结束 %d 条记录被更新", future_info_count)
         update_from_info_table(table_name)
 
 
@@ -228,7 +259,7 @@ def import_future_daily(chain_param=None, wind_code_set=None, begin_time=None):
             on fi.wind_code = wfd.wind_code
             ) tt
             where date_frm <= if(lasttrade_date<end_date, lasttrade_date, end_date) 
-            and subdate(curdate(), 360) < if(lasttrade_date<end_date, lasttrade_date, end_date) 
+            -- and subdate(curdate(), 360) < if(lasttrade_date<end_date, lasttrade_date, end_date) 
             order by wind_code""".format(table_name=table_name)
     else:
         sql_str = """
@@ -453,5 +484,6 @@ if __name__ == "__main__":
     # DEBUG = True
     wind_code_set = None
     # import_future_info_hk(chain_param=None)
+    # import_future_info(chain_param=None)
     import_future_daily(None, wind_code_set)
     # update_future_info_hk(chain_param=None)
