@@ -4,8 +4,8 @@ from tasks.backend.orm import build_primary_key
 from datetime import date, datetime, timedelta
 
 from tasks.merge import generate_range
-from tasks.tushare.tushare_stock_daily.daily_basic import DTYPE_TUSHARE_DAILY_BASIC
-from tasks.tushare.tushare_stock_daily.stock import DTYPE_TUSHARE_DAILY
+from tasks.tushare.tushare_stock_daily.daily_basic import DTYPE_TUSHARE_STOCK_DAILY_BASIC
+from tasks.tushare.tushare_stock_daily.stock import DTYPE_TUSHARE_STOCK_DAILY_MD
 from tasks.tushare.tushare_stock_daily.adj_factor import DTYPE_TUSHARE_STOCK_DAILY_ADJ_FACTOR
 from tasks.tushare.tushare_stock_daily.daily_basic import DTYPE_TUSHARE_STOCK_DAILY_BASIC
 from tasks.tushare.tushare_stock_daily.stock import DTYPE_TUSHARE_STOCK_DAILY_MD
@@ -75,7 +75,7 @@ def merge_tushare_daily(date_from=None):
     #                             on=['ts_code'])
     # 设置 dtype
     dtype = {}
-    for dic in [DTYPE_TUSHARE_SUSPEND, DTYPE_TUSHARE_DAILY_BASIC, DTYPE_TUSHARE_DAILY]:
+    for dic in [DTYPE_TUSHARE_SUSPEND, DTYPE_TUSHARE_STOCK_DAILY_BASIC, DTYPE_TUSHARE_STOCK_DAILY_MD]:
         for key, val in dic.items():
             dtype[key] = val
     tushare_daily_df["close"] = tushare_daily_df.apply(get_merge, axis=1)
@@ -116,7 +116,7 @@ def merge_daily_balancesheet(ts_code_set: set=None):
     # ts_code = [ts_code for ts_code in data_balancesheet_df.groupby("f_ann_date").count()['ts_code']]
     # # 设置 dtype
     dtype = {}
-    for dic in [DTYPE_TUSHARE_SUSPEND, DTYPE_TUSHARE_DAILY_BASIC, DTYPE_TUSHARE_DAILY]:
+    for dic in [DTYPE_TUSHARE_SUSPEND, DTYPE_TUSHARE_STOCK_DAILY_BASIC, DTYPE_TUSHARE_STOCK_DAILY_MD]:
         for key, val in dic.items():
             dtype[key] = val
 
