@@ -251,6 +251,7 @@ def get_ifind_report_date_df(table_name, date_from) -> pd.DataFrame:
 
 
 def merge_ifind_stock_daily(ths_code_set: set = None, date_from=None):
+    """将ds his 以及财务数据合并为 daily 数据"""
     table_name = 'ifind_stock_daily'
     logging.info("合成 %s 开始", table_name)
     has_table = engine_md.has_table(table_name)
@@ -264,11 +265,12 @@ def merge_ifind_stock_daily(ths_code_set: set = None, date_from=None):
     ifind_report_date_df = get_ifind_report_date_df('ifind_stock_report_date', None)
     ifind_fin_df = get_ifind_daily_df('ifind_stock_fin', None)
     ifind_fin_df_g = ifind_fin_df.groupby('ths_code')
+    ths_code_set_4_daily = set(ifind_fin_df_g.size().index)
     # 合并 ds his 数据
     ifind_his_ds_df = pd.merge(ifind_his_df, ifind_ds_df, how='outer',
                                on=['ths_code', 'time'])  # 拼接後續有nan,無數據
     ifind_his_ds_df_g = ifind_his_ds_df.groupby('ths_code')
-    logging.debug("提取数据完成")
+    logger.debug("提取数据完成")
     # 计算 财报披露时间
     report_date_dic_dic = {}
     for report_date_g in [ifind_report_date_df.groupby(['ths_code', 'ths_regular_report_actual_dd_stock'])]:
@@ -278,7 +280,7 @@ def merge_ifind_stock_daily(ths_code_set: set = None, date_from=None):
             if is_nan_or_none(report_date):
                 continue
             report_date_dic = report_date_dic_dic.setdefault(ths_code, {})
-            if ths_code not in ifind_fin_df_g.size():
+            if ths_code not in ths_code_set_4_daily:
                 logger.error('fin 表中不存在 %s 的財務數據', ths_code)
                 continue
             ifind_fin_df_temp = ifind_fin_df_g.get_group(ths_code)
@@ -293,7 +295,7 @@ def merge_ifind_stock_daily(ths_code_set: set = None, date_from=None):
         for key, val in dic.items():
             dtype[key] = val
 
-    logging.debug("计算财报日期完成")
+    logger.debug("计算财报日期完成")
     # 整理 data_df 数据
     tot_data_count, data_count, data_df_list, for_count = 0, 0, [], len(report_date_dic_dic)
     try:

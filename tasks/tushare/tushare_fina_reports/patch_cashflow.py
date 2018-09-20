@@ -15,7 +15,7 @@ from tasks.backend import engine_md
 from tasks.merge.code_mapping import update_from_info_table
 from tasks.utils.db_utils import with_db_session, add_col_2_table, alter_table_2_myisam, \
     bunch_insert_on_duplicate_update
-from tasks.tushare import pro
+from tasks.tushare.ts_pro_api import pro
 
 DEBUG = False
 logger = logging.getLogger()

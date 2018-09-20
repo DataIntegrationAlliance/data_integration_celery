@@ -16,7 +16,7 @@ from tasks.utils.db_utils import with_db_session, bunch_insert_on_duplicate_upda
 from tasks.backend import engine_md
 import logging
 from datetime import date
-from tasks.tushare import pro
+from tasks.tushare.ts_pro_api import pro
 
 DEBUG = False
 logger = logging.getLogger()
