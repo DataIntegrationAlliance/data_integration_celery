@@ -10,19 +10,96 @@
 import pandas as pd
 import itertools
 from collections import defaultdict
+from sqlalchemy.types import String, Date, Integer, Text
+from tasks import build_primary_key
 from tasks.backend import engine_md
-from tasks.utils.db_utils import with_db_session
-from tasks.utils.fh_utils import is_any
+from tasks.merge import generate_range
+from tasks.utils.db_utils import with_db_session, bunch_insert_on_duplicate_update, alter_table_2_myisam
+from tasks.utils.fh_utils import is_any, is_nan_or_none, date_2_str
+from tasks.tushare.tushare_fina_reports.income import DTYPE_TUSHARE_STOCK_INCOME
 from tasks.tushare.tushare_stock_daily.adj_factor import DTYPE_TUSHARE_STOCK_DAILY_ADJ_FACTOR
 from tasks.tushare.tushare_stock_daily.daily_basic import DTYPE_TUSHARE_STOCK_DAILY_BASIC
 from tasks.tushare.tushare_stock_daily.stock import DTYPE_TUSHARE_STOCK_DAILY_MD
+import logging
+
+logger = logging.getLogger()
+DEBUG = False
 
 
-def get_tushare_daily_merged_df(date_from=None) -> pd.DataFrame:
+def get_tushre_merge_stock_fin_df() -> (pd.DataFrame, dict):
+    dtype = {key: val for key, val in itertools.chain(
+        DTYPE_TUSHARE_STOCK_DAILY_BASIC.items(),
+        DTYPE_TUSHARE_STOCK_DAILY_MD.items(),
+        DTYPE_TUSHARE_STOCK_DAILY_ADJ_FACTOR.items())}
+    col_names = [col_name for col_name in dtype if col_name not in ('ts_code', 'f_ann_date', 'ann_date', 'end_date')]
+    if len(col_names) == 0:
+        col_names_str = ""
+    else:
+        col_names_str = ",\n  `" + "`, `".join(col_names) + "`"
+
+    sql_str = """select 
+        ifnull(income.ts_code, ifnull(banancesheet.ts_code, cashflow.ts_code)) ts_code, 
+        ifnull(income.f_ann_date, ifnull(banancesheet.f_ann_date, cashflow.f_ann_date)) f_ann_date,
+        ifnull(income.ann_date, ifnull(banancesheet.ann_date, cashflow.ann_date)) ann_date,
+        ifnull(income.end_date, ifnull(banancesheet.end_date, cashflow.end_date)) end_date 
+        {col_names} -- ,income.*, banancesheet.*, cashflow.*, indicator.*
+        from tushare_stock_income income
+        left outer join tushare_stock_balancesheet banancesheet
+        on income.ts_code = banancesheet.ts_code
+        and income.f_ann_date = banancesheet.f_ann_date
+        left outer join tushare_stock_cashflow cashflow
+        on income.ts_code = cashflow.ts_code
+        and income.f_ann_date = cashflow.f_ann_date
+        left outer join tushare_stock_fin_indicator indicator 
+        on income.ts_code = indicator.ts_code
+        and income.f_ann_date = indicator.ann_date
+        union
+        select  
+        ifnull(income.ts_code, ifnull(banancesheet.ts_code, cashflow.ts_code)) ts_code, 
+        ifnull(income.f_ann_date, ifnull(banancesheet.f_ann_date, cashflow.f_ann_date)) f_ann_date,
+        ifnull(income.ann_date, ifnull(banancesheet.ann_date, cashflow.ann_date)) ann_date,
+        ifnull(income.end_date, ifnull(banancesheet.end_date, cashflow.end_date)) end_date 
+        {col_names} -- ,income.*, banancesheet.*, cashflow.*, indicator.*
+        from tushare_stock_balancesheet banancesheet
+        left outer join tushare_stock_income income
+        on income.ts_code = banancesheet.ts_code
+        and income.f_ann_date = banancesheet.f_ann_date
+        left outer join tushare_stock_cashflow cashflow
+        on banancesheet.ts_code = cashflow.ts_code
+        and banancesheet.f_ann_date = cashflow.f_ann_date
+        left outer join tushare_stock_fin_indicator indicator 
+        on banancesheet.ts_code = indicator.ts_code
+        and banancesheet.f_ann_date = indicator.ann_date
+        union
+        select  
+        ifnull(income.ts_code, ifnull(banancesheet.ts_code, cashflow.ts_code)) ts_code, 
+        ifnull(income.f_ann_date, ifnull(banancesheet.f_ann_date, cashflow.f_ann_date)) f_ann_date,
+        ifnull(income.ann_date, ifnull(banancesheet.ann_date, cashflow.ann_date)) ann_date,
+        ifnull(income.end_date, ifnull(banancesheet.end_date, cashflow.end_date)) end_date 
+        {col_names} -- ,income.*, banancesheet.*, cashflow.*, indicator.*
+        from tushare_stock_cashflow cashflow
+        left outer join tushare_stock_balancesheet banancesheet
+        on cashflow.ts_code = banancesheet.ts_code
+        and cashflow.f_ann_date = banancesheet.f_ann_date
+        left outer join tushare_stock_income income
+        on cashflow.ts_code = income.ts_code
+        and cashflow.f_ann_date = income.f_ann_date
+        left outer join tushare_stock_fin_indicator indicator 
+        on cashflow.ts_code = indicator.ts_code
+        and cashflow.f_ann_date = indicator.ann_date""".format(col_names=col_names_str)
+    data_df = pd.read_sql(sql_str, engine_md)  # , index_col='ts_code'
+
+    dtype_fin = DTYPE_TUSHARE_STOCK_INCOME
+    return data_df, dtype_fin
+
+
+def get_tushare_daily_merged_df(ths_code_set: set = None, date_from=None) -> (pd.DataFrame, dict):
     """获取tushre合并后的日级别数据"""
-    col_names = [col_name for col_name in itertools.chain(
-        DTYPE_TUSHARE_STOCK_DAILY_BASIC, DTYPE_TUSHARE_STOCK_DAILY_MD, DTYPE_TUSHARE_STOCK_DAILY_ADJ_FACTOR)
-                 if col_name not in ('ts_code', 'trade_date', 'close')]
+    dtype = {key: val for key, val in itertools.chain(
+        DTYPE_TUSHARE_STOCK_DAILY_BASIC.items(),
+        DTYPE_TUSHARE_STOCK_DAILY_MD.items(),
+        DTYPE_TUSHARE_STOCK_DAILY_ADJ_FACTOR.items())}
+    col_names = [col_name for col_name in dtype if col_name not in ('ts_code', 'trade_date', 'close')]
     if len(col_names) == 0:
         col_names_str = ""
     else:
@@ -66,7 +143,12 @@ def get_tushare_daily_merged_df(date_from=None) -> pd.DataFrame:
             ON md.ts_code = adj_factor.ts_code
             AND md.trade_date = adj_factor.trade_date""".format(col_names=col_names_str)
         data_df = pd.read_sql(sql_str, engine_md, params=[date_from, date_from, date_from])
-    return data_df
+        if ths_code_set is not None:
+            data_df = data_df[data_df['ts_code'].apply(lambda x: x in ths_code_set)]
+
+        # 增加停牌标志位
+        data_df, dtype = concat_suspend(data_df, dtype)
+    return data_df, dtype
 
 
 def get_suspend_to_dic():
@@ -93,15 +175,121 @@ def is_suspend(code_date_range_dic, code_trade_date_s):
     return 1 if is_any(data_range_list, lambda date_range: date_range[0] <= date_cur <= date_range[1]) else 0
 
 
-def concat_suspend(data_df):
-    """将停牌日信息 suspend 扩展到 日结级别数据 df 中"""
-    data_df = get_tushare_daily_merged_df()
+def concat_suspend(data_df, dtype_daily: dict):
+    """将停牌日信息 suspend 扩展到 日级别数据 df 中"""
     code_date_range_dic = get_suspend_to_dic()
-    data_df['suspend'] = data_df[['ts_code', 'trade_date']].apply(lambda x: is_suspend(code_date_range_dic, x), axis=1)
-    return data_df
+    data_df['suspend'] = data_df[['ts_code', 'trade_date']].apply(
+        lambda x: is_suspend(code_date_range_dic, x), axis=1)
+    dtype = dtype_daily.copy()
+    dtype['suspend'] = Integer
+    return data_df, dtype
+
+
+def merge_tushare_stock_daily(ths_code_set: set = None, date_from=None):
+    """A股行情数据、财务信息 合并成为到 日级别数据"""
+    table_name = 'tushare_stock_daily'
+    logging.info("合成 %s 开始", table_name)
+    has_table = engine_md.has_table(table_name)
+    if date_from is None and has_table:
+        sql_str = "select adddate(max(`time`),1) from {table_name}".format(table_name=table_name)
+        with with_db_session(engine_md) as session:
+            date_from = date_2_str(session.execute(sql_str).scalar())
+
+    # 获取日级别数据
+    # TODO: 增加 ths_code_set 参数
+    daily_df, dtype_daily = get_tushare_daily_merged_df(ths_code_set, date_from)
+
+    daily_df_g = daily_df.groupby('ts_code')
+    ths_code_set_4_daily = set(daily_df_g.size().index)
+
+    # 获取合并后的财务数据
+    ifind_fin_df, dtype_fin = get_tushre_merge_stock_fin_df()
+
+    # 整理 dtype
+    dtype = dtype_daily.copy()
+    dtype.update(dtype_fin)
+    logging.debug("提取财务数据完成")
+    # 计算 财报披露时间
+    report_date_dic_dic = {}
+    for num, ((ths_code, report_date), data_df) in enumerate(
+            ifind_fin_df.groupby(['ts_code', 'f_ann_date']), start=1):
+        if ths_code_set is not None and ths_code not in ths_code_set:
+            continue
+        if is_nan_or_none(report_date):
+            continue
+        report_date_dic = report_date_dic_dic.setdefault(ths_code, {})
+        if report_date not in report_date_dic_dic:
+            if data_df.shape[0] > 0:
+                report_date_dic[report_date] = data_df.iloc[0]
+
+    logger.debug("计算财报日期完成")
+    # 整理 data_df 数据
+    tot_data_count, data_count, data_df_list, for_count = 0, 0, [], len(report_date_dic_dic)
+    try:
+        for num, (ths_code, report_date_dic) in enumerate(report_date_dic_dic.items(), start=1):  # key:ths_code
+            # TODO: 檢查判斷 ths_code 是否存在在ifind_fin_df_g 裏面,,size暫時使用  以後在驚醒改進
+            if ths_code not in ths_code_set_4_daily:
+                logger.error('fin 表中不存在 %s 的財務數據', ths_code)
+                continue
+
+            daily_df_cur_ts_code = daily_df_g.get_group(ths_code)
+            logger.debug('%d/%d) 处理 %s %d 条数据', num, for_count, ths_code, daily_df_cur_ts_code.shape[0])
+            report_date_list = list(report_date_dic.keys())
+            report_date_list.sort()
+            report_date_list_len = len(report_date_list)
+            for num_sub, (report_date_from, report_date_to) in enumerate(generate_range(report_date_list)):
+                logger.debug('%d/%d) %d/%d) 处理 %s [%s - %s]',
+                             num, for_count, num_sub, report_date_list_len,
+                             ths_code, date_2_str(report_date_from), date_2_str(report_date_to))
+                # 计算有效的日期范围
+                if report_date_from is None:
+                    is_fit = daily_df_cur_ts_code['trade_date'] < report_date_to
+                elif report_date_to is None:
+                    is_fit = daily_df_cur_ts_code['trade_date'] >= report_date_from
+                else:
+                    is_fit = (daily_df_cur_ts_code['trade_date'] < report_date_to) & (
+                            daily_df_cur_ts_code['trade_date'] >= report_date_from)
+                # 获取日期范围内的数据
+                ifind_his_ds_df_segment = daily_df_cur_ts_code[is_fit].copy()
+                segment_count = ifind_his_ds_df_segment.shape[0]
+                if segment_count == 0:
+                    continue
+                fin_s = report_date_dic[report_date_from] if report_date_from is not None else None
+                for key in dtype_fin.keys():
+                    if key in ('ts_code', 'trade_date'):
+                        continue
+                    ifind_his_ds_df_segment[key] = fin_s[key] if fin_s is not None and key in fin_s else None
+
+                ifind_his_ds_df_segment['report_date'] = report_date_from
+                # 添加数据到列表
+                data_df_list.append(ifind_his_ds_df_segment)
+                data_count += segment_count
+
+            if DEBUG and len(data_df_list) > 1:
+                break
+
+            # 保存数据库
+            if data_count > 10000:
+                # 保存到数据库
+                data_df = pd.concat(data_df_list)
+                data_count = bunch_insert_on_duplicate_update(data_df, table_name, engine_md, dtype)
+                tot_data_count += data_count
+                data_count, data_df_list = 0, []
+
+    finally:
+        # 保存到数据库
+        if len(data_df_list) > 0:
+            data_df = pd.concat(data_df_list)
+            data_count = bunch_insert_on_duplicate_update(data_df, table_name, engine_md, dtype)
+            tot_data_count += data_count
+
+        logger.info('%s 新增或更新记录 %d 条', table_name, tot_data_count)
+        if not has_table and engine_md.has_table(table_name):
+            alter_table_2_myisam(engine_md, [table_name])
+            build_primary_key([table_name])
 
 
 if __name__ == "__main__":
-    data_df = get_tushare_daily_merged_df()
-    data_df = concat_suspend(data_df)
-
+    # data_df, dtype_daily = get_tushare_daily_merged_df()
+    # data_df, dtype_daily = concat_suspend(data_df, dtype_daily)
+    merge_tushare_stock_daily(ths_code_set=None, date_from=None)
