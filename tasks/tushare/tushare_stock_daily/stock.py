@@ -44,7 +44,7 @@ DTYPE_TUSHARE_STOCK_DAILY_MD['ts_code'] = String(20)
 DTYPE_TUSHARE_STOCK_DAILY_MD['trade_date'] = Date
 
 
-@try_n_times(times=5, sleep_time=0, exception_sleep_time=60)
+@try_n_times(times=5, sleep_time=0, logger=logger,exception_sleep_time=60)
 def invoke_daily(ts_code, start_date, end_date):
     invoke_daily = pro.daily(ts_code=ts_code, start_date=start_date, end_date=end_date)
     return invoke_daily
@@ -195,7 +195,7 @@ def import_tushare_stock_daily(chain_param=None,ts_code_set=None):
                 data_df_list.append(data_df)
 
             # 大于阀值有开始插入
-            if data_count >= 1000:
+            if data_count >= 500:
                 data_df_all = pd.concat(data_df_list)
                 bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md,DTYPE_TUSHARE_STOCK_DAILY_MD)
                 all_data_count += data_count
@@ -213,8 +213,8 @@ def import_tushare_stock_daily(chain_param=None,ts_code_set=None):
             #     break
     finally:
         # 导入数据库
-        if len(data_df) > 0:
-            data_df_all = data_df
+        if len(data_df_list) > 0:
+            data_df_all = pd.concat(data_df_list)
             data_count = bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md, DTYPE_TUSHARE_STOCK_DAILY_MD)
             logging.info("更新 %s 结束 %d 条信息被更新", table_name, all_data_count)
             if not has_table and engine_md.has_table(table_name):

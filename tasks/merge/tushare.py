@@ -154,7 +154,7 @@ def merge_tushare_daily(ths_code_set: set = None, date_from=None):
                 break
 
             # 保存数据库
-            if data_count > 10000:
+            if data_count > 1000:
                 # 保存到数据库
                 data_df = pd.concat(data_df_list)
                 data_count = bunch_insert_on_duplicate_update(data_df, table_name, engine_md, dtype)
