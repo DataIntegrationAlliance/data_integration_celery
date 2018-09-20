@@ -142,7 +142,7 @@ def import_tushare_stock_index_daily(chain_param=None, ts_code_set=None):
                 break
 
             # 大于阀值有开始插入
-            if data_count >= 1000:
+            if data_count >= 500:
                 data_df_all = pd.concat(data_df_list)
                 bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md,
                                                  DTYPE_TUSHARE_STOCK_INDEX_DAILY_MD)
@@ -169,7 +169,7 @@ def import_tushare_stock_index_daily(chain_param=None, ts_code_set=None):
 
 
 if __name__ == "__main__":
-    DEBUG = True
+    # DEBUG = True
     # import_tushare_stock_info(refresh=False)
     # 更新每日股票数据
     # SQL = """SELECT ts_code FROM tushare_stock_info where ts_code>'603033.SH'"""
