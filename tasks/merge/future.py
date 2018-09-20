@@ -129,10 +129,10 @@ def merge_future_daily(date_from=None):
         'unique_code': (String(20), prefer_left, {'left_key': 'ths_code', 'right_key': 'wind_code'}),
         'trade_date': (Date, prefer_left, {'left_key': 'time', 'right_key': 'trade_date'}),
         'open': (DOUBLE, mean_value, {
-            'left_key': 'open_x', 'right_key': 'open_x',
+            'left_key': 'open_x', 'right_key': 'open_y',
             'warning_accuracy': 0.01, 'primary_keys': ('ths_code', 'time')}),
         'high': (DOUBLE, mean_value, {
-            'left_key': 'high_x', 'right_key': 'high_x',
+            'left_key': 'high_x', 'right_key': 'high_y',
             'warning_accuracy': 0.01, 'primary_keys': ('ths_code', 'time')}),
         'low': (DOUBLE, mean_value, {
             'left_key': 'low_x', 'right_key': 'low_y',
