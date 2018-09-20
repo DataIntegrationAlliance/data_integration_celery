@@ -11,7 +11,7 @@ from tasks import app
 from tasks.backend.orm import build_primary_key
 from datetime import datetime, date, timedelta
 from sqlalchemy.types import String, Date, Float
-from pandas.tslib import Timestamp
+from pandas import Timestamp
 from sqlalchemy.dialects.mysql import DOUBLE, TEXT
 from tasks.utils.db_utils import with_db_session, bunch_insert_on_duplicate_update, alter_table_2_myisam
 from tasks.wind import invoker
