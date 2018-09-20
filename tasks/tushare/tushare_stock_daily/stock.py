@@ -165,20 +165,20 @@ def import_tushare_stock_daily(chain_param=None,ts_code_set=None):
     try:
         for num, (ts_code, (date_from, date_to)) in enumerate(code_date_range_dic.items(), start=1):
             logger.debug('%d/%d) %s [%s - %s]', num, data_len, ts_code, date_from, date_to)
-            df = pro.daily(ts_code=ts_code, start_date=datetime_2_str(date_from, STR_FORMAT_DATE_TS),
+            data_df = invoke_daily(ts_code=ts_code, start_date=datetime_2_str(date_from, STR_FORMAT_DATE_TS),
                            end_date=datetime_2_str(date_to, STR_FORMAT_DATE_TS))
-            data_df = df
+            # data_df = df
             if len(data_df) > 0:
-                while try_2_date(df['trade_date'].iloc[-1]) > date_from:
-                    last_date_in_df_last, last_date_in_df_cur = try_2_date(df['trade_date'].iloc[-1]), None
-                    df2 = pro.daily(ts_code=ts_code, start_date=datetime_2_str(date_from, STR_FORMAT_DATE_TS),
-                                    end_date=datetime_2_str(try_2_date(df['trade_date'].iloc[-1]) - timedelta(days=1),
+                while try_2_date(data_df['trade_date'].iloc[-1]) > date_from:
+                    last_date_in_df_last, last_date_in_df_cur = try_2_date(data_df['trade_date'].iloc[-1]), None
+                    df2 = invoke_daily(ts_code=ts_code, start_date=datetime_2_str(date_from, STR_FORMAT_DATE_TS),
+                                    end_date=datetime_2_str(try_2_date(data_df['trade_date'].iloc[-1]) - timedelta(days=1),
                                                             STR_FORMAT_DATE_TS))
                     if len(df2 > 0):
                         last_date_in_df_cur = try_2_date(df2['trade_date'].iloc[-1])
                         if last_date_in_df_cur < last_date_in_df_last:
                             data_df = pd.concat([data_df, df2])
-                            df = df2
+                            # df = df2
                         elif last_date_in_df_cur == last_date_in_df_last:
                             break
                         if data_df is None:
