@@ -15,7 +15,7 @@ from sqlalchemy.dialects.mysql import DOUBLE
 from tasks.backend import engine_md
 from tasks.merge.code_mapping import update_from_info_table
 from tasks.utils.db_utils import with_db_session
-from tasks.tushare import pro
+from tasks.tushare.ts_pro_api import pro
 
 DEBUG = False
 logger = logging.getLogger()
