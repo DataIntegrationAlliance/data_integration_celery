@@ -197,9 +197,7 @@ def import_tushare_stock_daily(chain_param=None,ts_code_set=None):
             # 大于阀值有开始插入
             if data_count >= 500:
                 data_df_all = pd.concat(data_df_list)
-                # tot_data_df.to_sql(table_name, engine_md, if_exists='append', index=False, dtype=dtype)
-                bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md,
-                                                 DTYPE_TUSHARE_STOCK_DAILY_MD)
+                bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md,DTYPE_TUSHARE_STOCK_DAILY_MD)
                 all_data_count += data_count
                 data_df_list, data_count = [], 0
 
