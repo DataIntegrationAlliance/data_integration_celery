@@ -76,6 +76,27 @@ def build_commodity_info():
         ["S5006008", "p_price_zjg", "张家港24度棕榈油价格", "2009-01-04", None, '现货价'],
         ["S5006009", "p_price_tj", "天津24度棕榈油价格", "2009-01-04", None, '现货价'],
         ["S5006009", "p_price_rz", "日照24度棕榈油价格", "2009-01-04", None, '现货价'],
+
+        #原油价格
+        ["S0031526", "opec_package_oil_price", "opec一揽子原油价格", "1990-12-31", None, '美元/桶'],
+        ["S5111905", "brent_oil_price", "英国布伦特原油价格", "2001-12-26", None, '美元/桶'],
+        ["S0031528", "Shengli_ring_pacific_oil_price", "中国胜利环太平洋原油价格", "2001-12-26", None, '美元/桶'],
+        ["S0031529", "Daqing_ring_pacific_oil_price", "中国大庆环太平洋原油价格", "2001-12-26", None, '美元/桶'],
+        ["S0031530", "Dubai_pacific_rim_oil_price", "阿联酋迪拜环太平洋原油价格", "2001-12-25", None, '美元/桶'],
+        ["S0031532", "Malaysia_pacific_rim_tapes_oil_price", "马来西亚塔皮斯环太平洋原油价格", "2001-12-25", None, '美元/桶'],
+        ["S0031533", "Indonesia_minas_pacific_rim_oil_price", "印尼米纳斯环太平洋原油价格", "2001-12-25", None, '美元/桶'],
+        ["S0031534", "Indonesia_sinta_pacific_rim_oil_price", "印尼辛塔环太平洋原油价格", "2001-12-27", None, '美元/桶'],
+        ["S0031535", "Indonesia_aldouri_pacific_rim_oil_price", "印尼杜里环太平洋原油价格", "2001-12-26", None, '美元/桶'],
+        ["S5111903", "WTI_light_oil_price", "美国西德克萨斯中级轻质原油价格", "2002-11-25", None, '美元/桶'],
+        ["S5111904", "Oman_rim_pacific_oil_price", "阿曼环太平洋原油价格", "2001-12-26", None, '美元/桶'],
+        ["S5111925", "WTI_cushing_light_oil_fob_price", "西德克萨斯中级轻质原油库欣FOB价格", "1986-01-02", None, '美元/桶'],
+        ["S5111926", "brent_oil_europe_fob_price", "英国布伦特FOB欧洲原油价格", "1987-05-20", None, '美元/桶'],
+        ["S5104915", "brent_oil_north_sea_fob_price", "英国布伦特北海离岸原油价格", "1997-01-03", None, '美元/桶'],
+        ["S5104912", "Louisiana_low_sulphur_St_James_delivery_price", "路易斯安那低硫圣詹姆斯交割价格", "1997-01-03", None, '美元/桶'],
+        ["S5111925", "WTI_cushing_light_oil_delivery_price", "西德克萨斯中级轻质原油库欣交割价格", "1997-01-03", None, '美元/桶'],
+        ["S5104914", "Dubai_middle_east_fob_price", "迪拜中东离岸价格", "2008-12-19", None, '美元/桶'],
+        ["S5110987", "Kuwait_Energy_Corp_oil_price", "科威特能源公司原油价格", "2001-12-26", None, '美元/桶'],
+
         # 螺纹钢
         ["S5707798", "rb_price_nation", "全国螺纹钢均价", "2008-12-23", None, 'HRB400 20mm'],
         ["S0033213", "rb_price_bj", "北京螺纹钢均价", "2007-01-08", None, 'HRB400 20mm'],
@@ -94,6 +115,15 @@ def build_commodity_info():
         ["S0143491", "square_billet_js", "江苏方坯价格", "2007-01-31", None, '单位：元/吨'],
         ["S0143494", "square_billet_sx", "山西方坯价格", "2007-01-31", None, '单位：元/吨'],
         ["S0143504", "square_billet_MnSi_ts", "唐山MnSi方坯价格", "2007-01-31", None, '单位：元/吨,20MnSi'],
+        # 螺纹钢库存
+        ["S0181750", "rb_inventory", "螺纹钢库存", "2010-05-21", None, '含上海全部仓库，单位：万吨'],
+        ["S0110142", "wire_inventory", "线材库存", "2006-03-17", None, '单位：万吨'],
+        ["S0110143", "hc_inventory", "热卷库存", "2006-03-17", None, '单位：万吨'],
+        ["S0110144", "steel_plate_inventory", "中板库存", "2006-03-17", None, '单位：万吨'],
+        ["S0110145", "cold_rolled_inventory", "冷轧库存", "2006-03-17", None, '单位：万吨'],
+        ["S5708249", "key_steelworks_inventory", "重点钢厂库存", "2009-05-31", None, '单位：万吨'],
+        # 上海线螺采购量
+        ["S5704503", "line_rb_purchase", "上海线螺采购量", "2004-10-17", None, '单位：吨'],
 
         # 货币供应
         ["M0001380", "M0", "M0", "1990-12-31", None, '中国人民银行，单位：亿元'],
@@ -280,16 +310,7 @@ def build_commodity_info():
         ["M1004969", "yield_on_cn_treasury_bonds_20y", "二十年期中国国债收益率", "2011-01-07", None, '中国货币网'],
         ["M1004970", "yield_on_cn_treasury_bonds_30y", "三十年期中国国债收益率", "2011-01-07", None, '中国货币网'],
 
-        # 螺纹钢库存
-        ["S0181750", "rb_inventory", "螺纹钢库存", "2010-05-21", None, '含上海全部仓库，单位：万吨'],
-        ["S0110142", "wire_inventory", "线材库存", "2006-03-17", None, '单位：万吨'],
-        ["S0110143", "hc_inventory", "热卷库存", "2006-03-17", None, '单位：万吨'],
-        ["S0110144", "steel_plate_inventory", "中板库存", "2006-03-17", None, '单位：万吨'],
-        ["S0110145", "cold_rolled_inventory", "冷轧库存", "2006-03-17", None, '单位：万吨'],
-        ["S5708249", "key_steelworks_inventory", "重点钢厂库存", "2009-05-31", None, '单位：万吨'],
 
-        # 上海线螺采购量
-        ["S5704503", "line_rb_purchase", "上海线螺采购量", "2004-10-17", None, '单位：吨'],
 
         # 六大电厂库存及日耗
         ["S5116614", "six_power_consumption", "六大电厂日均耗煤量", "2009-10-01", None, '单位：万吨'],
