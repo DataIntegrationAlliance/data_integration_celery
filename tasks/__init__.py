@@ -8,7 +8,7 @@
 @desc    : 
 """
 from celery import Celery, group
-from tasks.config import celery_config
+from tasks.config import celery_config, config
 import logging
 
 logger = logging.getLogger()
@@ -71,8 +71,16 @@ except ImportError:
     logger.exception("加载 tasks.cmc 失败，该异常不影响其他功能正常使用")
 
 try:
-    from tasks.tushare import *
+    import tushare as ts
+    logger.info('设置tushare token')
+    ts.set_token(config.TUSHARE_TOKEN)
+except AttributeError:
+    logger.exception("加载 tushare token 设置失败，该异常不影响其他功能正常使用")
+
+try:
+    from tasks.tushare import tushare_daily_task, tushare_weekly_task, tushare_import_once
 except ImportError:
+    tushare_daily_task, tushare_weekly_task, tushare_import_once = None, None, None
     logger.exception("加载 tasks.tushare 失败，该异常不影响其他功能正常使用")
 
 

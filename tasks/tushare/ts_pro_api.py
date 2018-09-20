@@ -13,7 +13,7 @@ from tasks.config import config
 
 logger = logging.getLogger()
 try:
-    pro = ts.pro_api(token=config.TUSHARE_TOKEN)
-except AttributeError:
+    pro = ts.pro_api()
+except Exception:
     logger.exception('獲取pro_api失敗,但是不影響合並')
     pro = None
