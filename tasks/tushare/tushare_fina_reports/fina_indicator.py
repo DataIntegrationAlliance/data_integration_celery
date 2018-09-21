@@ -347,7 +347,7 @@ if __name__ == "__main__":
 
 
 # 下面代码是生成fields和par的
-# sub=pd.read_excel('tasks/tushare/fina_indicator.xlsx',header=0)[['code','types']]
+# sub=pd.read_excel('tasks/tushare/tushare_fina_reports/fina_indicator.xlsx',header=0)[['code','types']]
 # for a, b in [tuple(x) for x in sub.values]:
-#     print("('%s', %s)," % (a, b))
+#     # print("('%s', %s)," % (a, b))
 #     print("'%s'," % (a))
