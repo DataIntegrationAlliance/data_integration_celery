@@ -16,10 +16,13 @@ from tasks.backend import engine_md
 from tasks.merge import generate_range
 from tasks.utils.db_utils import with_db_session, bunch_insert_on_duplicate_update, alter_table_2_myisam
 from tasks.utils.fh_utils import is_any, is_nan_or_none, date_2_str
-from tasks.tushare.tushare_fina_reports.income import DTYPE_TUSHARE_STOCK_INCOME
 from tasks.tushare.tushare_stock_daily.adj_factor import DTYPE_TUSHARE_STOCK_DAILY_ADJ_FACTOR
 from tasks.tushare.tushare_stock_daily.daily_basic import DTYPE_TUSHARE_STOCK_DAILY_BASIC
 from tasks.tushare.tushare_stock_daily.stock import DTYPE_TUSHARE_STOCK_DAILY_MD
+from tasks.tushare.tushare_fina_reports.balancesheet import DTYPE_TUSHARE_STOCK_BALABCESHEET
+from tasks.tushare.tushare_fina_reports.income import DTYPE_TUSHARE_STOCK_INCOME
+from tasks.tushare.tushare_fina_reports.cashflow import DTYPE_TUSHARE_CASHFLOW
+from tasks.tushare.tushare_fina_reports.fina_indicator import DTYPE_STOCK_FINA_INDICATOR
 import logging
 
 logger = logging.getLogger()
@@ -28,9 +31,11 @@ DEBUG = False
 
 def get_tushre_merge_stock_fin_df() -> (pd.DataFrame, dict):
     dtype = {key: val for key, val in itertools.chain(
-        DTYPE_TUSHARE_STOCK_DAILY_BASIC.items(),
-        DTYPE_TUSHARE_STOCK_DAILY_MD.items(),
-        DTYPE_TUSHARE_STOCK_DAILY_ADJ_FACTOR.items())}
+        DTYPE_TUSHARE_STOCK_BALABCESHEET.items(),
+        DTYPE_TUSHARE_STOCK_INCOME.items(),
+        DTYPE_TUSHARE_CASHFLOW.items(),
+        DTYPE_STOCK_FINA_INDICATOR.items(),
+    )}
     col_names = [col_name for col_name in dtype if col_name not in ('ts_code', 'f_ann_date', 'ann_date', 'end_date')]
     if len(col_names) == 0:
         col_names_str = ""
