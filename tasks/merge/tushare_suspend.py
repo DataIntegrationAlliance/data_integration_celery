@@ -36,66 +36,96 @@ def get_tushre_merge_stock_fin_df() -> (pd.DataFrame, dict):
         DTYPE_TUSHARE_CASHFLOW.items(),
         DTYPE_STOCK_FINA_INDICATOR.items(),
     )}
-    col_names = [col_name for col_name in dtype if col_name not in ('ts_code', 'f_ann_date', 'ann_date', 'end_date')]
+    # ('ts_code', 'f_ann_date', 'ann_date', 'end_date', 'report_type', 'comp_type', 'ebit', 'ebitda')
+    duplicate_col_name_set = \
+        (set(DTYPE_TUSHARE_STOCK_BALABCESHEET.keys()) & (set(DTYPE_TUSHARE_STOCK_INCOME.keys()))) | \
+        (set(DTYPE_TUSHARE_CASHFLOW.keys()) & (set(DTYPE_TUSHARE_STOCK_INCOME.keys()))) | \
+        (set(DTYPE_TUSHARE_STOCK_BALABCESHEET.keys()) & (set(DTYPE_TUSHARE_CASHFLOW.keys()))) | \
+        (set(DTYPE_STOCK_FINA_INDICATOR.keys()) & (set(DTYPE_TUSHARE_STOCK_BALABCESHEET.keys()))) | \
+        (set(DTYPE_STOCK_FINA_INDICATOR.keys()) & (set(DTYPE_TUSHARE_CASHFLOW.keys()))) | \
+        (set(DTYPE_STOCK_FINA_INDICATOR.keys()) & (set(DTYPE_TUSHARE_STOCK_INCOME.keys())))
+    gap_col_name_set = duplicate_col_name_set - {
+        'ts_code', 'f_ann_date', 'ann_date', 'end_date', 'report_type', 'comp_type', 'ebit', 'ebitda'}
+    if len(gap_col_name_set) > 0:
+        logger.error("存在重复列 %s 将在查询列表中剔除", gap_col_name_set)
+
+    col_names = [col_name for col_name in dtype if col_name not in duplicate_col_name_set]
     if len(col_names) == 0:
         col_names_str = ""
     else:
         col_names_str = ",\n  `" + "`, `".join(col_names) + "`"
 
     sql_str = """select 
-        ifnull(income.ts_code, ifnull(banancesheet.ts_code, cashflow.ts_code)) ts_code, 
-        ifnull(income.f_ann_date, ifnull(banancesheet.f_ann_date, cashflow.f_ann_date)) f_ann_date,
-        ifnull(income.ann_date, ifnull(banancesheet.ann_date, cashflow.ann_date)) ann_date,
-        ifnull(income.end_date, ifnull(banancesheet.end_date, cashflow.end_date)) end_date 
-        {col_names} -- ,income.*, banancesheet.*, cashflow.*, indicator.*
-        from tushare_stock_income income
-        left outer join tushare_stock_balancesheet banancesheet
-        on income.ts_code = banancesheet.ts_code
-        and income.f_ann_date = banancesheet.f_ann_date
-        left outer join tushare_stock_cashflow cashflow
-        on income.ts_code = cashflow.ts_code
-        and income.f_ann_date = cashflow.f_ann_date
-        left outer join tushare_stock_fin_indicator indicator 
-        on income.ts_code = indicator.ts_code
-        and income.f_ann_date = indicator.ann_date
-        union
-        select  
-        ifnull(income.ts_code, ifnull(banancesheet.ts_code, cashflow.ts_code)) ts_code, 
-        ifnull(income.f_ann_date, ifnull(banancesheet.f_ann_date, cashflow.f_ann_date)) f_ann_date,
-        ifnull(income.ann_date, ifnull(banancesheet.ann_date, cashflow.ann_date)) ann_date,
-        ifnull(income.end_date, ifnull(banancesheet.end_date, cashflow.end_date)) end_date 
-        {col_names} -- ,income.*, banancesheet.*, cashflow.*, indicator.*
-        from tushare_stock_balancesheet banancesheet
-        left outer join tushare_stock_income income
-        on income.ts_code = banancesheet.ts_code
-        and income.f_ann_date = banancesheet.f_ann_date
-        left outer join tushare_stock_cashflow cashflow
-        on banancesheet.ts_code = cashflow.ts_code
-        and banancesheet.f_ann_date = cashflow.f_ann_date
-        left outer join tushare_stock_fin_indicator indicator 
-        on banancesheet.ts_code = indicator.ts_code
-        and banancesheet.f_ann_date = indicator.ann_date
-        union
-        select  
-        ifnull(income.ts_code, ifnull(banancesheet.ts_code, cashflow.ts_code)) ts_code, 
-        ifnull(income.f_ann_date, ifnull(banancesheet.f_ann_date, cashflow.f_ann_date)) f_ann_date,
-        ifnull(income.ann_date, ifnull(banancesheet.ann_date, cashflow.ann_date)) ann_date,
-        ifnull(income.end_date, ifnull(banancesheet.end_date, cashflow.end_date)) end_date 
-        {col_names} -- ,income.*, banancesheet.*, cashflow.*, indicator.*
-        from tushare_stock_cashflow cashflow
-        left outer join tushare_stock_balancesheet banancesheet
-        on cashflow.ts_code = banancesheet.ts_code
-        and cashflow.f_ann_date = banancesheet.f_ann_date
-        left outer join tushare_stock_income income
-        on cashflow.ts_code = income.ts_code
-        and cashflow.f_ann_date = income.f_ann_date
-        left outer join tushare_stock_fin_indicator indicator 
-        on cashflow.ts_code = indicator.ts_code
-        and cashflow.f_ann_date = indicator.ann_date""".format(col_names=col_names_str)
+            ifnull(income.ts_code, ifnull(balancesheet.ts_code, cashflow.ts_code)) ts_code, 
+            ifnull(income.f_ann_date, ifnull(balancesheet.f_ann_date, cashflow.f_ann_date)) f_ann_date,
+            ifnull(income.ann_date, ifnull(balancesheet.ann_date, cashflow.ann_date)) ann_date,
+            ifnull(income.end_date, ifnull(balancesheet.end_date, cashflow.end_date)) end_date,
+            income.report_type report_type_income, 
+            cashflow.report_type report_type_cashflow, 
+            balancesheet.report_type report_type_balancesheet, 
+            ifnull(income.comp_type, ifnull(balancesheet.comp_type, cashflow.comp_type)) comp_type,
+            ifnull(income.ebitda, indicator.ebitda) ebitda,
+            ifnull(income.ebit, indicator.ebit) ebit
+            {col_names}
+            from tushare_stock_income income
+            left outer join tushare_stock_balancesheet balancesheet
+            on income.ts_code = balancesheet.ts_code
+            and income.f_ann_date = balancesheet.f_ann_date
+            left outer join tushare_stock_cashflow cashflow
+            on income.ts_code = cashflow.ts_code
+            and income.f_ann_date = cashflow.f_ann_date
+            left outer join tushare_stock_fin_indicator indicator 
+            on income.ts_code = indicator.ts_code
+            and income.f_ann_date = indicator.ann_date
+            union
+            select  
+            ifnull(income.ts_code, ifnull(balancesheet.ts_code, cashflow.ts_code)) ts_code, 
+            ifnull(income.f_ann_date, ifnull(balancesheet.f_ann_date, cashflow.f_ann_date)) f_ann_date,
+            ifnull(income.ann_date, ifnull(balancesheet.ann_date, cashflow.ann_date)) ann_date,
+            ifnull(income.end_date, ifnull(balancesheet.end_date, cashflow.end_date)) end_date,
+            income.report_type report_type_income, 
+            cashflow.report_type report_type_cashflow, 
+            balancesheet.report_type report_type_balancesheet, 
+            ifnull(income.comp_type, ifnull(balancesheet.comp_type, cashflow.comp_type)) comp_type,
+            ifnull(income.ebitda, indicator.ebitda) ebitda,
+            ifnull(income.ebit, indicator.ebit) ebit
+            {col_names}
+            from tushare_stock_balancesheet balancesheet
+            left outer join tushare_stock_income income
+            on income.ts_code = balancesheet.ts_code
+            and income.f_ann_date = balancesheet.f_ann_date
+            left outer join tushare_stock_cashflow cashflow
+            on balancesheet.ts_code = cashflow.ts_code
+            and balancesheet.f_ann_date = cashflow.f_ann_date
+            left outer join tushare_stock_fin_indicator indicator 
+            on balancesheet.ts_code = indicator.ts_code
+            and balancesheet.f_ann_date = indicator.ann_date
+            union
+            select  
+            ifnull(income.ts_code, ifnull(balancesheet.ts_code, cashflow.ts_code)) ts_code, 
+            ifnull(income.f_ann_date, ifnull(balancesheet.f_ann_date, cashflow.f_ann_date)) f_ann_date,
+            ifnull(income.ann_date, ifnull(balancesheet.ann_date, cashflow.ann_date)) ann_date,
+            ifnull(income.end_date, ifnull(balancesheet.end_date, cashflow.end_date)) end_date,
+            income.report_type report_type_income, 
+            cashflow.report_type report_type_cashflow, 
+            balancesheet.report_type report_type_balancesheet, 
+            ifnull(income.comp_type, ifnull(balancesheet.comp_type, cashflow.comp_type)) comp_type,
+            ifnull(income.ebitda, indicator.ebitda) ebitda,
+            ifnull(income.ebit, indicator.ebit) ebit
+            {col_names}
+            from tushare_stock_cashflow cashflow
+            left outer join tushare_stock_balancesheet balancesheet
+            on cashflow.ts_code = balancesheet.ts_code
+            and cashflow.f_ann_date = balancesheet.f_ann_date
+            left outer join tushare_stock_income income
+            on cashflow.ts_code = income.ts_code
+            and cashflow.f_ann_date = income.f_ann_date
+            left outer join tushare_stock_fin_indicator indicator 
+            on cashflow.ts_code = indicator.ts_code
+            and cashflow.f_ann_date = indicator.ann_date""".format(col_names=col_names_str)
     data_df = pd.read_sql(sql_str, engine_md)  # , index_col='ts_code'
 
-    dtype_fin = DTYPE_TUSHARE_STOCK_INCOME
-    return data_df, dtype_fin
+    return data_df, dtype
 
 
 def get_tushare_daily_merged_df(ths_code_set: set = None, date_from=None) -> (pd.DataFrame, dict):
@@ -295,6 +325,7 @@ def merge_tushare_stock_daily(ths_code_set: set = None, date_from=None):
 
 
 if __name__ == "__main__":
+    # DEBUG = True
     # data_df, dtype_daily = get_tushare_daily_merged_df()
     # data_df, dtype_daily = concat_suspend(data_df, dtype_daily)
     merge_tushare_stock_daily(ths_code_set=None, date_from=None)
