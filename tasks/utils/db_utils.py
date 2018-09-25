@@ -148,7 +148,7 @@ def add_col_2_table(engine, table_name, col_name, col_type_str):
         logger.info('%s 添加 %s [%s] 列成功', table_name, col_name, col_type_str)
 
 
-def bunch_insert_on_duplicate_update(df: pd.DataFrame, table_name, engine, dtype=None, ignore_none=True):
+def bunch_insert_on_duplicate_update(df: pd.DataFrame, table_name, engine, dtype=None, ignore_none=True, myisam_if_create_table=False):
     """
     将 DataFrame 数据批量插入数据库，ON DUPLICATE KEY UPDATE
     :param df:
@@ -187,6 +187,9 @@ def bunch_insert_on_duplicate_update(df: pd.DataFrame, table_name, engine, dtype
     else:
         df.to_sql(table_name, engine, if_exists='append', index=False, dtype=dtype)
         insert_count = df.shape[0]
+        logger.info('修改 %s 表引擎为 MyISAM', table_name)
+        sql_str = "ALTER TABLE %s ENGINE = MyISAM" % table_name
+        execute_sql(engine, sql_str, commit=True)
 
     logger.debug('%s 新增数据 (%d, %d)', table_name, insert_count, df.shape[1])
     return insert_count
