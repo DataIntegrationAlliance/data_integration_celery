@@ -44,7 +44,7 @@ DTYPE_TUSHARE_STOCK_DAILY_MD['ts_code'] = String(20)
 DTYPE_TUSHARE_STOCK_DAILY_MD['trade_date'] = Date
 
 
-@try_n_times(times=5, sleep_time=0, exception_sleep_time=60)
+@try_n_times(times=5, sleep_time=0, logger=logger,exception_sleep_time=60)
 def invoke_daily(ts_code, start_date, end_date):
     invoke_daily = pro.daily(ts_code=ts_code, start_date=start_date, end_date=end_date)
     return invoke_daily
@@ -165,20 +165,20 @@ def import_tushare_stock_daily(chain_param=None,ts_code_set=None):
     try:
         for num, (ts_code, (date_from, date_to)) in enumerate(code_date_range_dic.items(), start=1):
             logger.debug('%d/%d) %s [%s - %s]', num, data_len, ts_code, date_from, date_to)
-            df = pro.daily(ts_code=ts_code, start_date=datetime_2_str(date_from, STR_FORMAT_DATE_TS),
+            data_df = invoke_daily(ts_code=ts_code, start_date=datetime_2_str(date_from, STR_FORMAT_DATE_TS),
                            end_date=datetime_2_str(date_to, STR_FORMAT_DATE_TS))
-            data_df = df
+            # data_df = df
             if len(data_df) > 0:
-                while try_2_date(df['trade_date'].iloc[-1]) > date_from:
-                    last_date_in_df_last, last_date_in_df_cur = try_2_date(df['trade_date'].iloc[-1]), None
-                    df2 = pro.daily(ts_code=ts_code, start_date=datetime_2_str(date_from, STR_FORMAT_DATE_TS),
-                                    end_date=datetime_2_str(try_2_date(df['trade_date'].iloc[-1]) - timedelta(days=1),
+                while try_2_date(data_df['trade_date'].iloc[-1]) > date_from:
+                    last_date_in_df_last, last_date_in_df_cur = try_2_date(data_df['trade_date'].iloc[-1]), None
+                    df2 = invoke_daily(ts_code=ts_code, start_date=datetime_2_str(date_from, STR_FORMAT_DATE_TS),
+                                    end_date=datetime_2_str(try_2_date(data_df['trade_date'].iloc[-1]) - timedelta(days=1),
                                                             STR_FORMAT_DATE_TS))
                     if len(df2 > 0):
                         last_date_in_df_cur = try_2_date(df2['trade_date'].iloc[-1])
                         if last_date_in_df_cur < last_date_in_df_last:
                             data_df = pd.concat([data_df, df2])
-                            df = df2
+                            # df = df2
                         elif last_date_in_df_cur == last_date_in_df_last:
                             break
                         if data_df is None:
@@ -197,9 +197,7 @@ def import_tushare_stock_daily(chain_param=None,ts_code_set=None):
             # 大于阀值有开始插入
             if data_count >= 500:
                 data_df_all = pd.concat(data_df_list)
-                # tot_data_df.to_sql(table_name, engine_md, if_exists='append', index=False, dtype=dtype)
-                bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md,
-                                                 DTYPE_TUSHARE_STOCK_DAILY_MD)
+                bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md,DTYPE_TUSHARE_STOCK_DAILY_MD)
                 all_data_count += data_count
                 data_df_list, data_count = [], 0
 
@@ -215,8 +213,8 @@ def import_tushare_stock_daily(chain_param=None,ts_code_set=None):
             #     break
     finally:
         # 导入数据库
-        if len(data_df) > 0:
-            data_df_all = data_df
+        if len(data_df_list) > 0:
+            data_df_all = pd.concat(data_df_list)
             data_count = bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md, DTYPE_TUSHARE_STOCK_DAILY_MD)
             logging.info("更新 %s 结束 %d 条信息被更新", table_name, all_data_count)
             if not has_table and engine_md.has_table(table_name):

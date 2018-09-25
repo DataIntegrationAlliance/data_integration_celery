@@ -101,54 +101,65 @@ def import_tushare_stock_index_daily(chain_param=None, ts_code_set=None):
             for ts_code, date_from, date_to in table.fetchall() if
             ts_code_set is None or ts_code in ts_code_set}
 
-    data_len = len(code_date_range_dic)
+    # data_len = len(code_date_range_dic)
+    data_df_list, data_count, all_data_count, data_len = [], 0, 0, len(code_date_range_dic)
     logger.info('%d stocks will been import into tushare_stock_index_daily_md', data_len)
     # 将data_df数据，添加到data_df_list
-
     try:
         for num, (ts_code, (date_from, date_to)) in enumerate(code_date_range_dic.items(), start=1):
             logger.debug('%d/%d) %s [%s - %s]', num, data_len, ts_code, date_from, date_to)
-            df = invoke_index_daily(ts_code=ts_code, start_date=datetime_2_str(date_from, STR_FORMAT_DATE_TS),
+            data_df = invoke_index_daily(ts_code=ts_code, start_date=datetime_2_str(date_from, STR_FORMAT_DATE_TS),
                                     end_date=datetime_2_str(date_to, STR_FORMAT_DATE_TS))
-            data_df = df
+            # data_df = df
             if len(data_df) > 0:
-                while try_2_date(df['trade_date'].iloc[-1]) > date_from:
-                    last_date_in_df_last, last_date_in_df_cur = try_2_date(df['trade_date'].iloc[-1]), None
+                while try_2_date(data_df['trade_date'].iloc[-1]) > date_from:
+                    last_date_in_df_last, last_date_in_df_cur = try_2_date(data_df['trade_date'].iloc[-1]), None
                     df2 = invoke_index_daily(ts_code=ts_code, start_date=datetime_2_str(date_from, STR_FORMAT_DATE_TS),
                                              end_date=datetime_2_str(
-                                                 try_2_date(df['trade_date'].iloc[-1]) - timedelta(days=1),
+                                                 try_2_date(data_df['trade_date'].iloc[-1]) - timedelta(days=1),
                                                  STR_FORMAT_DATE_TS))
                     if len(df2 > 0):
                         last_date_in_df_cur = try_2_date(df2['trade_date'].iloc[-1])
                         if last_date_in_df_cur < last_date_in_df_last:
                             data_df = pd.concat([data_df, df2])
-                            df = df2
+                            # df = df2
                         elif last_date_in_df_cur == last_date_in_df_last:
                             break
                         if data_df is None:
-                            logger.warning('%d/%d) %s has no data during %s %s', num, data_len, ts_code, date_from,
-                                           date_to)
+                            logger.warning('%d/%d) %s has no data during %s %s', num, data_len, ts_code, date_from,date_to)
                             continue
-                        logger.info('%d/%d) %d data of %s between %s and %s', num, data_len, data_df.shape[0], ts_code,
-                                    date_from, date_to)
+                        logger.info('%d/%d) %d data of %s between %s and %s', num, data_len, data_df.shape[0], ts_code,date_from, date_to)
                     else:
                         break
 
-                # 数据插入数据库
-                data_df_all = data_df
-                data_count = bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md,
-                                                              DTYPE_TUSHARE_STOCK_INDEX_DAILY_MD)
-                logging.info("更新 %s 结束 %d 条信息被更新", table_name, data_count)
-                data_df = []
+            # 把数据攒起来
+            if data_df is not None and data_df.shape[0] > 0:
+                data_count += data_df.shape[0]
+                data_df_list.append(data_df)
+
             # 仅调试使用
-            # n=1
-            # n=n+1
-            # if DEBUG and n > 10:
-            #     break
+            if DEBUG and len(data_df_list) > 5:
+                break
+
+            # 大于阀值有开始插入
+            if data_count >= 500:
+                data_df_all = pd.concat(data_df_list)
+                bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md,
+                                                 DTYPE_TUSHARE_STOCK_INDEX_DAILY_MD)
+                all_data_count += data_count
+                data_df_list, data_count = [], 0
+
+                # # 数据插入数据库
+                # data_df_all = data_df
+                # data_count = bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md,
+                #                                               DTYPE_TUSHARE_STOCK_INDEX_DAILY_MD)
+                # logging.info("更新 %s 结束 %d 条信息被更新", table_name, data_count)
+                # data_df = []
+
     finally:
         # 导入数据库
-        if len(data_df) > 0:
-            data_df_all = data_df
+        if len(data_df_list) > 0:
+            data_df_all = pd.concat(data_df_list)
             data_count = bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md,
                                                           DTYPE_TUSHARE_STOCK_INDEX_DAILY_MD)
             logging.info("更新 %s 结束 %d 条信息被更新", table_name, data_count)
