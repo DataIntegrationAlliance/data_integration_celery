@@ -7,7 +7,6 @@ contact author:ybychem@gmail.com
 
 import pandas as pd
 import logging
-from tasks.backend.orm import build_primary_key
 from datetime import date, datetime, timedelta
 from tasks.utils.fh_utils import try_2_date, STR_FORMAT_DATE, datetime_2_str, split_chunk,try_n_times
 from tasks import app
@@ -66,7 +65,6 @@ def import_tushare_dividend(chain_param=None, ):
     has_table = engine_md.has_table(table_name)
     # 进行表格判断，确定是否含有tushare_stock_daily
 
-    # 下面一定要注意引用表的来源，否则可能是串，提取混乱！！！比如本表是tushare_daily_basic，所以引用的也是这个，如果引用错误，就全部乱了l
     if has_table:
         sql_str = """
                select cal_date  ann_date          
@@ -89,6 +87,7 @@ def import_tushare_dividend(chain_param=None, ):
         # 获取交易日数据
         table = session.execute(sql_str)
         trddate = list(row[0] for row in table.fetchall())
+
     #输出数据字段
     fields='ts_code,end_date,ann_date,div_proc,stk_div,stk_bo_rate,stk_co_rate,cash_div,cash_div_tax,\
            record_date,ex_date,pay_date,div_listdate,imp_ann_date,base_date,base_share'

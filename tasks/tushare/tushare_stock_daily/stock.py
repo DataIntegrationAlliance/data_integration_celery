@@ -216,6 +216,7 @@ def import_tushare_stock_daily(chain_param=None,ts_code_set=None):
         if len(data_df_list) > 0:
             data_df_all = pd.concat(data_df_list)
             data_count = bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md, DTYPE_TUSHARE_STOCK_DAILY_MD)
+            all_data_count=all_data_count+data_count
             logging.info("更新 %s 结束 %d 条信息被更新", table_name, all_data_count)
             if not has_table and engine_md.has_table(table_name):
                 alter_table_2_myisam(engine_md, [table_name])
