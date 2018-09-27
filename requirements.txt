@@ -10,3 +10,4 @@ DIRestInvoker
 bs4
 tushare
 cryptocmd
+pytdx
