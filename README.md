@@ -41,6 +41,7 @@ celery -A tasks worker --loglevel=info -c 1 -P eventlet
 -c 命令后面的数字表示平行运行的 worker 数量，建议不要超过CPU核数
 
 #### 启动 beat
+
 ```commandline
 celery beat -A tasks
 ```
