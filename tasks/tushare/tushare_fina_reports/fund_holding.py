@@ -25,12 +25,7 @@ DATE_BASE = datetime.strptime('2005-01-01', STR_FORMAT_DATE).date()
 ONE_DAY = timedelta(days=1)
 # 标示每天几点以后下载当日行情数据
 BASE_LINE_HOUR = 16
-STR_FORMAT_DATE_TS = '%Y%m%d'
 
-# 设置 dtype
-DTYPE_TUSHARE_STOCK_DAILY_MD = {key: val for key, val in INDICATOR_PARAM_LIST_TUSHARE_STOCK_DAILY_MD}
-DTYPE_TUSHARE_STOCK_DAILY_MD['ts_code'] = String(20)
-DTYPE_TUSHARE_STOCK_DAILY_MD['trade_date'] = Date
 
 
 @try_n_times(times=10, sleep_time=0, logger=logger,exception_sleep_time=10)
@@ -96,19 +91,4 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG, format='%(asctime)s: %(levelname)s [%(name)s] %(message)s')
     import_tushare_stock_daily(ts_code_set=None)
 
-
-
-
-
- ts_code_list=[]
- for i in df.code:
-    if i[0]=='6':
-        sh=i+'.SH'
-        ts_code_list.append(sh)
-    else:
-        sz=i + '.SZ'
-        ts_code_list.append(sz)
-
-df.code=ts_code_list
-df=df.rename(columns={'code':'ts_code','name':'sec_name','date':'end_date'})
 
