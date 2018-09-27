@@ -28,14 +28,14 @@ BASE_LINE_HOUR = 16
 
 
 
-@try_n_times(times=10, sleep_time=0, logger=logger,exception_sleep_time=10)
+@try_n_times(times=5, sleep_time=0, logger=logger,exception_sleep_time=10)
 def invoke_fund_holdings(year,quarter):
     invoke_fund_holdings = ts.fund_holdings(year=year,quarter=quarter)
     return invoke_fund_holdings
 
 @app.task
 def import_tushare_stock_fund_holdings():
-    table_name = 'tushare_stock_info'
+    table_name = 'tushare_stock_fund_holdings'
     logging.info("更新 %s 开始", table_name)
     has_table = engine_md.has_table(table_name)
     tushare_fund_holdings_indicator_param_list = [
@@ -51,22 +51,22 @@ def import_tushare_stock_fund_holdings():
     ]
     tushare_fund_holdings_dtype = {key: val for key, val in tushare_fund_holdings_indicator_param_list}
     data_df_list, data_count, all_data_count,= [], 0, 0
-    years=list(range(2010, 2019))
+    years=list(range(2013, 2019))
     try:
         for year in years:
             for quarter in list([1,2,3,4]):
                 print((year, quarter))
-                df=invoke_fund_holdings(year, quarter)
+                data_df=invoke_fund_holdings(year, quarter)
                 ts_code_list = []
-                for i in df.code:
+                for i in data_df.code:
                     if i[0] == '6':
                         sh = i + '.SH'
                         ts_code_list.append(sh)
                     else:
                         sz = i + '.SZ'
                         ts_code_list.append(sz)
-                df.code = ts_code_list
-                df = df.rename(columns={'code': 'ts_code', 'name': 'sec_name', 'date': 'end_date'})
+                data_df.code = ts_code_list
+                data_df = data_df.rename(columns={'code': 'ts_code', 'name': 'sec_name', 'date': 'end_date'})
                 # 把数据攒起来
                 if data_df is not None and data_df.shape[0] > 0:
                     data_count += data_df.shape[0]
@@ -87,8 +87,40 @@ def import_tushare_stock_fund_holdings():
                 alter_table_2_myisam(engine_md, [table_name])
                 build_primary_key([table_name])
 
+
+@app.task
+def fresh_tushare_stock_fund_holdings(year,quarter):
+    table_name = 'tushare_stock_fund_holdings'
+    logging.info("更新 %s 表%s年%s季度基金持股信息开始", table_name,year,quarter)
+    has_table = engine_md.has_table(table_name)
+    tushare_fund_holdings_indicator_param_list = [
+        ('ts_code', String(20)),
+        ('sec_name', String(20)),
+        ('end_date', Date),
+        ('nums', DOUBLE),
+        ('nlast', DOUBLE),
+        ('count', DOUBLE),
+        ('clast', DOUBLE),
+        ('amount', DOUBLE),
+        ('ratio', DOUBLE),
+    ]
+    tushare_fund_holdings_dtype = {key: val for key, val in tushare_fund_holdings_indicator_param_list}
+    data_df_list, data_count, all_data_count,= [], 0, 0
+    data_df=invoke_fund_holdings(year, quarter)
+    ts_code_list = []
+    for i in data_df.code:
+        if i[0] == '6':
+            sh = i + '.SH'
+            ts_code_list.append(sh)
+        else:
+            sz = i + '.SZ'
+            ts_code_list.append(sz)
+    data_df.code = ts_code_list
+    data_df = data_df.rename(columns={'code': 'ts_code', 'name': 'sec_name', 'date': 'end_date'})
+    bunch_insert_on_duplicate_update(data_df, table_name, engine_md, tushare_fund_holdings_dtype)
+    logging.info("%s年%s季度 %s 更新 %d 条基金持股信息",year,quarter,table_name,all_data_count)
+
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG, format='%(asctime)s: %(levelname)s [%(name)s] %(message)s')
-    import_tushare_stock_daily(ts_code_set=None)
-
-
+    #import_tushare_stock_fund_holdings()
+    fresh_tushare_stock_fund_holdings(year=2018,quarter=3)
