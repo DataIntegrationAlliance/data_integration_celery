@@ -225,14 +225,14 @@ def import_tushare_stock_daily(chain_param=None,ts_code_set=None):
 
 if __name__ == "__main__":
     # DEBUG = True
-    # import_tushare_stock_info(refresh=False)
+    import_tushare_stock_info(refresh=False)
     # 更新每日股票数据
     # SQL = """SELECT ts_code FROM tushare_stock_info where ts_code>'603033.SH'"""
     # with with_db_session(engine_md) as session:
     #     # 获取每只股票需要获取日线数据的日期区间
     #     table = session.execute(SQL)
     #     ts_code_set = list([row[0] for row in table.fetchall()])
-    import_tushare_stock_daily(ts_code_set=None)
+    # import_tushare_stock_daily(ts_code_set=None)
 
     # import_stock_daily_wch()
     # wind_code_set = None
