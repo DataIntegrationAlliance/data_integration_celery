@@ -390,7 +390,7 @@ def import_stock_fin():
     tot_data_count = 0
     _pattern_file_date = re.compile(r'(?<=gpcw)\d{8}(?=.zip)')
     try:
-        for num, file_info in enumerate(list_data):
+        for num, file_info in enumerate(list_data, start=1):
             filename = file_info['filename']
             # 检查当前文件的日期是否大于数据库中的最大记录日期
             if report_date_latest is not None:
