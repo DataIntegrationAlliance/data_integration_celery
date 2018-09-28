@@ -7,14 +7,18 @@ contact author:ybychem@gmail.com
 import pandas as pd
 from pytdx.hq import TdxHq_API
 from pytdx.params import TDXParams
-from tasks.utils.fh_utils import str_2_datetime
+from tasks.utils.fh_utils import try_n_times, datetime_2_str,str_2_datetime
+from tasks.utils.db_utils import bunch_insert_on_duplicate_update, execute_sql, with_db_session
+from tasks.backend import engine_md
 import logging
-
+from sqlalchemy.types import String, Date, Integer, DateTime,Time
+from sqlalchemy.dialects.mysql import DOUBLE
 logger = logging.getLogger()
+logger = logging.getLogger()
+STR_FORMAT_DATE_TS = '%Y%m%d'
 api = TdxHq_API()
 api.connect('59.173.18.140', 7709)
-
-
+#定义提取tick数据函数并将数据转为dataframe
 def get_tdx_tick(code, date_str):
     """
     调用pytdx接口获取股票tick数据
@@ -51,7 +55,87 @@ def get_tdx_tick(code, date_str):
     data_df = data_df.sort_values(by='trade_date')
     return data_df
 
+#再次封包提取函数
+@try_n_times(2, sleep_time=1, logger=logger, exception_sleep_time=60)
+def invoke_tdx_tick(code, date_str):
+    invoke_tdx_tick=get_tdx_tick(code, date_str)
+    return invoke_tdx_tick
+
+INDICATOR_PARAM_LIST_TDX_STOCK_TICK = [
+    ('ts_code', String(20)),
+    ('date', Date),
+    ('trade_date', DateTime),
+    ('time', Time),
+    ('price', DOUBLE),
+    ('vol', DOUBLE),
+    ('num', DOUBLE),
+    ('buyorsell', DOUBLE),
+    ]
+# 设置 dtype
+DTYPE_TDX_STOCK_TICK = {key: val for key, val in INDICATOR_PARAM_LIST_TDX_STOCK_TICK}
+
+def import_tdx_tick():
+    """
+        通过pytdx接口下载tick数据
+        :return:
+        """
+    table_name = 'pytdx_stock_tick'
+    has_table = engine_md.has_table(table_name)
+    if has_table:
+        sql_str = """SELECT daily.ts_code ,trade_date trade_date_list 
+            FROM tushare_stock_daily_md daily 
+            left outer join
+            (
+                select ts_code,max(trade_date) trade_date_max from {table_name} group by ts_code
+            ) m
+            on daily.ts_code = m.ts_code
+            where daily.trade_date>m.trade_date_max""".format(table_name=table_name)
+    else:
+        sql_str = """SELECT ts_code ,trade_date trade_date_list FROM tushare_stock_daily_md where trade_date>'2000-01-24'"""
+
+    with with_db_session(engine_md) as session:
+        # 获取每只股票需要获取日线数据的日期区间
+        table = session.execute(sql_str)
+        code_date_range_dic = {}
+        for ts_code, trade_date_list in table.fetchall():
+            trade_date_list.sort()
+            code_date_range_dic.setdefault(ts_code, []).append(trade_date_list)
+
+    data_df_list, data_count, all_data_count, data_len = [], 0, 0, len(code_date_range_dic)
+    logger.info('%d stocks will been import into tushare_stock_daily_md', data_len)
+    # 将data_df数据，添加到data_df_list
+    Cycles = 1
+    try:
+        for num, (index_code, trade_date_list) in enumerate(code_date_range_dic.items(), start=1):
+            trade_date_list_len = len(trade_date_list)
+            for i, trade_date in enumerate(trade_date_list):
+                # trade_date=trade_date_list[i]
+                logger.debug('%d/%d) %d/%d) %s [%s]', num, data_len, i, trade_date_list_len, index_code, trade_date)
+                data_df = invoke_tdx_tick(code=index_code[0:6], date_str=datetime_2_str(trade_date, STR_FORMAT_DATE_TS))
+                # 把数据攒起来
+                if data_df is not None and data_df.shape[0] > 0:
+                    data_count += data_df.shape[0]
+                    data_df_list.append(data_df)
+
+                # 大于阀值有开始插入
+                if data_count >= 5000:
+                    data_df_all = pd.concat(data_df_list)
+                    bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md, DTYPE_TDX_STOCK_TICK)
+                    all_data_count += data_count
+                    data_df_list, data_count = [], 0
+
+    finally:
+    # 导入数据库
+        if len(data_df_list) > 0:
+            data_df_all = pd.concat(data_df_list)
+            data_count = bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md,DTYPE_TDX_STOCK_TICK)
+            all_data_count = all_data_count + data_count
+            logging.info("更新 %s 结束 %d 条信息被更新", table_name, all_data_count)
+            # if not has_table and engine_md.has_table(table_name):
+            #     alter_table_2_myisam(engine_md, [table_name])
+            #     build_primary_key([table_name])
 
 if __name__ == "__main__":
-    date_str, code = '20180926', '000001'
-    get_tdx_tick(code=code, date_str=date_str)
+    # date_str, code = '20000125', '000001'
+    # df=invoke_tdx_tick(code=code, date_str=date_str)
+    import_tdx_tick()
