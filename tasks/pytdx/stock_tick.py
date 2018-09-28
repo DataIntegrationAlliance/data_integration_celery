@@ -27,13 +27,19 @@ def get_tdx_tick(code, date_str):
     :return:
     """
     position, data_list = 0, []
-    df = api.to_df(api.get_history_transaction_data(TDXParams.MARKET_SZ, code, position, 30000, int(date_str)))
+    if code[0]=='6':
+        df = api.to_df(api.get_history_transaction_data(TDXParams.MARKET_SH, code, position, 30000, int(date_str)))
+    else:
+        df = api.to_df(api.get_history_transaction_data(TDXParams.MARKET_SZ, code, position, 30000, int(date_str)))
     data_list.append(df)
     datetime0925 = str_2_datetime(date_str + '09:25', '%Y%m%d%H:%M')
     datetime0930 = str_2_datetime(date_str + '09:30', '%Y%m%d%H:%M')
     while len(df) > 0 and str_2_datetime(date_str + df.time[0], '%Y%m%d%H:%M') > datetime0925:
         position = position + len(df)
-        df = api.to_df(api.get_history_transaction_data(TDXParams.MARKET_SZ, code, position, 30000, int(date_str)))
+        if code[0] == '6':
+            df = api.to_df(api.get_history_transaction_data(TDXParams.MARKET_SH, code, position, 30000, int(date_str)))
+        else:
+            df = api.to_df(api.get_history_transaction_data(TDXParams.MARKET_SZ, code, position, 30000, int(date_str)))
         if df is not None and len(df) > 0:
             # data_df1=data_df
             data_list.append(df)
@@ -56,7 +62,7 @@ def get_tdx_tick(code, date_str):
     return data_df
 
 #再次封包提取函数
-@try_n_times(2, sleep_time=0, logger=logger, exception_sleep_time=5)
+@try_n_times(2, sleep_time=0, logger=logger, exception_sleep_time=1)
 def invoke_tdx_tick(code, date_str):
     invoke_tdx_tick=get_tdx_tick(code, date_str)
     return invoke_tdx_tick
@@ -150,3 +156,4 @@ if __name__ == "__main__":
     # date_str, code = '20000125', '000001'
     # df=invoke_tdx_tick(code=code, date_str=date_str)
     import_tdx_tick()
+
