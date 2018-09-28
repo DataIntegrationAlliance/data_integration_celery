@@ -56,7 +56,7 @@ def get_tdx_tick(code, date_str):
     return data_df
 
 #再次封包提取函数
-@try_n_times(2, sleep_time=1, logger=logger, exception_sleep_time=60)
+@try_n_times(2, sleep_time=0, logger=logger, exception_sleep_time=5)
 def invoke_tdx_tick(code, date_str):
     invoke_tdx_tick=get_tdx_tick(code, date_str)
     return invoke_tdx_tick
@@ -82,23 +82,34 @@ def import_tdx_tick():
     table_name = 'pytdx_stock_tick'
     has_table = engine_md.has_table(table_name)
     if has_table:
-        sql_str = """SELECT daily.ts_code ,trade_date trade_date_list 
-            FROM tushare_stock_daily_md daily 
-            left outer join
-            (
-                select ts_code,max(trade_date) trade_date_max from {table_name} group by ts_code
-            ) m
-            on daily.ts_code = m.ts_code
-            where daily.trade_date>m.trade_date_max""".format(table_name=table_name)
+        sql_str = """SELECT md.ts_code, md.trade_date 
+                        FROM tushare_stock_daily_suspend suspend 
+                        right outer join tushare_stock_daily_md md 
+                        on md.ts_code =suspend.ts_code 
+                        and md.trade_date =suspend.suspend_date 
+                        left outer join
+                        (
+                            select ts_code,max(trade_date) trade_date_max from {table_name} group by ts_code
+                        ) m
+                        on md.ts_code = m.ts_code
+                        where suspend.suspend_date is null 
+                        and md.trade_date>'2000-01-24' 
+                        and (m.trade_date_max is null or md.trade_date>m.trade_date_max)""".format(table_name=table_name)
     else:
-        sql_str = """SELECT ts_code ,trade_date trade_date_list FROM tushare_stock_daily_md where trade_date>'2000-01-24'"""
+        # sql_str = """SELECT ts_code ,trade_date trade_date_list FROM tushare_stock_daily_md where trade_date>'2000-01-24'"""
+        sql_str = """SELECT md.ts_code, md.trade_date 
+                        FROM tushare_stock_daily_suspend suspend 
+                        right outer join tushare_stock_daily_md md 
+                        on md.ts_code =suspend.ts_code 
+                        and md.trade_date =suspend.suspend_date 
+                        where suspend.suspend_date is null and md.trade_date>'2000-01-24'"""
 
     with with_db_session(engine_md) as session:
         # 获取每只股票需要获取日线数据的日期区间
         table = session.execute(sql_str)
         code_date_range_dic = {}
         for ts_code, trade_date_list in table.fetchall():
-            trade_date_list.sort()
+            # trade_date_list.sort()
             code_date_range_dic.setdefault(ts_code, []).append(trade_date_list)
 
     data_df_list, data_count, all_data_count, data_len = [], 0, 0, len(code_date_range_dic)
