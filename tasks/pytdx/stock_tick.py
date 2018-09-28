@@ -31,7 +31,7 @@ def get_tdx_tick(code, date_str):
     data_list.append(df)
     datetime0925 = str_2_datetime(date_str + '09:25', '%Y%m%d%H:%M')
     datetime0930 = str_2_datetime(date_str + '09:30', '%Y%m%d%H:%M')
-    while str_2_datetime(date_str + df.time[0], '%Y%m%d%H:%M') > datetime0925:
+    while len(df) > 0 and str_2_datetime(date_str + df.time[0], '%Y%m%d%H:%M') > datetime0925:
         position = position + len(df)
         df = api.to_df(api.get_history_transaction_data(TDXParams.MARKET_SZ, code, position, 30000, int(date_str)))
         if df is not None and len(df) > 0:
