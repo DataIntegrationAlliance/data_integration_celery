@@ -24,7 +24,7 @@ from tasks.backend import engine_md
 logger = logging.getLogger()
 
 
-@try_n_times(10, sleep_time=1, logger=logger, exception_sleep_time=60)
+@try_n_times(5, sleep_time=1, logger=logger, exception_sleep_time=60)
 def fetch_and_parse(datacrawler, reporthook, filename):
     result = datacrawler.fetch_and_parse(reporthook=reporthook, filename=filename, path_to_download="/tmpfile.zip")
     return result
