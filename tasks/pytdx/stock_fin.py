@@ -377,7 +377,7 @@ def import_stock_fin():
     }
     # 设置 dtype
     dtype = {val: DOUBLE for key, val in financial_dict.items() if _pattern.search(key) is not None}
-    dtype['code'] = String(10)
+    dtype['ts_code'] = String(10)
     dtype['report_date'] = Date
     # 下载财务数据
     crawler = HistoryFinancialListCrawler()
@@ -390,7 +390,7 @@ def import_stock_fin():
     tot_data_count = 0
     _pattern_file_date = re.compile(r'(?<=gpcw)\d{8}(?=.zip)')
     try:
-        for num, file_info in enumerate(list_data):
+        for num, file_info in enumerate(list_data, start=1):
             filename = file_info['filename']
             # 检查当前文件的日期是否大于数据库中的最大记录日期
             if report_date_latest is not None:
@@ -410,6 +410,8 @@ def import_stock_fin():
             data_df = datacrawler.to_df(data=result)
             data_df.rename(columns=col_name_dic, inplace=True)
             data_df.reset_index(inplace=True)
+            data_df['ts_code'] = data_df['code'].apply(lambda x: x + ".SH" if x[0] == '6' else x + '.SZ')
+            data_df.drop(['code'], axis=1, inplace=True)
             data_count = bunch_insert_on_duplicate_update(data_df, table_name, engine_md, dtype=dtype,
                                                           myisam_if_create_table=True)
             tot_data_count += data_count
@@ -417,9 +419,9 @@ def import_stock_fin():
         logging.info("更新 %s 结束 %d 条信息被更新", table_name, tot_data_count)
         if not has_table and engine_md.has_table(table_name):
             create_pk_str = """ALTER TABLE {table_name}
-                CHANGE COLUMN `code` `code` VARCHAR(20) NOT NULL FIRST,
-                CHANGE COLUMN `report_date` `report_date` DATE NOT NULL AFTER `code`,
-                ADD PRIMARY KEY (`code`, `report_date`)""".format(table_name=table_name)
+                CHANGE COLUMN `ts_code` `ts_code` VARCHAR(20) NOT NULL FIRST,
+                CHANGE COLUMN `report_date` `report_date` DATE NOT NULL AFTER `ts_code`,
+                ADD PRIMARY KEY (`ts_code`, `report_date`)""".format(table_name=table_name)
             execute_sql(engine_md, create_pk_str, commit=True)
             logger.info('%s 建立主键 [code, report_date]', table_name)
 
