@@ -204,6 +204,3 @@ if __name__ == '__main__':
     wind_code_set = None
     # 每日更新指数信息
     import_index_daily(chain_param=None)
-    # 每日生成指数导出文件给王淳
-    wind_code_list = ['HSI.HI', 'HSCEI.HI']
-    wind_code = "CES120.CSI"

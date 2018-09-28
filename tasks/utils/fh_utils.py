@@ -1,7 +1,11 @@
+#! /usr/bin/env python
 # -*- coding:utf-8 -*-
 """
-Created on 2016-12-22
-@author: MG
+@author  : MG
+@Time    : 2016/12/12 14:47
+@File    : mess.py
+@contact : mmmaaaggg@163.com
+@desc    :
 """
 import os
 import time
