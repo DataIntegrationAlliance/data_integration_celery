@@ -7,17 +7,30 @@ contact author:ybychem@gmail.com
 import pandas as pd
 from pytdx.hq import TdxHq_API
 from pytdx.params import TDXParams
+from pytdx.config.hosts import hq_hosts
 from tasks.utils.fh_utils import try_n_times, datetime_2_str,str_2_datetime
 from tasks.utils.db_utils import bunch_insert_on_duplicate_update, execute_sql, with_db_session
 from tasks.backend import engine_md
 import logging
 from sqlalchemy.types import String, Date, Integer, DateTime,Time
 from sqlalchemy.dialects.mysql import DOUBLE
+from pytdx.errors import TdxConnectionError
+from pytdx.config.hosts import hq_hosts
 logger = logging.getLogger()
 logger = logging.getLogger()
 STR_FORMAT_DATE_TS = '%Y%m%d'
-api = TdxHq_API()
-api.connect('59.173.18.140', 7709)
+api = TdxHq_API(raise_exception=True)
+# api.connect('59.173.18.140', 7709)
+api.connect('123.125.108.14', 7709)
+
+# for ip_add in hq_hosts:
+#     try:
+#         api.connect(ip_add[1], ip_add[2])#正确的为140
+#         break
+#     except TdxConnectionError:
+#         # pass
+#         print('网络连接有问题， 重试')
+
 #定义提取tick数据函数并将数据转为dataframe
 def get_tdx_tick(code, date_str):
     """
