@@ -22,3 +22,8 @@ cmc_weekly_task = (
 cmc_import_once = (
     import_coin_info.s()
 )
+
+cmc_latest_task = (
+    import_coin_latest.s() |
+    merge_latest.s()
+)
