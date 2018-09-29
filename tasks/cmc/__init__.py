@@ -8,3 +8,17 @@
 @desc    : 
 """
 from tasks.cmc.coin import *
+
+cmc_daily_task = (
+    import_coin_daily.s() |
+    import_coin_latest.s() |
+    merge_latest.s()
+)
+
+cmc_weekly_task = (
+    import_coin_info.s()
+)
+
+cmc_import_once = (
+    import_coin_info.s()
+)

@@ -132,7 +132,7 @@ class CmcScraperV1(CmcScraper):
 
 
 @app.task
-def import_coin_info():
+def import_coin_info(chain_param=None, ):
     """插入基础信息数据到 cmc_coin_v1_info"""
     table_name = "cmc_coin_v1_info"
     logging.info("更新 %s 开始", table_name)
@@ -196,7 +196,7 @@ def rename_by_dic(name, names):
 
 
 @app.task
-def import_coin_daily(id_set=None, begin_time=None):
+def import_coin_daily(chain_param=None, id_set=None, begin_time=None):
     """插入历史数据到 cmc_coin_v1_daily 试用 v1 接口，该接口可能在2018年12月底到期"""
     table_name = "cmc_coin_v1_daily"
     info_table_name = "cmc_coin_v1_info"
@@ -257,12 +257,18 @@ def import_coin_daily(id_set=None, begin_time=None):
     try:
         for data_num, ((coin_id, symbol), (date_from, date_to)) in enumerate(stock_date_dic.items(), start=1):
             logger.debug('%d/%d) %s[%s] [%s - %s]', data_num, dic_count, coin_id, symbol, date_from, date_to)
-            if date_from is None:
-                scraper = CmcScraperV1(symbol, coin_id)
-            else:
-                date_from_str = date_2_str(str_2_date(date_from, DATE_FORMAT_STR), DATE_FORMAT_STR_CMC)
-                scraper = CmcScraperV1(symbol, coin_id, start_date=date_from_str)
-            data_df = scraper.get_dataframe()
+            date_from_str = None
+            try:
+                if date_from is None:
+                    scraper = CmcScraperV1(symbol, coin_id)
+                else:
+                    date_from_str = date_2_str(str_2_date(date_from, DATE_FORMAT_STR), DATE_FORMAT_STR_CMC)
+                    scraper = CmcScraperV1(symbol, coin_id, start_date=date_from_str)
+                data_df = scraper.get_dataframe()
+            except Exception as exp:
+                logger.exception("scraper('%s', '%s', start_date='%s')", symbol, coin_id, date_from_str)
+                continue
+
             if data_df is None or data_df.shape[0] == 0:
                 logger.warning('%d/%d) %s has no data during %s %s', data_num, dic_count, coin_id, date_from, date_to)
                 continue
@@ -270,6 +276,7 @@ def import_coin_daily(id_set=None, begin_time=None):
                            inplace=True)
             data_df.rename(columns={'market cap': 'market_cap'}, inplace=True)
             data_df['market_cap'] = data_df['market_cap'].apply(lambda x: 0 if isinstance(x, str) else x)
+            data_df['volume'] = data_df['volume'].apply(lambda x: 0 if isinstance(x, str) else x)
             logger.info('%d/%d) %d data of %s between %s and %s', data_num, dic_count, data_df.shape[0], coin_id,
                         data_df['date'].min(), data_df['date'].max())
             data_df['id'] = coin_id
@@ -304,7 +311,7 @@ def import_coin_daily(id_set=None, begin_time=None):
 
 
 @app.task
-def import_coin_latest():
+def import_coin_latest(chain_param=None, ):
     """插入最新价格数据到 cmc_coin_pro_latest """
     table_name = 'cmc_coin_pro_latest'
     has_table = engine_md.has_table(table_name)
@@ -374,7 +381,8 @@ def import_coin_latest():
         execute_sql(engine_md, create_pk_str)
 
 
-def merge_latest():
+@app.task
+def merge_latest(chain_param=None, ):
     """
     将 cmc_coin_v1_daily 历史数据 以及 cmc_coin_pro_latest 最新价格数据 合并到 cmc_coin_merged_latest
     :return:
@@ -439,6 +447,6 @@ def merge_latest():
 if __name__ == "__main__":
     DEBUG = True
     # import_coin_info()
-    # import_coin_daily()
+    import_coin_daily()
     # import_coin_latest()
-    merge_latest()
+    # merge_latest()
