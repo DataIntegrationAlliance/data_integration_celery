@@ -18,7 +18,6 @@ from pytdx.errors import TdxConnectionError
 from pytdx.config.hosts import hq_hosts
 
 logger = logging.getLogger()
-logger = logging.getLogger()
 STR_FORMAT_DATE_TS = '%Y%m%d'
 api = TdxHq_API(raise_exception=True)
 api.connect('59.173.18.140', 7709)
