@@ -8,20 +8,22 @@ import pandas as pd
 from pytdx.hq import TdxHq_API
 from pytdx.params import TDXParams
 from pytdx.config.hosts import hq_hosts
-from tasks.utils.fh_utils import try_n_times, datetime_2_str,str_2_datetime
+from tasks.utils.fh_utils import try_n_times, datetime_2_str, str_2_datetime
 from tasks.utils.db_utils import bunch_insert_on_duplicate_update, execute_sql, with_db_session
 from tasks.backend import engine_md
 import logging
-from sqlalchemy.types import String, Date, Integer, DateTime,Time
+from sqlalchemy.types import String, Date, Integer, DateTime, Time
 from sqlalchemy.dialects.mysql import DOUBLE
 from pytdx.errors import TdxConnectionError
 from pytdx.config.hosts import hq_hosts
+
 logger = logging.getLogger()
 logger = logging.getLogger()
 STR_FORMAT_DATE_TS = '%Y%m%d'
 api = TdxHq_API(raise_exception=True)
-# api.connect('59.173.18.140', 7709)
-api.connect('123.125.108.14', 7709)
+api.connect('59.173.18.140', 7709)
+# api.connect('123.125.108.14', 7709)
+
 
 # for ip_add in hq_hosts:
 #     try:
@@ -31,7 +33,7 @@ api.connect('123.125.108.14', 7709)
 #         # pass
 #         print('网络连接有问题， 重试')
 
-#定义提取tick数据函数并将数据转为dataframe
+# 定义提取tick数据函数并将数据转为dataframe
 def get_tdx_tick(code, date_str):
     """
     调用pytdx接口获取股票tick数据
@@ -40,7 +42,7 @@ def get_tdx_tick(code, date_str):
     :return:
     """
     position, data_list = 0, []
-    if code[0]=='6':
+    if code[0] == '6':
         df = api.to_df(api.get_history_transaction_data(TDXParams.MARKET_SH, code, position, 30000, int(date_str)))
     else:
         df = api.to_df(api.get_history_transaction_data(TDXParams.MARKET_SZ, code, position, 30000, int(date_str)))
@@ -74,11 +76,13 @@ def get_tdx_tick(code, date_str):
     data_df = data_df.sort_values(by='trade_date')
     return data_df
 
-#再次封包提取函数
-@try_n_times(2, sleep_time=0, logger=logger, exception_sleep_time=1)
+
+# 再次封包提取函数
+@try_n_times(2, sleep_time=0.1, logger=logger, exception_sleep_time=0.5)
 def invoke_tdx_tick(code, date_str):
-    invoke_tdx_tick=get_tdx_tick(code, date_str)
+    invoke_tdx_tick = get_tdx_tick(code, date_str)
     return invoke_tdx_tick
+
 
 INDICATOR_PARAM_LIST_TDX_STOCK_TICK = [
     ('ts_code', String(20)),
@@ -89,9 +93,10 @@ INDICATOR_PARAM_LIST_TDX_STOCK_TICK = [
     ('vol', DOUBLE),
     ('num', DOUBLE),
     ('buyorsell', DOUBLE),
-    ]
+]
 # 设置 dtype
 DTYPE_TDX_STOCK_TICK = {key: val for key, val in INDICATOR_PARAM_LIST_TDX_STOCK_TICK}
+
 
 def import_tdx_tick():
     """
@@ -102,26 +107,44 @@ def import_tdx_tick():
     has_table = engine_md.has_table(table_name)
     if has_table:
         sql_str = """SELECT md.ts_code, md.trade_date 
-                        FROM tushare_stock_daily_suspend suspend 
-                        right outer join tushare_stock_daily_md md 
+                        FROM 
+                        tushare_stock_daily_md md 
+                        inner join 
+                        (
+							select ts_code, delist_date from tushare_stock_info where tushare_stock_info.delist_date is null
+                        ) info
+                        on info.ts_code = md.ts_code
+                        
+                        left outer join tushare_stock_daily_suspend suspend 
                         on md.ts_code =suspend.ts_code 
                         and md.trade_date =suspend.suspend_date 
-                        left outer join
+                        
+                         left outer join
                         (
                             select ts_code,max(trade_date) trade_date_max from {table_name} group by ts_code
                         ) m
                         on md.ts_code = m.ts_code
-                        where suspend.suspend_date is null 
-                        and md.trade_date>'2000-01-24' 
-                        and (m.trade_date_max is null or md.trade_date>m.trade_date_max)""".format(table_name=table_name)
+						where md.trade_date>'2000-01-24' 
+                        and suspend.suspend_date is null 
+                        and (m.trade_date_max is null or md.trade_date>m.trade_date_max)""".format(
+            table_name=table_name)
     else:
         # sql_str = """SELECT ts_code ,trade_date trade_date_list FROM tushare_stock_daily_md where trade_date>'2000-01-24'"""
-        sql_str = """SELECT md.ts_code, md.trade_date 
-                        FROM tushare_stock_daily_suspend suspend 
-                        right outer join tushare_stock_daily_md md 
+        sql_str = """
+SELECT md.ts_code, md.trade_date 
+                        FROM 
+                        tushare_stock_daily_md md 
+                        inner join 
+                        (
+							select ts_code, delist_date from tushare_stock_info where tushare_stock_info.delist_date is null
+                        ) info
+                        on info.ts_code = md.ts_code
+                        
+                        left outer join tushare_stock_daily_suspend suspend 
                         on md.ts_code =suspend.ts_code 
-                        and md.trade_date =suspend.suspend_date 
-                        where suspend.suspend_date is null and md.trade_date>'2000-01-24'"""
+                        and md.trade_date =suspend.suspend_date
+                        where md.trade_date>'2000-01-24' 
+                        and suspend.suspend_date is null """
 
     with with_db_session(engine_md) as session:
         # 获取每只股票需要获取日线数据的日期区间
@@ -148,25 +171,25 @@ def import_tdx_tick():
                     data_df_list.append(data_df)
 
                 # 大于阀值有开始插入
-                if data_count >= 5000:
+                if data_count >= 100000:
                     data_df_all = pd.concat(data_df_list)
                     bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md, DTYPE_TDX_STOCK_TICK)
                     all_data_count += data_count
                     data_df_list, data_count = [], 0
 
     finally:
-    # 导入数据库
+        # 导入数据库
         if len(data_df_list) > 0:
             data_df_all = pd.concat(data_df_list)
-            data_count = bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md,DTYPE_TDX_STOCK_TICK)
+            data_count = bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md, DTYPE_TDX_STOCK_TICK)
             all_data_count = all_data_count + data_count
             logging.info("更新 %s 结束 %d 条信息被更新", table_name, all_data_count)
             # if not has_table and engine_md.has_table(table_name):
             #     alter_table_2_myisam(engine_md, [table_name])
             #     build_primary_key([table_name])
 
+
 if __name__ == "__main__":
     # date_str, code = '20000125', '000001'
     # df=invoke_tdx_tick(code=code, date_str=date_str)
     import_tdx_tick()
-
