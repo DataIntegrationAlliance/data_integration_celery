@@ -128,11 +128,15 @@ class CmcScraperV1(CmcScraper):
             table = download_coin_data_by_id(self.coin_id, self.start_date, self.end_date)
 
         # self.headers, self.rows, self.start_date, self.end_date = extract_data(table)
-        self.end_date, self.start_date, self.headers, self.rows = extract_data(table)
+        try:
+            self.end_date, self.start_date, self.headers, self.rows = extract_data(table)
+        except Exception as exp:
+            logger.exception('extract_data error')
+            raise exp from exp
 
 
 @app.task
-def import_coin_info():
+def import_coin_info(chain_param=None, ):
     """插入基础信息数据到 cmc_coin_v1_info"""
     table_name = "cmc_coin_v1_info"
     logging.info("更新 %s 开始", table_name)
@@ -196,7 +200,7 @@ def rename_by_dic(name, names):
 
 
 @app.task
-def import_coin_daily(id_set=None, begin_time=None):
+def import_coin_daily(chain_param=None, id_set=None, begin_time=None):
     """插入历史数据到 cmc_coin_v1_daily 试用 v1 接口，该接口可能在2018年12月底到期"""
     table_name = "cmc_coin_v1_daily"
     info_table_name = "cmc_coin_v1_info"
@@ -270,6 +274,7 @@ def import_coin_daily(id_set=None, begin_time=None):
                            inplace=True)
             data_df.rename(columns={'market cap': 'market_cap'}, inplace=True)
             data_df['market_cap'] = data_df['market_cap'].apply(lambda x: 0 if isinstance(x, str) else x)
+            data_df['volume'] = data_df['volume'].apply(lambda x: 0 if isinstance(x, str) else x)
             logger.info('%d/%d) %d data of %s between %s and %s', data_num, dic_count, data_df.shape[0], coin_id,
                         data_df['date'].min(), data_df['date'].max())
             data_df['id'] = coin_id
@@ -304,7 +309,7 @@ def import_coin_daily(id_set=None, begin_time=None):
 
 
 @app.task
-def import_coin_latest():
+def import_coin_latest(chain_param=None, ):
     """插入最新价格数据到 cmc_coin_pro_latest """
     table_name = 'cmc_coin_pro_latest'
     has_table = engine_md.has_table(table_name)
@@ -374,7 +379,8 @@ def import_coin_latest():
         execute_sql(engine_md, create_pk_str)
 
 
-def merge_latest():
+@app.task
+def merge_latest(chain_param=None, ):
     """
     将 cmc_coin_v1_daily 历史数据 以及 cmc_coin_pro_latest 最新价格数据 合并到 cmc_coin_merged_latest
     :return:
@@ -439,6 +445,6 @@ def merge_latest():
 if __name__ == "__main__":
     DEBUG = True
     # import_coin_info()
-    # import_coin_daily()
+    import_coin_daily()
     # import_coin_latest()
-    merge_latest()
+    # merge_latest()
