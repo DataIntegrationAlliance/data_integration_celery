@@ -51,24 +51,25 @@ def test_task():
 
 
 try:
-    from tasks.task2 import *
+    from tasks.task2 import div
 except ImportError:
     logger.exception("加载 tasks.task2 失败，该异常不影响其他功能正常使用")
 
 try:
-    from tasks.ifind import *
+    from tasks.ifind import ifind_import_once, ifind_weekly_task, ifind_daily_task
 except ImportError:
     logger.exception("加载 tasks.ifind 失败，该异常不影响其他功能正常使用")
 
 try:
-    from tasks.wind import *
+    from tasks.wind import wind_import_once, wind_weekly_task, wind_daily_task
 except ImportError:
     logger.exception("加载 tasks.wind 失败，该异常不影响其他功能正常使用")
 
 try:
-    from tasks.cmc import *
+    from tasks.cmc import cmc_daily_task, cmc_import_once, cmc_weekly_task
 except ImportError:
     logger.exception("加载 tasks.cmc 失败，该异常不影响其他功能正常使用")
+    cmc_daily_task, cmc_import_once, cmc_weekly_task = None, None, None
 
 try:
     import tushare as ts
@@ -80,8 +81,8 @@ except AttributeError:
 try:
     from tasks.tushare import tushare_daily_task, tushare_weekly_task, tushare_import_once
 except ImportError:
-    tushare_daily_task, tushare_weekly_task, tushare_import_once = None, None, None
     logger.exception("加载 tasks.tushare 失败，该异常不影响其他功能正常使用")
+    tushare_daily_task, tushare_weekly_task, tushare_import_once = None, None, None
 
 
 @app.task
