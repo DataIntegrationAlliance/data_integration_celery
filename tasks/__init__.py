@@ -91,7 +91,9 @@ def grouped_task_daily():
     group([
         # wind_daily_task,
         # ifind_daily_task,
-        tushare_daily_task]
+        tushare_daily_task,
+        # cmc_daily_task,
+    ]
     ).delay()
 
 
@@ -101,7 +103,9 @@ def grouped_task_weekly():
     group([
         # wind_weekly_task,
         # ifind_weekly_task,
-        tushare_weekly_task]
+        tushare_weekly_task,
+        # cmc_weekly_task,
+    ]
     ).delay()
 
 
@@ -111,7 +115,9 @@ def grouped_task_once():
     group([
         # wind_import_once,
         # ifind_import_once,
-        tushare_import_once]
+        tushare_import_once,
+        # cmc_import_once,
+    ]
     ).delay()
 
 
