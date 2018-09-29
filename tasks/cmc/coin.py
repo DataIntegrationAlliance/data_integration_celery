@@ -128,11 +128,7 @@ class CmcScraperV1(CmcScraper):
             table = download_coin_data_by_id(self.coin_id, self.start_date, self.end_date)
 
         # self.headers, self.rows, self.start_date, self.end_date = extract_data(table)
-        try:
-            self.end_date, self.start_date, self.headers, self.rows = extract_data(table)
-        except Exception as exp:
-            logger.exception('extract_data error')
-            raise exp from exp
+        self.end_date, self.start_date, self.headers, self.rows = extract_data(table)
 
 
 @app.task
@@ -261,12 +257,18 @@ def import_coin_daily(chain_param=None, id_set=None, begin_time=None):
     try:
         for data_num, ((coin_id, symbol), (date_from, date_to)) in enumerate(stock_date_dic.items(), start=1):
             logger.debug('%d/%d) %s[%s] [%s - %s]', data_num, dic_count, coin_id, symbol, date_from, date_to)
-            if date_from is None:
-                scraper = CmcScraperV1(symbol, coin_id)
-            else:
-                date_from_str = date_2_str(str_2_date(date_from, DATE_FORMAT_STR), DATE_FORMAT_STR_CMC)
-                scraper = CmcScraperV1(symbol, coin_id, start_date=date_from_str)
-            data_df = scraper.get_dataframe()
+            date_from_str = None
+            try:
+                if date_from is None:
+                    scraper = CmcScraperV1(symbol, coin_id)
+                else:
+                    date_from_str = date_2_str(str_2_date(date_from, DATE_FORMAT_STR), DATE_FORMAT_STR_CMC)
+                    scraper = CmcScraperV1(symbol, coin_id, start_date=date_from_str)
+                data_df = scraper.get_dataframe()
+            except Exception as exp:
+                logger.exception("scraper('%s', '%s', start_date='%s')", symbol, coin_id, date_from_str)
+                continue
+
             if data_df is None or data_df.shape[0] == 0:
                 logger.warning('%d/%d) %s has no data during %s %s', data_num, dic_count, coin_id, date_from, date_to)
                 continue
