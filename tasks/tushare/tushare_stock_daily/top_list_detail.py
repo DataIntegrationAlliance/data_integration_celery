@@ -5,12 +5,6 @@ Created on 2018/9/3
 contact author:ybychem@gmail.com
 """
 
-"""
-Created on 2018/9/29
-@author: yby
-@desc    : 2018-09-29
-contact author:ybychem@gmail.com
-"""
 
 import pandas as pd
 import logging
@@ -62,7 +56,7 @@ def import_tushare_top_inst(chain_param=None):
     如果超过 BASE_LINE_HOUR 时间，则获取当日的数据
     :return:
     """
-    table_name = 'tushare_stock_top_list'
+    table_name = 'tushare_stock_top_inst'
     logging.info("更新 %s 开始", table_name)
 
     has_table = engine_md.has_table(table_name)
@@ -82,7 +76,7 @@ def import_tushare_top_inst(chain_param=None):
                SELECT cal_date FROM tushare_trade_date trddate WHERE (trddate.is_open=1 
             AND cal_date <= if(hour(now())<16, subdate(curdate(),1), curdate()) 
             AND exchange_id='SSE'
-            and cal_date>'2005-05-31') ORDER BY cal_date"""
+            and cal_date>'2012-01-03') ORDER BY cal_date"""
         logger.warning('%s 不存在，仅使用 tushare_trade_date 表进行计算日期范围', table_name)
 
     with with_db_session(engine_md) as session:
@@ -101,7 +95,7 @@ def import_tushare_top_inst(chain_param=None):
                 data_count += data_df.shape[0]
                 data_df_list.append(data_df)
             # 大于阀值有开始插入
-            if data_count >= 2000:
+            if data_count >= 10000:
                 data_df_all = pd.concat(data_df_list)
                 bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md, DTYPE_TUSHARE_STOCK_TOP_INST)
                 logging.info("更新 %s 结束 ,截至%s日 %d 条信息被更新", table_name, trade_date,all_data_count)
@@ -112,17 +106,17 @@ def import_tushare_top_inst(chain_param=None):
             data_df_all = pd.concat(data_df_list)
             data_count = bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md, DTYPE_TUSHARE_STOCK_TOP_INST)
             all_data_count=all_data_count+data_count
-            logging.info("更新 %s 结束 %d 条信息被更新", table_name, all_data_count)
-        if not has_table and engine_md.has_table(table_name):
-            alter_table_2_myisam(engine_md, [table_name])
-            # build_primary_key([table_name])
-            create_pk_str = """ALTER TABLE {table_name}
-                CHANGE COLUMN `ts_code` `ts_code` VARCHAR(20) NOT NULL FIRST,
-                CHANGE COLUMN `trade_date` `trade_date` DATE NOT NULL AFTER `ts_code`,
-                ADD PRIMARY KEY (`ts_code`, `trade_date`)""".format(table_name=table_name)
-            with with_db_session(engine_md) as session:
-                session.execute(create_pk_str)
-            logger.info('%s 表 `ts_code`, `trade_date` 主键设置完成', table_name)
+            logging.info("更新 %s 结束 ,截至%s日 %d 条信息被更新", table_name, trade_date, all_data_count)
+        # if not has_table and engine_md.has_table(table_name):
+        #     alter_table_2_myisam(engine_md, [table_name])
+        #     # build_primary_key([table_name])
+        #     create_pk_str = """ALTER TABLE {table_name}
+        #         CHANGE COLUMN `ts_code` `ts_code` VARCHAR(20) NOT NULL FIRST,
+        #         CHANGE COLUMN `trade_date` `trade_date` DATE NOT NULL AFTER `ts_code`,
+        #         ADD PRIMARY KEY (`ts_code`, `trade_date`)""".format(table_name=table_name)
+        #     with with_db_session(engine_md) as session:
+        #         session.execute(create_pk_str)
+        #     logger.info('%s 表 `ts_code`, `trade_date` 主键设置完成', table_name)
 
 
 if __name__ == "__main__":
