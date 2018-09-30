@@ -297,7 +297,7 @@ if __name__ == "__main__":
                    FROM wind_pub_fund_info info 
                  ) tt
                WHERE date_frm <= if(fund_maturitydate<end_date, fund_maturitydate, end_date) 
-               and wind_code>'420001.OF'
+               and wind_code>'530001.OF'
                ORDER BY wind_code
            """
     with with_db_session(engine_md) as session:
