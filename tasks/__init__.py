@@ -66,7 +66,7 @@ except ImportError:
     logger.exception("加载 tasks.wind 失败，该异常不影响其他功能正常使用")
 
 try:
-    from tasks.cmc import cmc_daily_task, cmc_import_once, cmc_weekly_task
+    from tasks.cmc import cmc_daily_task, cmc_import_once, cmc_weekly_task, cmc_latest_task
 except ImportError:
     logger.exception("加载 tasks.cmc 失败，该异常不影响其他功能正常使用")
     cmc_daily_task, cmc_import_once, cmc_weekly_task = None, None, None
@@ -119,6 +119,14 @@ def grouped_task_once():
         # cmc_import_once,
     ]
     ).delay()
+
+
+@app.task
+def grouped_task_latest():
+    """only for test use"""
+    group([
+        cmc_latest_task,
+    ]).delay()
 
 
 @app.task
