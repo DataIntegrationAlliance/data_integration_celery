@@ -21,9 +21,9 @@ logger = logging.getLogger()
 STR_FORMAT_DATE_TS = '%Y%m%d'
 api = TdxHq_API(raise_exception=True)
 # api.connect('59.173.18.140', 7709)
-# api.connect('123.125.108.14', 7709)
+api.connect('123.125.108.14', 7709)
 # api.connect('180.153.18.170', 7709)
-api.connect('202.108.253.130', 7709)
+# api.connect('202.108.253.130', 7709)
 
 
 
