@@ -14,7 +14,7 @@ from sqlalchemy.types import String, Date, Integer
 from sqlalchemy.dialects.mysql import DOUBLE
 from tasks.backend import engine_md
 from tasks.merge.code_mapping import update_from_info_table
-from tasks.utils.db_utils import with_db_session
+from tasks.utils.db_utils import with_db_session, bunch_insert_on_duplicate_update
 from tasks.tushare.ts_pro_api import pro
 
 DEBUG = False
@@ -34,10 +34,13 @@ def import_trade_date(chain_param=None):
     日后将会考虑将两张表进行合并
     :return:
     """
+    table_name = "tushare_trade_date"
     exch_code_trade_date_dic = {}
     with with_db_session(engine_md) as session:
         try:
-            table = session.execute('SELECT exch_code,max(trade_date) FROM ifind_trade_date GROUP BY exch_code')
+            table = session.execute('SELECT exchange_id,max(cal_date) FROM {table_name} GROUP BY exchange_id'.format(
+                table_name=table_name
+            ))
             exch_code_trade_date_dic = {exch_code: trade_date for exch_code, trade_date in table.fetchall()}
         except Exception as exp:
             logger.exception("交易日获取异常")
@@ -63,20 +66,14 @@ def import_trade_date(chain_param=None):
             continue
         date_count = trade_date_df.shape[0]
         logger.info("%s[%s] %d 条交易日数据将被导入 %s",
-                    exchange_code_dict[exchange_code], exchange_code, date_count, 'tushare_trade_date')
-        # with with_db_session(engine_md) as session:
-        #     session.execute("INSERT INTO ifind_trade_date (trade_date,exch_code) VALUE (:trade_date,:exch_code)",
-        #                     params=[{'trade_date': trade_date, 'exch_code': exchange_code} for trade_date in
-        #                             trade_date_df['time']])
-        # trade_date_df['exch_code'] = exchange_code
-        # trade_date_df.rename(columns={'cal_date': 'trade_date'}, inplace=True)
-        trade_date_df.to_sql('tushare_trade_date', engine_md, if_exists='append', index=False, dtype={
+                    exchange_code_dict[exchange_code], exchange_code, date_count, table_name)
+        date_count = bunch_insert_on_duplicate_update(trade_date_df, table_name, engine_md, dtype={
             'exchange_id': String(10),
             'cal_date': Date,
             'is_open': DOUBLE,
-        })
+        }, myisam_if_create_table=True)
         logger.info('%s[%s] %d 条交易日数据导入 %s 完成',
-                    exchange_code_dict[exchange_code], exchange_code, date_count, 'tushare_trade_date')
+                    exchange_code_dict[exchange_code], exchange_code, date_count, table_name)
 
 
 if __name__ == "__main__":
