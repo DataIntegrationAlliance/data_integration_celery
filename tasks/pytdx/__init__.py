@@ -7,4 +7,5 @@
 @contact : mmmaaaggg@163.com
 @desc    : 
 """
+import pytdx.connection_pool
 
