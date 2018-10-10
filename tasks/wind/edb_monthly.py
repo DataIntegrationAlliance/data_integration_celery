@@ -123,4 +123,4 @@ def import_edb_monthly():
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG, format='%(asctime)s: %(levelname)s [%(name)s:%(funcName)s] %(message)s')
-    import_edb_monthly()
+    # import_edb_monthly()
