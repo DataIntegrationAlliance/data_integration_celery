@@ -258,7 +258,7 @@ def get_tdx_tick(code, date_str):
 
 
 # 再次封包提取函数
-@try_n_times(3, sleep_time=0.02, logger=logger, exception_sleep_time=0.5)
+@try_n_times(5, sleep_time=0.02, logger=logger, exception_sleep_time=0.5)
 def invoke_tdx_tick(code, date_str):
     invoke_tdx_tick = get_tdx_tick(code, date_str)
     return invoke_tdx_tick
