@@ -123,7 +123,7 @@ INDICATOR_PARAM_LIST_TUSHARE_STOCK_CASHFLOW = [
 DTYPE_TUSHARE_CASHFLOW = {key: val for key, val in INDICATOR_PARAM_LIST_TUSHARE_STOCK_CASHFLOW}
 
 
-@try_n_times(times=5, sleep_time=0, logger=logger, exception=Exception, exception_sleep_time=60)
+@try_n_times(times=5, sleep_time=0, logger=logger, exception=Exception, exception_sleep_time=5)
 def invoke_cashflow(ts_code, start_date, end_date):
     invoke_cashflow = pro.cashflow(ts_code=ts_code, start_date=start_date, end_date=end_date)
     return invoke_cashflow
