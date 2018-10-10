@@ -258,7 +258,7 @@ def get_tdx_tick(code, date_str):
 
 
 # 再次封包提取函数
-@try_n_times(5, sleep_time=0.02, logger=logger, exception_sleep_time=0.5)
+@try_n_times(5, sleep_time=0.01, logger=logger, exception_sleep_time=0.5)
 def invoke_tdx_tick(code, date_str):
     invoke_tdx_tick = get_tdx_tick(code, date_str)
     return invoke_tdx_tick
@@ -335,7 +335,7 @@ def import_tdx_tick():
             code_date_range_dic.setdefault(ts_code, []).append(trade_date_list)
 
     data_df_list, data_count, all_data_count, data_len = [], 0, 0, len(code_date_range_dic)
-    logger.info('%d stocks will been import into tushare_stock_daily_md', data_len)
+    logger.info('%d stocks will been import into pytdx_stock_tick', data_len)
     # 将data_df数据，添加到data_df_list
     Cycles = 1
     try:
