@@ -97,7 +97,7 @@ INDICATOR_PARAM_LIST_TUSHARE_STOCK_INCOME = [
 DTYPE_TUSHARE_STOCK_INCOME = {key: val for key, val in INDICATOR_PARAM_LIST_TUSHARE_STOCK_INCOME}
 
 
-@try_n_times(times=300, sleep_time=0, logger=logger, exception=Exception, exception_sleep_time=120)
+@try_n_times(times=5, sleep_time=0, logger=logger, exception=Exception, exception_sleep_time=5)
 def invoke_income(ts_code, start_date, end_date):
     invoke_income = pro.income(ts_code=ts_code, start_date=start_date, end_date=end_date)
     return invoke_income
