@@ -5,7 +5,7 @@ Created on 2018/9/3
 contact author:ybychem@gmail.com
 """
 import pandas as pd
-from backend import engine_md
+from tasks.backend import engine_md
 
 
 def get_cash_flow_daily(trade_date, ts_code,method='amount',threshold=1000000):
