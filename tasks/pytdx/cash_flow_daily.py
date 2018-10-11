@@ -35,7 +35,7 @@ def get_cash_flow_daily(trade_date, ts_code,method='amount',threshold=1000000):
     return data_df
 
 get_cash_flow_daily(trade_date='20181010', ts_code='000002.SZ',method='amount',threshold=1000000)
-get_cash_flow_daily(trade_date='20181010', ts_code='000002.SZ',method='volume',threshold=500)
+get_cash_flow_daily(trade_date='20181010', ts_code='000005.SZ',method='volume',threshold=500)
 
 def cash_flow_daily_import():
 
