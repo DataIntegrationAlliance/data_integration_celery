@@ -309,8 +309,7 @@ def import_tdx_tick():
                         on md.ts_code = m.ts_code
 						where md.trade_date>'2000-01-24' 
                         and suspend.suspend_date is null 
-                        and (m.trade_date_max is null or md.trade_date>m.trade_date_max)""".format(
-            table_name=table_name)
+                        and (m.trade_date_max is null or md.trade_date>m.trade_date_max)""".format(table_name=table_name)
     else:
         # sql_str = """SELECT ts_code ,trade_date trade_date_list FROM tushare_stock_daily_md where trade_date>'2000-01-24'"""
         sql_str = """
