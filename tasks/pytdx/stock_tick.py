@@ -329,7 +329,6 @@ def import_tdx_tick():
                 SELECT ts_code, delist_date FROM tushare_stock_info WHERE tushare_stock_info.delist_date IS NULL
             ) info
             ON info.ts_code = md.ts_code
-            
             LEFT OUTER JOIN tushare_stock_daily_suspend suspend 
             ON md.ts_code =suspend.ts_code 
             AND md.trade_date =suspend.suspend_date
@@ -340,11 +339,10 @@ def import_tdx_tick():
         # 获取每只股票需要获取日线数据的日期区间
         table = session.execute(sql_str)
         code_date_range_dic = {}
-        for ts_code, trade_date_list in table.fetchall():
+        for ts_code, trade_date in table.fetchall():
             # if ts_code[0] != '6':
             #     continue
-            trade_date_list.sort()
-            code_date_range_dic.setdefault(ts_code, []).append(trade_date_list)
+            code_date_range_dic.setdefault(ts_code, []).append(trade_date)
 
     data_df_list, data_count, all_data_count, data_len = [], 0, 0, len(code_date_range_dic)
     logger.info('%d data will been import into %s', data_len, table_name)
@@ -352,6 +350,7 @@ def import_tdx_tick():
     try:
         for num, (index_code, trade_date_list) in enumerate(code_date_range_dic.items(), start=1):
             trade_date_list_len = len(trade_date_list)
+            trade_date_list.sort()
             for i, trade_date in enumerate(trade_date_list):
                 # trade_date=trade_date_list[i]
                 logger.debug('%d/%d) %d/%d) %s [%s]', num, data_len, i, trade_date_list_len, index_code, trade_date)
