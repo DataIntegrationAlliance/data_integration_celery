@@ -425,5 +425,5 @@ def import_edb(wind_code_set=None):
 if __name__ == "__main__":
     # DEBUG = True
     build_commodity_info()
-    # 更新每日股票数据
+    # 更新每日商品数据
     import_edb()
