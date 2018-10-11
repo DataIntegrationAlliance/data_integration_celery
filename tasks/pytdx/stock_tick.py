@@ -199,10 +199,10 @@ selected_hosts = [('北京联通主站Z1', '202.108.253.130', 7709),('北京联�
                   ('国泰君安', '117.34.114.27', 7709), ('国泰君安', '117.34.114.30', 7709), ('国泰君安', '117.34.114.31', 7709),
                   ('上海电信主站Z3', '180.153.39.51', 7709), ('上证云成都电信一', '218.6.170.47', 7709), ]
 ips = [(v[1], v[2]) for v in selected_hosts]
-# 获取5个随机ip作为ip池
+# 获取10个随机ip作为ip池
 random.shuffle(ips)
-ips5 = ips[:5]
-ippool = AvailableIPPool(TdxHq_API, ips5)
+ips10 = ips[:10]
+ippool = AvailableIPPool(TdxHq_API, ips10)
 primary_ip, hot_backup_ip = ippool.sync_get_top_n(2)
 print("make pool api")
 api = TdxHqPool_API(TdxHq_API, ippool)

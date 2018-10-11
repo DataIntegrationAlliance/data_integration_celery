@@ -5,7 +5,7 @@ Created on 2018/9/3
 contact author:ybychem@gmail.com
 """
 import pandas as pd
-from tasks.backend import engine_md
+from backend import engine_md
 
 
 def get_cash_flow_daily(trade_date, ts_code,method='amount',threshold=1000000):
@@ -34,9 +34,9 @@ def get_cash_flow_daily(trade_date, ts_code,method='amount',threshold=1000000):
                            index=['ts_code', 'trade_date', 'total_buy','net_big_buy_vol', 'net_big_buy_amount','big_amount_rate']).T
     return data_df
 
-get_cash_flow_daily(trade_date='20181010', ts_code='000002.SZ',method='amount',threshold=1000000)
+get_cash_flow_daily(trade_date='20181010', ts_code='000007.SZ',method='amount',threshold=1000000)
 get_cash_flow_daily(trade_date='20181010', ts_code='000005.SZ',method='volume',threshold=500)
 
-def cash_flow_daily_import():
+
 
 
