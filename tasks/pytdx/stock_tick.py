@@ -12,8 +12,8 @@ from tasks.utils.fh_utils import try_n_times, datetime_2_str, str_2_datetime
 from tasks.utils.db_utils import bunch_insert_on_duplicate_update, execute_sql, with_db_session
 from tasks.backend import engine_md
 import logging
-from sqlalchemy.types import String, Date, Integer, DateTime, Time
-from sqlalchemy.dialects.mysql import DOUBLE
+from sqlalchemy.types import String, Date, DateTime, Time,Integer
+from sqlalchemy.dialects.mysql import DOUBLE, SMALLINT,TINYINT, FLOAT
 from pytdx.errors import TdxConnectionError
 from pytdx.config.hosts import hq_hosts
 from pytdx.hq import TdxHq_API
@@ -226,7 +226,7 @@ def get_tdx_tick(code, date_str):
             df = api.to_df(api.get_history_transaction_data(TDXParams.MARKET_SH, code, position, 30000, int(date_str)))
         else:
             df = api.to_df(api.get_history_transaction_data(TDXParams.MARKET_SZ, code, position, 30000, int(date_str)))
-        data_list.append(df)
+        data_list.insert(0, df)
         datetime0925 = str_2_datetime(date_str + '09:25', '%Y%m%d%H:%M')
         datetime0930 = str_2_datetime(date_str + '09:30', '%Y%m%d%H:%M')
         while len(df) > 0 and str_2_datetime(date_str + df.time[0], '%Y%m%d%H:%M') > datetime0925:
@@ -236,8 +236,7 @@ def get_tdx_tick(code, date_str):
             else:
                 df = api.to_df(api.get_history_transaction_data(TDXParams.MARKET_SZ, code, position, 30000, int(date_str)))
             if df is not None and len(df) > 0:
-                # data_df1=data_df
-                data_list.append(df)
+                data_list.insert(0, df)
                 if str_2_datetime(date_str + df.time[0], '%Y%m%d%H:%M') == datetime0925 or \
                         str_2_datetime(date_str + df.time[0], '%Y%m%d%H:%M') == datetime0930:
                     break
@@ -253,9 +252,12 @@ def get_tdx_tick(code, date_str):
         data_df.insert(0, 'ts_code', code)
         data_df.insert(1, 'date', date_str)
         data_df.insert(2, 'trade_date', trade_date)
-        data_df = data_df.sort_values(by='trade_date')
+        data_df.index = range(len(data_df))
+        data_df.index.rename('index', inplace=True)
+        data_df.reset_index(inplace=True)
         return data_df
 
+# zte=get_tdx_tick('000063','20181010')
 
 # 再次封包提取函数
 @try_n_times(5, sleep_time=0.01, logger=logger, exception_sleep_time=0.5)
@@ -265,14 +267,15 @@ def invoke_tdx_tick(code, date_str):
 
 
 INDICATOR_PARAM_LIST_TDX_STOCK_TICK = [
-    ('ts_code', String(20)),
+    ('ts_code', String(12)),
     ('date', Date),
     ('trade_date', DateTime),
     ('time', Time),
-    ('price', DOUBLE),
-    ('vol', DOUBLE),
-    ('num', DOUBLE),
-    ('buyorsell', DOUBLE),
+    ('price', FLOAT),
+    ('vol', Integer),
+    ('num', TINYINT),
+    ('index',SMALLINT),
+    ('buyorsell', TINYINT),
 ]
 # 设置 dtype
 DTYPE_TDX_STOCK_TICK = {key: val for key, val in INDICATOR_PARAM_LIST_TDX_STOCK_TICK}
