@@ -18,8 +18,8 @@ import tasks
 
 class CeleryConfig:
     # Celery settings
-    broker_url = 'amqp://yeung:yeung870110@localhost:5672/celery_tasks',
-    result_backend = 'amqp://yeung:yeung870110@localhost:5672/backend'
+    broker_url = 'amqp://yeung:***@localhost:5672/celery_tasks',
+    result_backend = 'amqp://yeung:***@localhost:5672/backend'
     accept_content = ['json']  # , 'pickle'
     timezone = 'Asia/Shanghai'
     imports = ('tasks', )
@@ -42,7 +42,7 @@ class ConfigClass(object):
     # Sql Alchemy settings
     DB_SCHEMA_MD = 'md_integration'
     DB_URL_DIC = {
-        DB_SCHEMA_MD: "mysql://root:041001131@localhost/{DB_SCHEMA_MD}?charset=utf8".format(
+        DB_SCHEMA_MD: "mysql://root:***@localhost/{DB_SCHEMA_MD}?charset=utf8".format(
             DB_SCHEMA_MD=DB_SCHEMA_MD)
     }
 
