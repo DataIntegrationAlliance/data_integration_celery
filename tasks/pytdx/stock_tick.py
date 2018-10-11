@@ -29,7 +29,7 @@ import time
 DEFAULT_API_CALL_MAX_RETRY_TIMES = 20
 ## 重试间隔的休眠时间
 DEFAULT_API_RETRY_INTERVAL = 0.2
-DEBUG = True
+DEBUG = False
 
 class TdxHqApiCallMaxRetryTimesReachedException(Exception):
     pass
@@ -341,7 +341,9 @@ def import_tdx_tick():
         table = session.execute(sql_str)
         code_date_range_dic = {}
         for ts_code, trade_date_list in table.fetchall():
-            # trade_date_list.sort()
+            # if ts_code[0] != '6':
+            #     continue
+            trade_date_list.sort()
             code_date_range_dic.setdefault(ts_code, []).append(trade_date_list)
 
     data_df_list, data_count, all_data_count, data_len = [], 0, 0, len(code_date_range_dic)
@@ -388,7 +390,7 @@ def import_tdx_tick():
 
 
 if __name__ == "__main__":
-    DEBUG = True
+    # DEBUG = True
     # date_str, code = '20000125', '000001'
     # df=invoke_tdx_tick(code=code, date_str=date_str)
     import_tdx_tick()
