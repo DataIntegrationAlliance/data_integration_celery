@@ -1,11 +1,11 @@
 #! /usr/bin/env python
 # -*- coding:utf-8 -*-
 """
-@author  : MG
-@Time    : 2018/3/30 17:53
+@author  : yby
+@Time    : 2018/9/15 17:53
 @File    : config.py
-@contact : mmmaaaggg@163.com
-@desc    :
+@contact :
+@desc    :yeung's config
 """
 import os
 import logging
@@ -13,25 +13,27 @@ from logging.config import dictConfig
 import platform
 basedir = os.path.abspath(os.path.dirname(__file__))
 IS_LINUX_OS = platform.os.name != 'nt'
-if IS_LINUX_OS:
-    from celery.schedules import crontab
-
+from celery.schedules import crontab
+import tasks
 
 class CeleryConfig:
     # Celery settings
-    broker_url = 'amqp://mg:***@localhost:3306/celery_tasks',
-    result_backend = 'amqp://mg:***@localhost:3306/backend'
+    broker_url = 'amqp://yeung:yeung870110@localhost:5672/celery_tasks',
+    result_backend = 'amqp://yeung:yeung870110@localhost:5672/backend'
     accept_content = ['json']  # , 'pickle'
     timezone = 'Asia/Shanghai'
     imports = ('tasks', )
-    # beat_schedule = {
-    #     'ptask': {
-    #         'task': 'celery_task.task.chain_task',
-    #         # 'schedule': timedelta(seconds=5),
-    #         'schedule': crontab(hour='18') if IS_LINUX_OS else None,
-    #         # 'args': (16, 73),  # 当前任务没有参数
-    #     },
-    # }
+    beat_schedule = {
+        'daily_task': {
+            'task': 'tasks.grouped_task_daily',
+            'schedule': crontab(hour='17', minute=15, day_of_week='1-5'),
+        },
+        'weekly_task': {
+            'task': 'tasks.grouped_task_weekly',
+            'schedule': crontab(hour='9', minute=50,day_of_week='6'),
+        },
+    }
+    broker_heartbeat = 0
 
 
 # Use a Class-based config to avoid needing a 2nd file
@@ -40,15 +42,20 @@ class ConfigClass(object):
     # Sql Alchemy settings
     DB_SCHEMA_MD = 'md_integration'
     DB_URL_DIC = {
-        DB_SCHEMA_MD: "mysql://root:123456@localhost:3306/md_integration?charset=utf8".format(
+        DB_SCHEMA_MD: "mysql://root:041001131@localhost/{DB_SCHEMA_MD}?charset=utf8".format(
             DB_SCHEMA_MD=DB_SCHEMA_MD)
     }
+
     # ifind settings
-    IFIND_REST_URL = "http://10.0.3.66:5000/iFind/"
+    IFIND_REST_URL = "http://localhost:5000/iFind/"
     # wind settings
-    WIND_REST_URL = "http://10.0.3.66:5000/wind/"
+    WIND_REST_URL = "http://localhost:5000/wind/"
+    # WIND_REST_URL = "http://10.0.3.66:5000/wind/"
+    # WIND_REST_URL = "http://10.0.5.61:5000/wind/"
+    # WIND_REST_URL = "http://10.0.5.63:5000/wind/"
+
     # Tushare settings
-    TUSHARE_TOKEN = "188cf0644dbbb4e234ba1bd52af2674c59f2bcdf476d6efd53c61e52"
+    TUSHARE_TOKEN = "92d1cbe389dc2c724f98748edcc2a01abbe7df4cac721fb1ff03b363"
     # CMC settings
     CMC_PRO_API_KEY = "***"
 
