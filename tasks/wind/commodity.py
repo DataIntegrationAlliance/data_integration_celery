@@ -241,20 +241,6 @@ def build_commodity_info():
         ["M0062959", "HIBOR_12M", "HIBOR_12M", "2002-03-04", None, '香港同业拆借市场'],
         #伦敦同业
 
-        #中国GDP 宏观数据
-        #CPI
-        ["M0000612", "CPI", "CPI", "1990-01-31", None, 'CPI同比'],
-        ["M0000616", "CPI_food", "CPI食品", "1994-01-31", None, '食品CPI同比'],
-        ["M0000613", "CPI_nofood", "CPI非食品", "2001-01-31", None, '非食品CPI同比'],
-        ["M0085932", "CPI_core", "核心CPI", "2013-01-31", None, '不包括食品和能源CPI同比'],
-        # PPI
-        ["M0001227", "PPI_industrial_yoy", "工业品PPI当月同比", "1996-10-31", None, '全部工业品当月同比'],
-        ["M0049160", "PPI_industrial_mom", "工业品PPI当月环比", "2002-01-31", None, '全部工业品当月环比'],
-        ["M0001244", "PPI_industrial_cumulative_yoy", "工业品PPI累计同比", "1996-10-31", None, '全部工业品累计同比'],
-        ["M0001228", "PPI_means_production_yoy", "生产资料PPI当月同比", "1996-10-31", None, '生产资料PPI当月同比'],
-        ["M0001232", "PPI_means_subsistence_yoy", "生活资料PPI当月同比", "1996-10-31", None, "生活资料PPI当月同比"],
-
-
         #美国国债收益率
         ["G0000886", "yield_on_us_treasury_bonds_1y", "一年期美国国债收益率", "1970-08-20", None, '美联储'],
         ["G0000891", "yield_on_us_treasury_bonds_10y", "十年期美国国债收益率", "1970-08-20", None, '美联储'],
@@ -427,3 +413,4 @@ if __name__ == "__main__":
     build_commodity_info()
     # 更新每日商品数据
     import_edb()
+
