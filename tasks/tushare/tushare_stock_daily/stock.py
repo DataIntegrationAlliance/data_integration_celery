@@ -44,10 +44,11 @@ DTYPE_TUSHARE_STOCK_DAILY_MD['ts_code'] = String(20)
 DTYPE_TUSHARE_STOCK_DAILY_MD['trade_date'] = Date
 
 
-@try_n_times(times=5, sleep_time=0, logger=logger,exception_sleep_time=60)
+@try_n_times(times=5, sleep_time=0, logger=logger, exception_sleep_time=60)
 def invoke_daily(ts_code, start_date, end_date):
     invoke_daily = pro.daily(ts_code=ts_code, start_date=start_date, end_date=end_date)
     return invoke_daily
+
 
 def get_stock_code_set():
     """
@@ -72,28 +73,32 @@ def import_tushare_stock_info(chain_param=None, refresh=False):
     table_name = 'tushare_stock_info'
     logging.info("更新 %s 开始", table_name)
     has_table = engine_md.has_table(table_name)
-    wind_indicator_param_list = [
+    tushare_indicator_param_list = [
         ('ts_code', String(20)),
-        ('symbol', DOUBLE),
-        ('list_date', Date),
-        ('delist_date', Date),
-        ('name', String(30)),
+        ('symbol', String(20)),
+        ('name', String(40)),
+        ('area', String(100)),
+        ('industry', String(200)),
         ('fullname', String(100)),
         ('enname', String(200)),
-        ('exchange_id', String(30)),
-        ('list_status', String(10)),
-        ('is_hs', String(10)),
+        ('market', String(100)),
+        ('exchange_id', String(20)),
+        ('curr_type', String(20)),
+        ('list_status', String(20)),
+        ('list_date', Date),
+        ('delist_date', Date),
+        ('is_hs', String(20)),
     ]
     #     # 获取列属性名，以逗号进行分割 "ipo_date,trade_code,mkt,exch_city,exch_eng"
-    param = ",".join([key for key, _ in wind_indicator_param_list])
+    param = ",".join([key for key, _ in tushare_indicator_param_list])
     # 设置 dtype
-    dtype = {key: val for key, val in wind_indicator_param_list}
+    dtype = {key: val for key, val in tushare_indicator_param_list}
     dtype['ts_code'] = String(20)
 
     # 数据提取
 
     stock_info_all_df = pro.stock_basic(exchange_id='',
-                                        fields='ts_code,symbol,name,fullname,enname,exchange_id,curr_type,list_date,list_status,delist_date,is_hs')
+                                        fields='ts_code,symbol,name,area,industry,fullname,enname,market,exchange_id,curr_type,list_status,list_date,delist_date,is_hs,is_hs,is_hs')
 
     logging.info('%s stock data will be import', stock_info_all_df.shape[0])
     data_count = bunch_insert_on_duplicate_update(stock_info_all_df, table_name, engine_md, dtype=dtype)
@@ -107,7 +112,7 @@ def import_tushare_stock_info(chain_param=None, refresh=False):
 
 
 @app.task
-def import_tushare_stock_daily(chain_param=None,ts_code_set=None):
+def import_tushare_stock_daily(chain_param=None, ts_code_set=None):
     """
     插入股票日线数据到最近一个工作日-1。
     如果超过 BASE_LINE_HOUR 时间，则获取当日的数据
@@ -166,14 +171,15 @@ def import_tushare_stock_daily(chain_param=None,ts_code_set=None):
         for num, (ts_code, (date_from, date_to)) in enumerate(code_date_range_dic.items(), start=1):
             logger.debug('%d/%d) %s [%s - %s]', num, data_len, ts_code, date_from, date_to)
             data_df = invoke_daily(ts_code=ts_code, start_date=datetime_2_str(date_from, STR_FORMAT_DATE_TS),
-                           end_date=datetime_2_str(date_to, STR_FORMAT_DATE_TS))
+                                   end_date=datetime_2_str(date_to, STR_FORMAT_DATE_TS))
             # data_df = df
             if len(data_df) > 0:
                 while try_2_date(data_df['trade_date'].iloc[-1]) > date_from:
                     last_date_in_df_last, last_date_in_df_cur = try_2_date(data_df['trade_date'].iloc[-1]), None
                     df2 = invoke_daily(ts_code=ts_code, start_date=datetime_2_str(date_from, STR_FORMAT_DATE_TS),
-                                    end_date=datetime_2_str(try_2_date(data_df['trade_date'].iloc[-1]) - timedelta(days=1),
-                                                            STR_FORMAT_DATE_TS))
+                                       end_date=datetime_2_str(
+                                           try_2_date(data_df['trade_date'].iloc[-1]) - timedelta(days=1),
+                                           STR_FORMAT_DATE_TS))
                     if len(df2 > 0):
                         last_date_in_df_cur = try_2_date(df2['trade_date'].iloc[-1])
                         if last_date_in_df_cur < last_date_in_df_last:
@@ -189,7 +195,7 @@ def import_tushare_stock_daily(chain_param=None,ts_code_set=None):
                                     date_from, date_to)
                     else:
                         break
-            #把数据攒起来
+            # 把数据攒起来
             if data_df is not None and data_df.shape[0] > 0:
                 data_count += data_df.shape[0]
                 data_df_list.append(data_df)
@@ -197,26 +203,18 @@ def import_tushare_stock_daily(chain_param=None,ts_code_set=None):
             # 大于阀值有开始插入
             if data_count >= 500:
                 data_df_all = pd.concat(data_df_list)
-                bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md,DTYPE_TUSHARE_STOCK_DAILY_MD)
+                bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md, DTYPE_TUSHARE_STOCK_DAILY_MD)
                 all_data_count += data_count
                 data_df_list, data_count = [], 0
 
-                # # 数据插入数据库
-                # data_df_all = data_df
-                # data_count = bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md, DTYPE_TUSHARE_STOCK_DAILY_MD)
-                # logging.info("更新 %s 结束 %d 条信息被更新", table_name, data_count)
-                # data_df = []
-            # 仅调试使用
-            # n=1
-            # n=n+1
-            # if DEBUG and n > 10:
-            #     break
+
     finally:
         # 导入数据库
         if len(data_df_list) > 0:
             data_df_all = pd.concat(data_df_list)
-            data_count = bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md, DTYPE_TUSHARE_STOCK_DAILY_MD)
-            all_data_count=all_data_count+data_count
+            data_count = bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md,
+                                                          DTYPE_TUSHARE_STOCK_DAILY_MD)
+            all_data_count = all_data_count + data_count
             logging.info("更新 %s 结束 %d 条信息被更新", table_name, all_data_count)
             if not has_table and engine_md.has_table(table_name):
                 alter_table_2_myisam(engine_md, [table_name])
@@ -224,16 +222,6 @@ def import_tushare_stock_daily(chain_param=None,ts_code_set=None):
 
 
 if __name__ == "__main__":
-    # DEBUG = True
     import_tushare_stock_info(refresh=False)
-    # 更新每日股票数据
-    # SQL = """SELECT ts_code FROM tushare_stock_info where ts_code>'603033.SH'"""
-    # with with_db_session(engine_md) as session:
-    #     # 获取每只股票需要获取日线数据的日期区间
-    #     table = session.execute(SQL)
-    #     ts_code_set = list([row[0] for row in table.fetchall()])
     import_tushare_stock_daily(ts_code_set=None)
 
-    # import_stock_daily_wch()
-    # wind_code_set = None
-    # add_new_col_data('ebitdaps', '',wind_code_set=wind_code_set)
