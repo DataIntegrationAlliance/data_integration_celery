@@ -232,7 +232,7 @@ if __name__ == "__main__":
     #     # 获取每只股票需要获取日线数据的日期区间
     #     table = session.execute(SQL)
     #     ts_code_set = list([row[0] for row in table.fetchall()])
-    # import_tushare_stock_daily(ts_code_set=None)
+    import_tushare_stock_daily(ts_code_set=None)
 
     # import_stock_daily_wch()
     # wind_code_set = None

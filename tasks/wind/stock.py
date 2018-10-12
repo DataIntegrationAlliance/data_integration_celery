@@ -654,8 +654,8 @@ def import_stock_quertarly(chain_param=None, wind_code_set=None):
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG, format='%(asctime)s: %(levelname)s [%(name)s:%(funcName)s] %(message)s')
     # DEBUG = True
-    # import_wind_stock_info(chain_param=None, refresh=False)
-    # 更新每日股票数据
+    import_wind_stock_info(chain_param=None, refresh=False)
+    # 更新每日股票数据66
     import_stock_daily(chain_param=None)
     # import_stock_daily_wch()
     # wind_code_set = None

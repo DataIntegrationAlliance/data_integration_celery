@@ -48,6 +48,15 @@ def import_macroeconomy_info(chain_param=None):
         ["M0001244", "PPI_industrial_cumulative_yoy", "工业品PPI累计同比", "1996-10-31", None, '全部工业品累计同比'],
         ["M0001228", "PPI_means_production_yoy", "生产资料PPI当月同比", "1996-10-31", None, '生产资料PPI当月同比'],
         ["M0001232", "PPI_means_subsistence_yoy", "生活资料PPI当月同比", "1996-10-31", None, "生活资料PPI当月同比"],
+        #股票市场资金流向
+        ["M0062050", "active_buy_A", "资金主动买入A股", "2010-01-05", None, "单位:亿元"],
+        ["M0062051", "active_buy_main_board", "资金主动买入主板", "2010-01-05", None, "单位:亿元"],
+        ["M0062052", "active_buy_SME_board", "资金主动买入中小板", "2010-01-05", None, "单位:亿元"],
+        ["M0062053", "active_buy_GEM_board", "资金主动买入创业板", "2010-01-07", None, "单位:亿元"],
+        ["M5543291", "active_buy_ZZ500", "资金主动买入中证500", "2007-01-15", None, "单位:亿元"],
+        ["M5543267", "active_buy_SH50", "资金主动买入上证50", "2006-12-05", None, "单位:亿元"],
+        ["M0062054", "active_buy_HS300", "资金主动买入沪深300", "2009-01-07", None, "单位:亿元"],
+
 
     ]
     dtype = {
