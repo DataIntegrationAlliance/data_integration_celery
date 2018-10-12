@@ -28,12 +28,7 @@ def build_commodity_info():
     table_name = 'wind_commodity_info'
     has_table = engine_md.has_table(table_name)
     indicators_dic = [
-        # 白糖价格
-        ["S5023650", "sr_price_nn", "南宁白砂糖价格", "2001-01-03", None, '南宁糖网现货价'],
-        ["S5023651", "sr_price_lz", "柳州白砂糖价格", "2001-01-03", None, '南宁糖网现货价'],
-        ["S5023652", "sr_price_km", "昆明白砂糖价格", "2001-01-03", None, '南宁糖网现货价'],
-
-        # 豆粕现货价格
+        #豆粕现货价格
         ["S5006056", "m_price_dg", "东莞豆粕价格", "2009-01-04", None, ''],
         ["S5006045", "m_price_lyg", "连云港豆粕价格", "2009-01-04", None, ''],
         ["S5006038", "m_price_rz", "日照豆粕价格", "2009-01-04", None, ''],
@@ -44,7 +39,7 @@ def build_commodity_info():
         ["S5006030", "m_price_dl", "大连豆粕价格", "2009-01-04", None, ''],
         ["S5006032", "m_price_tj", "天津豆粕价格", "2009-01-04", None, ''],
         ["S5006044", "m_price_cd", "成都豆粕价格", "2009-01-04", None, ''],
-        # 豆油现货价格
+        #豆油现货价格
         ["S0142915", "y_price_average", "豆油平均价格", "2008-03-03", None, '一级豆油现货'],
         ["S5005983", "y_price_hp", "黄埔豆油价格", "2009-01-04", None, '一级豆油现货价格'],
         ["S5005982", "y_price_nb", "宁波豆油价格", "2009-01-04", None, '一级豆油现货价格'],
@@ -52,14 +47,14 @@ def build_commodity_info():
         ["S5005980", "y_price_rz", "日照豆油价格", "2009-01-04", None, '一级豆油现货价格'],
         ["S5005979", "y_price_tj", "天津豆油价格", "2009-01-04", None, '一级豆油现货价格'],
         ["S5005978", "y_price_dl", "大连豆油价格", "2009-01-04", None, '一级豆油现货价格'],
-        # 豆油出厂价格
+        #豆油出厂价格
         ["S5028743", "y_price_fcg_fab", "防城港豆油出厂价格", "2007-01-04", None, '一级豆油散装出厂价'],
         ["S5028742", "y_price_zj_fab", "湛江豆油出厂价格", "2007-01-04", None, '一级豆油散装出厂价'],
         ["S5028740", "y_price_zjg_fab", "张家港豆油出厂价格", "2007-01-04", None, '一级豆油散装出厂价'],
         ["S5028738", "y_price_rz_fab", "日照豆油出厂价格", "2007-01-04", None, '一级豆油散装出厂价'],
         ["S5028735", "y_price_jingjin_fab", "京津豆油出厂价格", "2007-01-04", None, '一级豆油散装出厂价'],
         ["S5028735", "y_price_dl_fab", "大连豆油出厂价格", "2007-01-04", None, '一级豆油散装出厂价'],
-        # 菜籽油出厂价格
+        #菜籽油出厂价格
         ["S5028744", "oi4_price_xy_fab", "河南信阳出厂价格", "2007-01-04", None, '四级菜油出厂价'],
         ["S5028747", "oi4_price_nt_fab", "南通出厂价格", "2007-01-04", None, '四级菜油出厂价'],
         ["S5028750", "oi4_price_wh_fab", "武汉出厂价格", "2007-01-04", None, '四级菜油出厂价'],
@@ -67,7 +62,7 @@ def build_commodity_info():
         ["S5028753", "oi4_price_cde_fab", "常德出厂价格", "2007-01-04", None, '四级菜油出厂价'],
         ["S5028755", "oi4_price_cdu_fab", "成都出厂价格", "2007-01-04", None, '四级菜油出厂价'],
         ["S5028752", "oi4_price_yy_fab", "岳阳出厂价格", "2007-01-04", None, '四级菜油出厂价'],
-        # 中国棕榈油价格
+        #中国棕榈油价格
         ["S0142919", "p_price_average", "棕榈油平均价格", "2008-02-29", None, '棕榈油农业部统计价格'],
         ["S5006011", "p_price_average_24", "24度棕榈油平均价格", "2009-01-04", None, '现货价'],
         ["S5006005", "p_price_fj", "福建24度棕榈油价格", "2009-01-04", None, '现货价'],
@@ -76,28 +71,7 @@ def build_commodity_info():
         ["S5006008", "p_price_zjg", "张家港24度棕榈油价格", "2009-01-04", None, '现货价'],
         ["S5006009", "p_price_tj", "天津24度棕榈油价格", "2009-01-04", None, '现货价'],
         ["S5006009", "p_price_rz", "日照24度棕榈油价格", "2009-01-04", None, '现货价'],
-
-        #原油价格
-        ["S0031526", "opec_package_oil_price", "opec一揽子原油价格", "1990-12-31", None, '美元/桶'],
-        ["S5111905", "brent_oil_price", "英国布伦特原油价格", "2001-12-26", None, '美元/桶'],
-        ["S0031528", "Shengli_ring_pacific_oil_price", "中国胜利环太平洋原油价格", "2001-12-26", None, '美元/桶'],
-        ["S0031529", "Daqing_ring_pacific_oil_price", "中国大庆环太平洋原油价格", "2001-12-26", None, '美元/桶'],
-        ["S0031530", "Dubai_pacific_rim_oil_price", "阿联酋迪拜环太平洋原油价格", "2001-12-25", None, '美元/桶'],
-        ["S0031532", "Malaysia_pacific_rim_tapes_oil_price", "马来西亚塔皮斯环太平洋原油价格", "2001-12-25", None, '美元/桶'],
-        ["S0031533", "Indonesia_minas_pacific_rim_oil_price", "印尼米纳斯环太平洋原油价格", "2001-12-25", None, '美元/桶'],
-        ["S0031534", "Indonesia_sinta_pacific_rim_oil_price", "印尼辛塔环太平洋原油价格", "2001-12-27", None, '美元/桶'],
-        ["S0031535", "Indonesia_aldouri_pacific_rim_oil_price", "印尼杜里环太平洋原油价格", "2001-12-26", None, '美元/桶'],
-        ["S5111903", "WTI_light_oil_price", "美国西德克萨斯中级轻质原油价格", "2002-11-25", None, '美元/桶'],
-        ["S5111904", "Oman_rim_pacific_oil_price", "阿曼环太平洋原油价格", "2001-12-26", None, '美元/桶'],
-        ["S5111925", "WTI_cushing_light_oil_fob_price", "西德克萨斯中级轻质原油库欣FOB价格", "1986-01-02", None, '美元/桶'],
-        ["S5111926", "brent_oil_europe_fob_price", "英国布伦特FOB欧洲原油价格", "1987-05-20", None, '美元/桶'],
-        ["S5104915", "brent_oil_north_sea_fob_price", "英国布伦特北海离岸原油价格", "1997-01-03", None, '美元/桶'],
-        ["S5104912", "Louisiana_low_sulphur_St_James_delivery_price", "路易斯安那低硫圣詹姆斯交割价格", "1997-01-03", None, '美元/桶'],
-        ["S5111925", "WTI_cushing_light_oil_delivery_price", "西德克萨斯中级轻质原油库欣交割价格", "1997-01-03", None, '美元/桶'],
-        ["S5104914", "Dubai_middle_east_fob_price", "迪拜中东离岸价格", "2008-12-19", None, '美元/桶'],
-        ["S5110987", "Kuwait_Energy_Corp_oil_price", "科威特能源公司原油价格", "2001-12-26", None, '美元/桶'],
-
-        # 螺纹钢
+        #螺纹钢
         ["S5707798", "rb_price_nation", "全国螺纹钢均价", "2008-12-23", None, 'HRB400 20mm'],
         ["S0033213", "rb_price_bj", "北京螺纹钢均价", "2007-01-08", None, 'HRB400 20mm'],
         ["S0073207", "rb_price_tj", "天津螺纹钢均价", "2007-01-08", None, 'HRB400 20mm'],
@@ -115,17 +89,7 @@ def build_commodity_info():
         ["S0143491", "square_billet_js", "江苏方坯价格", "2007-01-31", None, '单位：元/吨'],
         ["S0143494", "square_billet_sx", "山西方坯价格", "2007-01-31", None, '单位：元/吨'],
         ["S0143504", "square_billet_MnSi_ts", "唐山MnSi方坯价格", "2007-01-31", None, '单位：元/吨,20MnSi'],
-        # 螺纹钢库存
-        ["S0181750", "rb_inventory", "螺纹钢库存", "2010-05-21", None, '含上海全部仓库，单位：万吨'],
-        ["S0110142", "wire_inventory", "线材库存", "2006-03-17", None, '单位：万吨'],
-        ["S0110143", "hc_inventory", "热卷库存", "2006-03-17", None, '单位：万吨'],
-        ["S0110144", "steel_plate_inventory", "中板库存", "2006-03-17", None, '单位：万吨'],
-        ["S0110145", "cold_rolled_inventory", "冷轧库存", "2006-03-17", None, '单位：万吨'],
-        ["S5708249", "key_steelworks_inventory", "重点钢厂库存", "2009-05-31", None, '单位：万吨'],
-        # 上海线螺采购量
-        ["S5704503", "line_rb_purchase", "上海线螺采购量", "2004-10-17", None, '单位：吨'],
-
-        # 货币供应
+        #货币供应
         ["M0001380", "M0", "M0", "1990-12-31", None, '中国人民银行，单位：亿元'],
         ["M0001381", "M0_yoy", "M0_yoy", "1990-12-31", None, '中国人民银行'],
         ["M0001382", "M1", "M1", "1990-12-31", None, '中国人民银行，单位：亿元'],
@@ -138,12 +102,13 @@ def build_commodity_info():
         ["M0060452", "M1_yoy_tail_raising_factor", "M1同比翘尾因素", "2003-01-31", None, '中国人民银行'],
         ["M0060453", "M2_yoy_tail_raising_factor", "M2同比翘尾因素", "2003-01-31", None, '中国人民银行'],
 
-        # 外汇市场
+
+        #外汇市场
         ["M0067855", "us2rmb", "美元兑人民币即期汇率", "1994-01-04", None, '中国货币网'],
         ["M0000185", "us2rmb_mid", "美元兑人民币中间价", "1994-08-31", None, '中国人民银行'],
         ["M0290205", "us2cnh", "美元兑人民币离岸汇率", "2012-04-30", None, '中国货币网'],
         ["M0000271", "usdx", "美元指数", "1971-01-04", None, '倚天财经'],
-        # 利率市场_上海银行同业拆借
+        #利率市场_上海银行同业拆借
         ["M1001854", "SHIBOR_N", "SHIBOR_N", "2006-10-08", None, '全国银行间同业拆借中心'],
         ["M1001855", "SHIBOR_1W", "SHIBOR_1W", "2006-10-08", None, '全国银行间同业拆借中心'],
         ["M1001856", "SHIBOR_2W", "SHIBOR_2W", "2006-10-08", None, '全国银行间同业拆借中心'],
@@ -152,18 +117,18 @@ def build_commodity_info():
         ["M1001859", "SHIBOR_6M", "SHIBOR_6M", "2006-10-08", None, '全国银行间同业拆借中心'],
         ["M1001860", "SHIBOR_9M", "SHIBOR_9M", "2006-10-08", None, '全国银行间同业拆借中心'],
         ["M1001861", "SHIBOR_1Y", "SHIBOR_1Y", "2006-10-08", None, '全国银行间同业拆借中心'],
-        # 票据贴现利率
+        #票据贴现利率
         ["M0061577", "direct_discount_rate_pearl_river_delta_6m", "珠三角票据直贴利率", "2007-03-16", None, '中国货币网'],
         ["M0061578", "direct_discount_rate_yangze_river_delta_6m", "长三角票据直贴利率", "2007-03-16", None, '中国货币网'],
         ["M0061575", "direct_discount_rate_midwestern_6m", "中西部票据直贴利率", "2007-03-16", None, '中国货币网'],
         ["M0061576", "direct_discount_rate_bohai_rim_6m", "环渤海票据直贴利率", "2007-03-16", None, '中国货币网'],
         ["M0061579", "rediscount_rate_6m", "票据转贴利率", "2007-03-16", None, '中国货币网'],
-        # 温州民间借贷利率
+        #温州民间借贷利率
         ["M5447740", "wzpfi_1m", "温州民间融资综合利率1个月", "2013-01-04", None, '温州金融办'],
         ["M5447741", "wzpfi_3m", "温州民间融资综合利率3个月", "2013-01-04", None, '温州金融办'],
         ["M5447742", "wzpfi_6m", "温州民间融资综合利率6个月", "2013-01-04", None, '温州金融办'],
         ["M5447743", "wzpfi_1y", "温州民间融资综合利率1年", "2013-01-04", None, '温州金融办'],
-        # 中企债AAA
+        #中企债AAA
         ["M1000368", "china_bond_corporate_bond_yield_1y_AAA", "1年期中债企业债到期收益率", "2006-03-01", None, '债券交易中心'],
         ["M1004552", "china_bond_corporate_bond_yield_3m_AAA", "3月期中债企业债到期收益率", "2006-03-01", None, '债券交易中心'],
         ["M1006941", "china_bond_corporate_bond_yield_1m_AAA", "1月期中债企业债到期收益率", "2006-03-01", None, '债券交易中心'],
@@ -203,7 +168,7 @@ def build_commodity_info():
         ["M1005120", "china_bond_corporate_bond_yield_3y_AA-", "3年期中债企业债到期收益率_AA-", "2008-08-21", None, '债券交易中心'],
         ["M1005122", "china_bond_corporate_bond_yield_5y_AA-", "5年期中债企业债到期收益率_AA-", "2008-08-21", None, '债券交易中心'],
         ["M1005123", "china_bond_corporate_bond_yield_10y_AA-", "10年期中债企业债到期收益率_AA-", "2008-08-21", None, '债券交易中心'],
-        ["M1005126", "china_bond_corporate_bond_yield_6y_AA-", "6年期中债企业债到期收益率_AA-", "2008-08-21", None, '债券交易中心'],
+        ["M1005126", "china_bond_corporate_bond_yield_6y_AA-", "6年期中债企业债到期收益率_AA-","2008-08-21", None, '债券交易中心'],
 
         # 中企债A+
         ["S0059890", "china_bond_corporate_bond_yield_1y_A+", "1年期中债企业债到期收益率_A+", "2008-01-07", None, '债券交易中心'],
@@ -213,7 +178,7 @@ def build_commodity_info():
         ["S0059893", "china_bond_corporate_bond_yield_5y_A+", "5年期中债企业债到期收益率_A+", "2008-01-07", None, '债券交易中心'],
         ["S0059895", "china_bond_corporate_bond_yield_10y_A+", "10年期中债企业债到期收益率_A+", "2008-01-07", None, '债券交易中心'],
         ["M0057971", "china_bond_corporate_bond_yield_6y_A+", "6年期中债企业债到期收益率_A+", "2008-01-07", None, '债券交易中心'],
-        # 城投债AAA
+        #城投债AAA
         ["M0048432", "china_bond_local_government_bond_yield_1y_AAA", "1年期中债城投债到期收益率_AAA", "2008-08-21", None,
          '债券估值中心'],
         ["M0048434", "china_bond_local_government_bond_yield_3y_AAA", "3年期中债城投债到期收益率_AAA", "2008-08-21", None,
@@ -233,20 +198,13 @@ def build_commodity_info():
         ["M1004553", "china_bond_local_government_bond_yield_3m_AAA", "3月年期中债城投债到期收益率_AAA", "2012-02-21", None,
          '债券估值中心'],
         # 城投债AA+
-        ["M0048422", "china_bond_local_government_bond_yield_1y_AA+", "1年期中债城投债到期收益率_AA+", "2008-08-19", None,
-         '债券估值中心'],
-        ["M0048424", "china_bond_local_government_bond_yield_3y_AA+", "3年期中债城投债到期收益率_AA+", "2008-08-19", None,
-         '债券估值中心'],
-        ["M0048425", "china_bond_local_government_bond_yield_5y_AA+", "5年期中债城投债到期收益率_AA+", "2008-08-19", None,
-         '债券估值中心'],
-        ["M0057981", "china_bond_local_government_bond_yield_6y_AA+", "6年期中债城投债到期收益率_AA+", "2008-08-19", None,
-         '债券估值中心'],
-        ["M0048427", "china_bond_local_government_bond_yield_10y_AA+", "10年期中债城投债到期收益率_AA+", "2008-08-19", None,
-         '债券估值中心'],
-        ["M0048428", "china_bond_local_government_bond_yield_15y_AA+", "15年期中债城投债到期收益率_AA+", "2008-08-19", None,
-         '债券估值中心'],
-        ["M0048429", "china_bond_local_government_bond_yield_20y_AA+", "20年期中债城投债到期收益率_AA+", "2008-08-19", None,
-         '债券估值中心'],
+        ["M0048422", "china_bond_local_government_bond_yield_1y_AA+", "1年期中债城投债到期收益率_AA+", "2008-08-19", None, '债券估值中心'],
+        ["M0048424", "china_bond_local_government_bond_yield_3y_AA+", "3年期中债城投债到期收益率_AA+", "2008-08-19", None, '债券估值中心'],
+        ["M0048425", "china_bond_local_government_bond_yield_5y_AA+", "5年期中债城投债到期收益率_AA+", "2008-08-19", None, '债券估值中心'],
+        ["M0057981", "china_bond_local_government_bond_yield_6y_AA+", "6年期中债城投债到期收益率_AA+", "2008-08-19", None, '债券估值中心'],
+        ["M0048427", "china_bond_local_government_bond_yield_10y_AA+", "10年期中债城投债到期收益率_AA+", "2008-08-19", None, '债券估值中心'],
+        ["M0048428", "china_bond_local_government_bond_yield_15y_AA+", "15年期中债城投债到期收益率_AA+", "2008-08-19", None, '债券估值中心'],
+        ["M0048429", "china_bond_local_government_bond_yield_20y_AA+", "20年期中债城投债到期收益率_AA+", "2008-08-19", None, '债券估值中心'],
         ["M1006904", "china_bond_local_government_bond_yield_1m_AA+", "1月期中债城投债到期收益率_AA+", "2013-05-03", None,
          '债券估值中心'],
         ["M1004555", "china_bond_local_government_bond_yield_3m_AA+", "3月年期中债城投债到期收益率_AA+", "2012-02-21", None,
@@ -271,7 +229,7 @@ def build_commodity_info():
          '债券估值中心'],
         ["M1004557", "china_bond_local_government_bond_yield_3m_AA", "3月年期中债城投债到期收益率_AA", "2012-02-21", None,
          '债券估值中心'],
-        # 香港同业拆借
+        #香港同业拆借
         ["M0062945", "HIBOR_N", "HIBOR_N", "2006-01-03", None, '香港同业拆借市场'],
         ["M0062946", "HIBOR_1W", "HIBOR_1W", "2006-01-03", None, '香港同业拆借市场'],
         ["M0062947", "HIBOR_2W", "HIBOR_2W", "2006-01-03", None, '香港同业拆借市场'],
@@ -281,22 +239,9 @@ def build_commodity_info():
         ["M0062950", "HIBOR_3M", "HIBOR_3M", "2002-03-04", None, '香港同业拆借市场'],
         ["M0062953", "HIBOR_6M", "HIBOR_6M", "2002-03-04", None, '香港同业拆借市场'],
         ["M0062959", "HIBOR_12M", "HIBOR_12M", "2002-03-04", None, '香港同业拆借市场'],
-        # 伦敦同业
+        #伦敦同业
 
-        # 中国GDP 宏观数据
-        # CPI
-        ["M0000612", "CPI", "CPI", "1990-01-31", None, 'CPI同比'],
-        ["M0000616", "CPI_food", "CPI食品", "1994-01-31", None, '食品CPI同比'],
-        ["M0000613", "CPI_nofood", "CPI非食品", "2001-01-31", None, '非食品CPI同比'],
-        ["M0085932", "CPI_core", "核心CPI", "2013-01-31", None, '不包括食品和能源CPI同比'],
-        # PPI
-        ["M0001227", "PPI_industrial_yoy", "工业品PPI当月同比", "1996-10-31", None, '全部工业品当月同比'],
-        ["M0049160", "PPI_industrial_mom", "工业品PPI当月环比", "2002-01-31", None, '全部工业品当月环比'],
-        ["M0001244", "PPI_industrial_cumulative_yoy", "工业品PPI累计同比", "1996-10-31", None, '全部工业品累计同比'],
-        ["M0001228", "PPI_means_production_yoy", "生产资料PPI当月同比", "1996-10-31", None, '生产资料PPI当月同比'],
-        ["M0001232", "PPI_means_subsistence_yoy", "生活资料PPI当月同比", "1996-10-31", None, "生活资料PPI当月同比"],
-
-        # 美国国债收益率
+        #美国国债收益率
         ["G0000886", "yield_on_us_treasury_bonds_1y", "一年期美国国债收益率", "1970-08-20", None, '美联储'],
         ["G0000891", "yield_on_us_treasury_bonds_10y", "十年期美国国债收益率", "1970-08-20", None, '美联储'],
         ["G0000884", "yield_on_us_treasury_bonds_3m", "三月期美国国债收益率", "1982-01-04", None, '美联储'],
@@ -310,44 +255,54 @@ def build_commodity_info():
         ["M1004969", "yield_on_cn_treasury_bonds_20y", "二十年期中国国债收益率", "2011-01-07", None, '中国货币网'],
         ["M1004970", "yield_on_cn_treasury_bonds_30y", "三十年期中国国债收益率", "2011-01-07", None, '中国货币网'],
 
+        #螺纹钢库存
+        ["S0181750", "rb_inventory", "螺纹钢库存", "2010-05-21", None, '含上海全部仓库，单位：万吨'],
+        ["S0110142", "wire_inventory", "线材库存", "2006-03-17", None, '单位：万吨'],
+        ["S0110143", "hc_inventory", "热卷库存", "2006-03-17", None, '单位：万吨'],
+        ["S0110144", "steel_plate_inventory", "中板库存", "2006-03-17", None, '单位：万吨'],
+        ["S0110145", "cold_rolled_inventory", "冷轧库存", "2006-03-17", None, '单位：万吨'],
+        ["S5708249", "key_steelworks_inventory", "重点钢厂库存", "2009-05-31", None, '单位：万吨'],
 
 
-        # 六大电厂库存及日耗
+        #上海线螺采购量
+        ["S5704503", "line_rb_purchase", "上海线螺采购量", "2004-10-17", None, '单位：吨'],
+
+        #六大电厂库存及日耗
         ["S5116614", "six_power_consumption", "六大电厂日均耗煤量", "2009-10-01", None, '单位：万吨'],
         ["S5116621", "six_power_inventory", "六大电厂日均耗煤量", "2009-10-01", None, '单位：万吨'],
         ["S5116622", "six_power_usable_days", "六大电厂日均耗煤量", "2009-10-01", None, '单位：万吨'],
-        # 三峡流量
+        #三峡流量
         ["S5110944", "sanxia_inflow", "三峡入库流量", "2003-06-01", None, '单位：立方米/秒'],
         ["S5110945", "sanxia_outflow", "三峡出库流量", "2003-06-01", None, '单位：立方米/秒'],
 
+
     ]
     dtype = {
-        'wind_code': String(20),
+        'key': String(20),
         'en_name': String(120),
         'cn_name': String(120),
         'begin_date': Date,
         'end_date': Date,
         'remark': Text,
     }
-    name_list = ['wind_code', 'en_name', 'cn_name', 'begin_date', 'end_date', 'remark']
+    name_list = ['key', 'en_name', 'cn_name', 'begin_date', 'end_date', 'remark']
     info_df = pd.DataFrame(data=indicators_dic, columns=name_list)
     data_count = bunch_insert_on_duplicate_update(info_df, table_name, engine_md, dtype)
     logger.info('%d 条记录被更新', data_count)
     if not has_table and engine_md.has_table(table_name):
         alter_table_2_myisam(engine_md, [table_name])
         create_pk_str = """ALTER TABLE {table_name}
-            CHANGE COLUMN `wind_code` `wind_code` VARCHAR(20) NOT NULL FIRST,
-            ADD PRIMARY KEY (`wind_code`)""".format(table_name=table_name)
+            CHANGE COLUMN `key` `key` VARCHAR(20) NOT NULL FIRST,
+            ADD PRIMARY KEY (`key`)""".format(table_name=table_name)
         with with_db_session(engine_md) as session:
             session.execute(create_pk_str)
-        logger.info('%s 表 `wind_code` 主键设置完成', table_name)
+        logger.info('%s 表 `key` 主键设置完成', table_name)
 
 
 @app.task
-def import_edb(chain_param=None, wind_code_set=None):
+def import_edb(wind_code_set=None):
     """
     通过wind接口获取并导入EDB数据
-    :param chain_param:  在celery 中將前面結果做爲參數傳給後面的任務
     :return:
     """
     table_name = 'wind_commodity_edb'
@@ -355,38 +310,38 @@ def import_edb(chain_param=None, wind_code_set=None):
     logging.info("更新 %s 开始", table_name)
     param_list = [
         ('close', DOUBLE),
-    ]
+     ]
     rename_col_dic = {key.upper(): key.lower() for key, _ in param_list}
 
     # info_df = pd.read_sql('wind_commodity_info', engine_md)
     # 进行表格判断，确定是否含有 wind_commodity_edb
     if has_table:
         sql_str = """
-                SELECT `wind_code`, date_frm, if(end_date<end_date2, end_date, end_date2) date_to
+                SELECT `key`, date_frm, if(end_date<end_date2, end_date, end_date2) date_to
                 FROM
                 (
-                SELECT info.`wind_code`, ifnull(trade_date, begin_date) date_frm, end_date,
+                SELECT info.`key`, ifnull(trade_date, begin_date) date_frm, end_date,
                 if(hour(now())<16, subdate(curdate(),1), curdate()) end_date2
                 FROM 
                     wind_commodity_info info 
                 LEFT OUTER JOIN
-                    (SELECT `wind_code`, adddate(max(trade_date),1) trade_date FROM {table_name} GROUP BY `wind_code`) daily
-                ON info.`wind_code` = daily.`wind_code`
+                    (SELECT `key`, adddate(max(trade_date),1) trade_date FROM {table_name} GROUP BY `key`) daily
+                ON info.`key` = daily.`key`
                 ) tt
                 WHERE date_frm <= if(end_date<end_date2, end_date, end_date2) 
-                ORDER BY `wind_code`""".format(table_name=table_name)
+                ORDER BY `key`""".format(table_name=table_name)
     else:
         logger.warning('%s 不存在，仅使用 wind_commodity_info 表进行计算日期范围', table_name)
         sql_str = """
-                SELECT `wind_code`, date_frm, if(end_date<end_date2, end_date, end_date2) date_to
+                SELECT `key`, date_frm, if(end_date<end_date2, end_date, end_date2) date_to
                 FROM
                   (
-                    SELECT info.`wind_code`, begin_date date_frm, end_date,
+                    SELECT info.`key`, begin_date date_frm, end_date,
                     if(hour(now())<16, subdate(curdate(),1), curdate()) end_date2
                     FROM wind_commodity_info info 
                   ) tt
                 WHERE date_frm <= if(end_date<end_date2, end_date, end_date2) 
-                ORDER BY `wind_code`"""
+                ORDER BY `key`"""
 
     with with_db_session(engine_md) as session:
         # 获取每只股票需要获取日线数据的日期区间
@@ -400,7 +355,7 @@ def import_edb(chain_param=None, wind_code_set=None):
             wind_code_set is None or wind_code in wind_code_set}
     # 设置 dtype
     dtype = {key: val for key, val in param_list}
-    dtype['wind_code'] = String(20)
+    dtype['key'] = String(20)
     dtype['trade_date'] = Date
 
     data_df_list = []
@@ -408,12 +363,12 @@ def import_edb(chain_param=None, wind_code_set=None):
     logger.info('%d stocks will been import into wind_commodity_edb', data_len)
     # 将data_df数据，添加到data_df_list
     try:
-        for num, (wind_code, (date_from, date_to)) in enumerate(code_date_range_dic.items(), start=1):
-            logger.debug('%d/%d) %s [%s - %s]', num, data_len, wind_code, date_from, date_to)
+        for num, (key_code, (date_from, date_to)) in enumerate(code_date_range_dic.items(), start=1):
+            logger.debug('%d/%d) %s [%s - %s]', num, data_len, key_code, date_from, date_to)
             try:
-                data_df = invoker.edb(wind_code, date_from, date_to, options='')
+                data_df = invoker.edb(key_code, date_from, date_to, options='')
             except APIError as exp:
-                logger.exception("%d/%d) %s 执行异常", num, data_len, wind_code)
+                logger.exception("%d/%d) %s 执行异常", num, data_len, key_code)
                 if exp.ret_dic.setdefault('error_code', 0) in (
                         -40520007,  # 没有可用数据
                         -40521009,  # 数据解码失败。检查输入参数是否正确，如：日期参数注意大小月月末及短二月
@@ -422,12 +377,12 @@ def import_edb(chain_param=None, wind_code_set=None):
                 else:
                     break
             if data_df is None:
-                logger.warning('%d/%d) %s has no data during %s %s', num, data_len, wind_code, date_from, date_to)
+                logger.warning('%d/%d) %s has no data during %s %s', num, data_len, key_code, date_from, date_to)
                 continue
-            logger.info('%d/%d) %d data of %s between %s and %s', num, data_len, data_df.shape[0], wind_code, date_from,
+            logger.info('%d/%d) %d data of %s between %s and %s', num, data_len, data_df.shape[0], key_code, date_from,
                         date_to)
-            data_df['wind_code'] = wind_code
-            data_df.rename(columns={wind_code.upper(): 'value'}, inplace=True)
+            data_df['key'] = key_code
+            data_df.rename(columns={key_code.upper(): 'value'}, inplace=True)
             data_df_list.append(data_df)
             # 仅调试使用
             if DEBUG and len(data_df_list) > 2:
@@ -445,16 +400,17 @@ def import_edb(chain_param=None, wind_code_set=None):
                 alter_table_2_myisam(engine_md, [table_name])
                 # build_primary_key([table_name])
                 create_pk_str = """ALTER TABLE {table_name}
-                    CHANGE COLUMN `wind_code` wind_code` VARCHAR(20) NOT NULL FIRST,
-                    CHANGE COLUMN `trade_date` `trade_date` DATE NOT NULL AFTER `wind_code`,
-                    ADD PRIMARY KEY (`wind_code`, `trade_date`)""".format(table_name=table_name)
+                    CHANGE COLUMN `key` `key` VARCHAR(20) NOT NULL FIRST,
+                    CHANGE COLUMN `trade_date` `trade_date` DATE NOT NULL AFTER `key`,
+                    ADD PRIMARY KEY (`key`, `trade_date`)""".format(table_name=table_name)
                 with with_db_session(engine_md) as session:
                     session.execute(create_pk_str)
-                logger.info('%s 表 `wind_code` `trade_date` 主键设置完成', table_name)
+                logger.info('%s 表 `key` `trade_date` 主键设置完成', table_name)
 
 
 if __name__ == "__main__":
     # DEBUG = True
     build_commodity_info()
-    # 更新每日股票数据
-    import_edb(chain_param=None)
+    # 更新每日商品数据
+    import_edb()
+
