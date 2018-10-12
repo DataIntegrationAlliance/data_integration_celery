@@ -9,7 +9,8 @@
 """
 import pandas as pd
 import numpy as np
-from sqlalchemy import MetaData, Column, Table
+from pandas._libs.tslibs.nattype import NaTType
+from sqlalchemy import MetaData, Table
 from sqlalchemy.orm.session import Session
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import DeclarativeMeta
@@ -19,6 +20,7 @@ from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.expression import Insert
 from tasks.utils.fh_utils import date_2_str
 import logging
+
 logger = logging.getLogger()
 
 
@@ -59,9 +61,9 @@ class AlchemyEncoder(json.JSONEncoder):
             for field in [x for x in dir(obj) if not x.startswith('_') and x != 'metadata']:
                 data = obj.__getattribute__(field)
                 try:
-                    json.dumps(data)     # this will fail on non-encodable values, like other classes
+                    json.dumps(data)  # this will fail on non-encodable values, like other classes
                     fields[field] = data
-                except TypeError:    # 添加了对datetime的处理
+                except TypeError:  # 添加了对datetime的处理
                     print(data)
                     if isinstance(data, datetime):
                         fields[field] = data.isoformat()
@@ -148,7 +150,8 @@ def add_col_2_table(engine, table_name, col_name, col_type_str):
         logger.info('%s 添加 %s [%s] 列成功', table_name, col_name, col_type_str)
 
 
-def bunch_insert_on_duplicate_update(df: pd.DataFrame, table_name, engine, dtype=None, ignore_none=True, myisam_if_create_table=False):
+def bunch_insert_on_duplicate_update(df: pd.DataFrame, table_name, engine, dtype=None, ignore_none=True,
+                                     myisam_if_create_table=False):
     """
     将 DataFrame 数据批量插入数据库，ON DUPLICATE KEY UPDATE
     :param df:
@@ -160,7 +163,6 @@ def bunch_insert_on_duplicate_update(df: pd.DataFrame, table_name, engine, dtype
     """
     if df is None or df.shape[0] == 0:
         return 0
-
     has_table = engine.has_table(table_name)
     if has_table:
         col_name_list = list(df.columns)
@@ -171,15 +173,16 @@ def bunch_insert_on_duplicate_update(df: pd.DataFrame, table_name, engine, dtype
 
         sql_str = "insert into {table_name}({col_names}) VALUES({params}) ON DUPLICATE KEY UPDATE {update}".format(
             table_name=table_name,
-            col_names= "`" + "`,`".join(col_name_list) + "`",
+            col_names="`" + "`,`".join(col_name_list) + "`",
             params=','.join([':' + col_name for col_name in col_name_list]),
             update=','.join(generated_directive),
         )
         data_dic_list = df.to_dict('records')
         for data_dic in data_dic_list:
             for k, v in data_dic.items():
-                if isinstance(v, float) and np.isnan(v):
+                if (isinstance(v, float) and np.isnan(v)) or isinstance(v, NaTType):
                     data_dic[k] = None
+
         with with_db_session(engine) as session:
             rslt = session.execute(sql_str, params=data_dic_list)
             insert_count = rslt.rowcount
@@ -214,7 +217,7 @@ def execute_sql(engine, sql_str, commit=False):
 
 if __name__ == "__main__":
     from sqlalchemy import create_engine
-    import numpy as np
+
     engine = create_engine("mysql://mg:Dcba1234@localhost/md_integration?charset=utf8",
                            echo=False, encoding="utf-8")
     table_name = 'test_only'

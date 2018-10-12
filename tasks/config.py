@@ -1,25 +1,21 @@
 #! /usr/bin/env python
 # -*- coding:utf-8 -*-
 """
-@author  : yby
-@Time    : 2018/9/15 17:53
+@author  : MG
+@Time    : 2018/3/30 17:53
 @File    : config.py
-@contact :
-@desc    :yeung's config
+@contact : mmmaaaggg@163.com
+@desc    :
 """
-import os
 import logging
 from logging.config import dictConfig
-import platform
-basedir = os.path.abspath(os.path.dirname(__file__))
-IS_LINUX_OS = platform.os.name != 'nt'
 from celery.schedules import crontab
-import tasks
+
 
 class CeleryConfig:
     # Celery settings
-    broker_url = 'amqp://yeung:***@localhost:5672/celery_tasks',
-    result_backend = 'amqp://yeung:***@localhost:5672/backend'
+    broker_url = 'amqp://mg:***@localhost:5672/celery_tasks',
+    result_backend = 'amqp://mg:***@localhost:5672/backend'
     accept_content = ['json']  # , 'pickle'
     timezone = 'Asia/Shanghai'
     imports = ('tasks', )
@@ -42,7 +38,7 @@ class ConfigClass(object):
     # Sql Alchemy settings
     DB_SCHEMA_MD = 'md_integration'
     DB_URL_DIC = {
-        DB_SCHEMA_MD: "mysql://root:***@localhost/{DB_SCHEMA_MD}?charset=utf8".format(
+        DB_SCHEMA_MD: "mysql://mg:***@localhost/{DB_SCHEMA_MD}?charset=utf8".format(
             DB_SCHEMA_MD=DB_SCHEMA_MD)
     }
 
@@ -50,12 +46,9 @@ class ConfigClass(object):
     IFIND_REST_URL = "http://localhost:5000/iFind/"
     # wind settings
     WIND_REST_URL = "http://localhost:5000/wind/"
-    # WIND_REST_URL = "http://10.0.3.66:5000/wind/"
-    # WIND_REST_URL = "http://10.0.5.61:5000/wind/"
-    # WIND_REST_URL = "http://10.0.5.63:5000/wind/"
 
     # Tushare settings
-    TUSHARE_TOKEN = "92d1cbe389dc2c724f98748edcc2a01abbe7df4cac721fb1ff03b363"
+    TUSHARE_TOKEN = "***"
     # CMC settings
     CMC_PRO_API_KEY = "***"
 
