@@ -160,7 +160,6 @@ def bunch_insert_on_duplicate_update(df: pd.DataFrame, table_name, engine, dtype
     """
     if df is None or df.shape[0] == 0:
         return 0
-
     has_table = engine.has_table(table_name)
     if has_table:
         col_name_list = list(df.columns)
@@ -178,8 +177,9 @@ def bunch_insert_on_duplicate_update(df: pd.DataFrame, table_name, engine, dtype
         data_dic_list = df.to_dict('records')
         for data_dic in data_dic_list:
             for k, v in data_dic.items():
-                if isinstance(v, float) and np.isnan(v):
+                if (isinstance(v, float) and np.isnan(v)) or isinstance(v, NaTType):
                     data_dic[k] = None
+
         with with_db_session(engine) as session:
             rslt = session.execute(sql_str, params=data_dic_list)
             insert_count = rslt.rowcount
@@ -214,7 +214,6 @@ def execute_sql(engine, sql_str, commit=False):
 
 if __name__ == "__main__":
     from sqlalchemy import create_engine
-    import numpy as np
     engine = create_engine("mysql://mg:Dcba1234@localhost/md_integration?charset=utf8",
                            echo=False, encoding="utf-8")
     table_name = 'test_only'
