@@ -158,7 +158,7 @@ if __name__ == "__main__":
     # 更新每日股票数据
     import_tushare_stock_top10_floatholders()
 
-    # sql_str = """SELECT * FROM old_tushare_stock_cashflow """
+    # sql_str = """SELECT * FROM old_tushare_stock_top10_floatholders """
     # df=pd.read_sql(sql_str,engine_md)
     # #将数据插入新表
     # data_count = bunch_insert_on_duplicate_update(df, table_name, engine_md, dtype)
