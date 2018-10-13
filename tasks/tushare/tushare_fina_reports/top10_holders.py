@@ -43,7 +43,7 @@ DTYPE_TUSHARE_STOCK_TOP10_HOLDERS = {key: val for key, val in INDICATOR_PARAM_LI
 # dtype['ts_code'] = String(20)
 # dtype['trade_date'] = Date
 
-@try_n_times(times=5, sleep_time=0, logger=logger, exception=Exception, exception_sleep_time=5)
+@try_n_times(times=5, sleep_time=1, logger=logger, exception=Exception, exception_sleep_time=5)
 def invoke_top10_holders(ts_code, start_date, end_date):
     invoke_top10_holders = pro.top10_holders(ts_code=ts_code, start_date=start_date, end_date=end_date)
     return invoke_top10_holders
@@ -119,7 +119,7 @@ def import_tushare_stock_top10_holders(chain_param=None, ts_code_set=None):
                                                end_date=datetime_2_str(last_date_in_df_last - timedelta(days=1),STR_FORMAT_DATE_TS))
                     if len(df2) > 0 and df2['ann_date'].iloc[-1] is not None:
                         last_date_in_df_cur = try_2_date(df2['ann_date'].iloc[-1])
-                        if last_date_in_df_cur < last_date_in_df_last:
+                        if last_date_in_df_cur != last_date_in_df_last:
                             data_df = pd.concat([data_df, df2])
                             last_date_in_df_last = try_2_date(data_df['ann_date'].iloc[-1])
                         elif last_date_in_df_cur == last_date_in_df_last:
@@ -127,7 +127,7 @@ def import_tushare_stock_top10_holders(chain_param=None, ts_code_set=None):
 
                     elif len(df2) > 0 and df2['ann_date'].iloc[-1] is None:
                         last_date_in_df_cur = try_2_date(df2['end_date'].iloc[-1])
-                        if last_date_in_df_cur < last_date_in_df_last:
+                        if last_date_in_df_cur != last_date_in_df_last:
                             data_df = pd.concat([data_df, df2])
                             last_date_in_df_last = try_2_date(data_df['end_date'].iloc[-1])
                         elif last_date_in_df_cur == last_date_in_df_last:
