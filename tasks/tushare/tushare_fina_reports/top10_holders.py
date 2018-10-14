@@ -50,7 +50,7 @@ def invoke_top10_holders(ts_code, start_date, end_date):
 
 
 @app.task
-def import_tushare_stock_top10_holders(chain_param=None, ts_code_set=None):
+def import_tushare_stock_top10_holders(ts_code_set,chain_param=None):
     """
     插入股票日线数据到最近一个工作日-1。
     如果超过 BASE_LINE_HOUR 时间，则获取当日的数据
@@ -119,7 +119,7 @@ def import_tushare_stock_top10_holders(chain_param=None, ts_code_set=None):
                                                end_date=datetime_2_str(last_date_in_df_last - timedelta(days=1),STR_FORMAT_DATE_TS))
                     if len(df2) > 0 and df2['ann_date'].iloc[-1] is not None:
                         last_date_in_df_cur = try_2_date(df2['ann_date'].iloc[-1])
-                        if last_date_in_df_cur != last_date_in_df_last:
+                        if last_date_in_df_cur < last_date_in_df_last:
                             data_df = pd.concat([data_df, df2])
                             last_date_in_df_last = try_2_date(data_df['ann_date'].iloc[-1])
                         elif last_date_in_df_cur == last_date_in_df_last:
@@ -127,7 +127,7 @@ def import_tushare_stock_top10_holders(chain_param=None, ts_code_set=None):
 
                     elif len(df2) > 0 and df2['ann_date'].iloc[-1] is None:
                         last_date_in_df_cur = try_2_date(df2['end_date'].iloc[-1])
-                        if last_date_in_df_cur != last_date_in_df_last:
+                        if last_date_in_df_cur < last_date_in_df_last:
                             data_df = pd.concat([data_df, df2])
                             last_date_in_df_last = try_2_date(data_df['end_date'].iloc[-1])
                         elif last_date_in_df_cur == last_date_in_df_last:
@@ -149,9 +149,7 @@ def import_tushare_stock_top10_holders(chain_param=None, ts_code_set=None):
                 all_data_count += data_count
                 data_df_list, data_count = [], 0
 
-                # 数据插入数据库
-                data_count = bunch_insert_on_duplicate_update(data_df, table_name, engine_md, DTYPE_TUSHARE_STOCK_TOP10_HOLDERS)
-                logging.info("更新 %s 结束 %d 条信息被更新", table_name, data_count)
+
 
             # 仅调试使用
             Cycles = Cycles + 1
@@ -169,10 +167,19 @@ if __name__ == "__main__":
     # DEBUG = True
     # import_tushare_stock_info(refresh=False)
     # 更新每日股票数据
-    import_tushare_stock_top10_holders()
+    sql_str = """               SELECT ts_code, date_frm, if(delist_date<end_date2, delist_date, end_date2) date_to
+                   FROM
+                     (
+                       SELECT info.ts_code, subdate(list_date,365*10) date_frm, delist_date,
+                       if(hour(now())<16, subdate(curdate(),1), curdate()) end_date2
+                       FROM tushare_stock_info info 
+                     ) tt
+                   WHERE date_frm <= if(delist_date<end_date2, delist_date, end_date2) and ts_code>'300654.SZ'
+                   ORDER BY ts_code"""
+    with with_db_session(engine_md) as session:
+        # 获取交易日数据
+        table = session.execute(sql_str)
+        ts_code_set = list(row[0] for row in table.fetchall())
 
-    # sql_str = """SELECT * FROM old_tushare_stock_top10_holders """
-    # df=pd.read_sql(sql_str,engine_md)
-    # #将数据插入新表
-    # data_count = bunch_insert_on_duplicate_update(df, table_name, engine_md, DTYPE_TUSHARE_STOCK_TOP10_HOLDERS)
-    # logging.info("更新 %s 结束 %d 条信息被更新", table_name, data_count)
+    import_tushare_stock_top10_holders(ts_code_set)
+
