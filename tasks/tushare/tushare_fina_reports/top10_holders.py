@@ -174,7 +174,7 @@ if __name__ == "__main__":
                        if(hour(now())<16, subdate(curdate(),1), curdate()) end_date2
                        FROM tushare_stock_info info 
                      ) tt
-                   WHERE date_frm <= if(delist_date<end_date2, delist_date, end_date2) and ts_code>'300654.SZ'
+                   WHERE date_frm <= if(delist_date<end_date2, delist_date, end_date2) and ts_code>'600324.SH'
                    ORDER BY ts_code"""
     with with_db_session(engine_md) as session:
         # 获取交易日数据
