@@ -151,7 +151,7 @@ def add_col_2_table(engine, table_name, col_name, col_type_str):
 
 
 def bunch_insert_on_duplicate_update(df: pd.DataFrame, table_name, engine, dtype=None, ignore_none=True,
-                                     myisam_if_create_table=False):
+                                     myisam_if_create_table=False, primary_keys: list = None, schema=None):
     """
     将 DataFrame 数据批量插入数据库，ON DUPLICATE KEY UPDATE
     :param df:
@@ -159,10 +159,14 @@ def bunch_insert_on_duplicate_update(df: pd.DataFrame, table_name, engine, dtype
     :param engine:
     :param dtype: 仅在表不存在的情况下自动创建使用
     :param ignore_none: 为 None 或 NaN 字段不更新
+    :param myisam_if_create_table: 如果数据库表为新建，则自动将表engine变为 MYISAM
+    :param primary_keys: 如果数据库表为新建，则设置主键为对应list中的key
+    :param schema: 仅当需要设置主键时使用
     :return:
     """
     if df is None or df.shape[0] == 0:
         return 0
+
     has_table = engine.has_table(table_name)
     if has_table:
         col_name_list = list(df.columns)
@@ -182,7 +186,6 @@ def bunch_insert_on_duplicate_update(df: pd.DataFrame, table_name, engine, dtype
             for k, v in data_dic.items():
                 if (isinstance(v, float) and np.isnan(v)) or isinstance(v, NaTType):
                     data_dic[k] = None
-
         with with_db_session(engine) as session:
             rslt = session.execute(sql_str, params=data_dic_list)
             insert_count = rslt.rowcount
@@ -190,9 +193,37 @@ def bunch_insert_on_duplicate_update(df: pd.DataFrame, table_name, engine, dtype
     else:
         df.to_sql(table_name, engine, if_exists='append', index=False, dtype=dtype)
         insert_count = df.shape[0]
-        logger.info('修改 %s 表引擎为 MyISAM', table_name)
-        sql_str = "ALTER TABLE %s ENGINE = MyISAM" % table_name
-        execute_sql(engine, sql_str, commit=True)
+        # 修改表engine
+        if myisam_if_create_table:
+            logger.info('修改 %s 表引擎为 MyISAM', table_name)
+            sql_str = f"ALTER TABLE {table_name} ENGINE = MyISAM"
+            execute_sql(engine, sql_str, commit=True)
+        # 创建主键
+        if primary_keys is not None:
+            if schema is None:
+                raise ValueError('schema 不能为 None，对表设置主键时需要指定schema')
+            qry_column_type = """SELECT column_name, column_type
+                FROM information_schema.columns 
+                WHERE table_schema=:schema AND table_name=:table_name"""
+            with with_db_session(engine) as session:
+                table = session.execute(qry_column_type, params={'schema': schema, 'table_name': table_name})
+                column_type_dic = dict(table.fetchall())
+                praimary_keys_len, col_name_last, col_name_sql_str_list = len(primary_keys), None, []
+                for num, col_name in enumerate(primary_keys):
+                    col_type = column_type_dic[col_name]
+                    position_str = 'FIRST' if col_name_last is None else f'AFTER `{col_name_last}`'
+                    col_name_sql_str_list.append(
+                        f'CHANGE COLUMN `{col_name}` `{col_name}` {col_type} NOT NULL {position_str}' +
+                        ("," if num < praimary_keys_len - 1 else "")
+                    )
+                    col_name_last = col_name
+                # chg_pk_str = """ALTER TABLE {table_name}
+                #     CHANGE COLUMN `ths_code` `ths_code` VARCHAR(20) NOT NULL FIRST,
+                #     CHANGE COLUMN `time` `time` DATE NOT NULL AFTER `ths_code`,
+                #     ADD PRIMARY KEY (`ths_code`, `time`)""".format(table_name=table_name)
+                chg_pk_str = f"ALTER TABLE {table_name}\n" + "\n".join(col_name_sql_str_list)
+                logger.info('对 %s 表创建主键 %s', table_name, primary_keys)
+                session.execute(chg_pk_str)
 
     logger.debug('%s 新增数据 (%d, %d)', table_name, insert_count, df.shape[1])
     return insert_count
@@ -221,15 +252,16 @@ if __name__ == "__main__":
     engine = create_engine("mysql://mg:Dcba1234@localhost/md_integration?charset=utf8",
                            echo=False, encoding="utf-8")
     table_name = 'test_only'
-    if not engine.has_table(table_name):
-        df = pd.DataFrame({'a': [1.0, 11.0], 'b': [2.0, 22.0], 'c': [3, 33], 'd': [4, 44]})
-        df.to_sql(table_name, engine, index=False, if_exists='append')
-        with with_db_session(engine) as session:
-            session.execute("""ALTER TABLE {table_name}
-        CHANGE COLUMN a a DOUBLE NOT NULL FIRST,
-        CHANGE COLUMN d d INTEGER,
-        ADD PRIMARY KEY (a)""".format(table_name=table_name))
+    # if not engine.has_table(table_name):
+    #     df = pd.DataFrame({'a': [1.0, 11.0], 'b': [2.0, 22.0], 'c': [3, 33], 'd': [4, 44]})
+    #     df.to_sql(table_name, engine, index=False, if_exists='append')
+    #     with with_db_session(engine) as session:
+    #         session.execute("""ALTER TABLE {table_name}
+    #     CHANGE COLUMN a a DOUBLE NOT NULL FIRST,
+    #     CHANGE COLUMN d d INTEGER,
+    #     ADD PRIMARY KEY (a)""".format(table_name=table_name))
 
     df = pd.DataFrame({'a': [1.0, 111.0], 'b': [2.2, 222.0], 'c': [np.nan, np.nan]})
-    insert_count = bunch_insert_on_duplicate_update(df, table_name, engine, dtype=None)
+    insert_count = bunch_insert_on_duplicate_update(df, table_name, engine, dtype=None, myisam_if_create_table=True,
+                                                    primary_keys=['a', 'b'], schema='md_integration')
     print(insert_count)
