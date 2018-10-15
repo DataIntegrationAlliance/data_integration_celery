@@ -5,6 +5,13 @@ Created on 2018/9/3
 contact author:ybychem@gmail.com
 """
 
+"""
+Created on 2018/9/3
+@author: yby
+@desc    : 2018-09-3
+contact author:ybychem@gmail.com
+"""
+
 import pandas as pd
 import logging
 from tasks.backend.orm import build_primary_key
@@ -29,38 +36,46 @@ STR_FORMAT_DATE_TS = '%Y%m%d'
 
 INDICATOR_PARAM_LIST_TUSHARE_STOCK_PLEDGE_STAT = [
     ('ts_code', String(20)),
+    ('ann_date', Date),
+    ('holder_name', String(20)),
+    ('pledge_amount', DOUBLE),
+    ('start_date', Date),
     ('end_date', Date),
-    ('pledge_count',Integer),
-    ('unrest_pledge', DOUBLE),
-    ('rest_pledge', DOUBLE),
-    ('total_share', DOUBLE),
-    ('pledge_ratio', DOUBLE),
+    ('is_release', String(20)),
+    ('release_date', Date),
+    ('pledgor', String(20)),
+    ('holding_amount', DOUBLE),
+    ('pledged_amount', DOUBLE),
+    ('p_total_ratio', DOUBLE),
+    ('h_total_ratio', DOUBLE),
+    ('is_buyback', String(20)),
+    ('desc', Text),
 
 ]
 # 设置 dtype
 DTYPE_TUSHARE_STOCK_PLEDGE_STAT = {key: val for key, val in INDICATOR_PARAM_LIST_TUSHARE_STOCK_PLEDGE_STAT}
 
-@try_n_times(times=5, sleep_time=10, logger=logger, exception=Exception, exception_sleep_time=5)
-def invoke_pledge_stat(ts_code):
-    invoke_pledge_stat = pro.pledge_stat(ts_code=ts_code)
-    return invoke_pledge_stat
+@try_n_times(times=5, sleep_time=5, logger=logger, exception=Exception, exception_sleep_time=5)
+def invoke_pledge_detail(ts_code):
+    invoke_pledge_detail = pro.pledge_detail(ts_code=ts_code)
+    return invoke_pledge_detail
 
-# invoke_pledge_stat(ts_code='000014.SZ')
+df=invoke_pledge_detail(ts_code='000014.SZ')
 
 @app.task
-def import_tushare_stock_pledge_stat(chain_param=None,ts_code_set=None):
+def import_tushare_stock_pledge_detail(chain_param=None,ts_code_set=None):
     """
     插入股票日线数据到最近一个工作日-1。
     如果超过 BASE_LINE_HOUR 时间，则获取当日的数据
     :return:
     """
-    table_name = 'tushare_stock_pledge_stat'
+    table_name = 'tushare_stock_pledge_detail'
     logging.info("更新 %s 开始", table_name)
 
     has_table = engine_md.has_table(table_name)
     # 进行表格判断，确定是否含有tushare_stock_daily
 
-    sql_str = """SELECT ts_code FROM tushare_stock_info where ts_code>'300474.SZ'"""
+    sql_str = """SELECT ts_code FROM tushare_stock_info """
     logger.warning('使用 tushare_stock_info 表确认需要提取股票质押数据的范围')
 
     with with_db_session(engine_md) as session:
@@ -69,13 +84,13 @@ def import_tushare_stock_pledge_stat(chain_param=None,ts_code_set=None):
         ts_code_list = list(row[0] for row in table.fetchall())
 
     data_df_list, data_count, all_data_count, data_len = [], 0, 0, len(ts_code_list)
-    logger.info('%d 只股票的质押信息将被插入 tushare_stock_pledge_stat 表', data_len)
+    logger.info('%d 只股票的质押信息将被插入 tushare_stock_pledge_detail 表', data_len)
     # 将data_df数据，添加到data_df_list
 
     Cycles = 1
     try:
         for ts_code in ts_code_list:
-            data_df = invoke_pledge_stat(ts_code=ts_code)
+            data_df = invoke_pledge_detail(ts_code=ts_code)
             logger.warning('提取 %s 质押信息 %d 条',ts_code, len(data_df))
 
             # 把数据攒起来
@@ -104,4 +119,5 @@ def import_tushare_stock_pledge_stat(chain_param=None,ts_code_set=None):
 
 if __name__ == "__main__":
     # DEBUG = True
-    import_tushare_stock_pledge_stat()
+
+    import_tushare_stock_pledge_detail()
