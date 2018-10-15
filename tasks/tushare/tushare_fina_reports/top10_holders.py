@@ -119,7 +119,7 @@ def import_tushare_stock_top10_holders(ts_code_set,chain_param=None):
                                                end_date=datetime_2_str(last_date_in_df_last - timedelta(days=1),STR_FORMAT_DATE_TS))
                     if len(df2) > 0 and df2['ann_date'].iloc[-1] is not None:
                         last_date_in_df_cur = try_2_date(df2['ann_date'].iloc[-1])
-                        if last_date_in_df_cur < last_date_in_df_last:
+                        if last_date_in_df_cur != last_date_in_df_last:
                             data_df = pd.concat([data_df, df2])
                             last_date_in_df_last = try_2_date(data_df['ann_date'].iloc[-1])
                         elif last_date_in_df_cur == last_date_in_df_last:
@@ -127,7 +127,7 @@ def import_tushare_stock_top10_holders(ts_code_set,chain_param=None):
 
                     elif len(df2) > 0 and df2['ann_date'].iloc[-1] is None:
                         last_date_in_df_cur = try_2_date(df2['end_date'].iloc[-1])
-                        if last_date_in_df_cur < last_date_in_df_last:
+                        if last_date_in_df_cur != last_date_in_df_last:
                             data_df = pd.concat([data_df, df2])
                             last_date_in_df_last = try_2_date(data_df['end_date'].iloc[-1])
                         elif last_date_in_df_cur == last_date_in_df_last:
@@ -174,7 +174,7 @@ if __name__ == "__main__":
                        if(hour(now())<16, subdate(curdate(),1), curdate()) end_date2
                        FROM tushare_stock_info info 
                      ) tt
-                   WHERE date_frm <= if(delist_date<end_date2, delist_date, end_date2) and ts_code>'600324.SH'
+                   WHERE date_frm <= if(delist_date<end_date2, delist_date, end_date2) and ts_code>'600378.SH'
                    ORDER BY ts_code"""
     with with_db_session(engine_md) as session:
         # 获取交易日数据
