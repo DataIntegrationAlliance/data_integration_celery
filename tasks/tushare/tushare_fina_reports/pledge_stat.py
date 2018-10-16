@@ -40,7 +40,7 @@ INDICATOR_PARAM_LIST_TUSHARE_STOCK_PLEDGE_STAT = [
 # 设置 dtype
 DTYPE_TUSHARE_STOCK_PLEDGE_STAT = {key: val for key, val in INDICATOR_PARAM_LIST_TUSHARE_STOCK_PLEDGE_STAT}
 
-@try_n_times(times=5, sleep_time=10, logger=logger, exception=Exception, exception_sleep_time=5)
+@try_n_times(times=5, sleep_time=2, logger=logger, exception=Exception, exception_sleep_time=5)
 def invoke_pledge_stat(ts_code):
     invoke_pledge_stat = pro.pledge_stat(ts_code=ts_code)
     return invoke_pledge_stat
@@ -60,7 +60,7 @@ def import_tushare_stock_pledge_stat(chain_param=None,ts_code_set=None):
     has_table = engine_md.has_table(table_name)
     # 进行表格判断，确定是否含有tushare_stock_daily
 
-    sql_str = """SELECT ts_code FROM tushare_stock_info where ts_code>'300474.SZ'"""
+    sql_str = """SELECT ts_code FROM tushare_stock_info where ts_code>'600368.SH'"""
     logger.warning('使用 tushare_stock_info 表确认需要提取股票质押数据的范围')
 
     with with_db_session(engine_md) as session:
