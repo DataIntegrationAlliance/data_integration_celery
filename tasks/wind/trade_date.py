@@ -7,10 +7,12 @@ Created on 2017/4/20
 from datetime import date, datetime, timedelta
 from tasks.backend import engine_md
 from tasks.utils.fh_utils import STR_FORMAT_DATE
-from tasks.utils.db_utils import with_db_session, alter_table_2_myisam
+from tasks.utils.db_utils import with_db_session, alter_table_2_myisam, bunch_insert_on_duplicate_update
 from tasks.wind import invoker
-
+import pandas as pd
 import logging
+from sqlalchemy.types import String, Date
+from tasks.config import config
 
 logger = logging.getLogger()
 
@@ -24,13 +26,16 @@ def import_trade_date():
     """
     table_name = 'wind_trade_date'
     has_table = engine_md.has_table(table_name)
-    with with_db_session(engine_md) as session:
-        try:
-            table = session.execute('SELECT exch_code,max(trade_date) FROM {table_name} GROUP BY exch_code'.format(
-                table_name=table_name))
-            exch_code_trade_date_dic = {exch_code: trade_date for exch_code, trade_date in table.fetchall()}
-        except Exception:
-            logger.exception("交易日获取异常")
+    if has_table:
+        with with_db_session(engine_md) as session:
+            try:
+                table = session.execute('SELECT exch_code,max(trade_date) FROM {table_name} GROUP BY exch_code'.format(
+                    table_name=table_name))
+                exch_code_trade_date_dic = {exch_code: trade_date for exch_code, trade_date in table.fetchall()}
+            except Exception:
+                logger.exception("交易日获取异常")
+    else:
+        exch_code_trade_date_dic = {}
 
     exchange_code_dict = {
         "HKEX": "香港",
@@ -60,22 +65,13 @@ def import_trade_date():
         date_count = len(trade_date_list)
         if date_count > 0:
             logger.info("%d 条交易日数据将被导入", date_count)
-            with with_db_session(engine_md) as session:
-                session.execute(
-                    "INSERT INTO {table_name} (trade_date,exch_code) VALUE (:trade_date,:exch_code)".format(
-                        table_name=table_name),
-                    params=[{'trade_date': trade_date, 'exch_code': exchange_code} for trade_date in
-                            trade_date_list])
-            # bunch_insert_on_duplicate_update(trade_date_list, table_name, engine_md, dtype=dtype)
+            trade_date_df = pd.DataFrame({'trade_date': trade_date_list})
+            trade_date_df['exch_code'] = exchange_code
+            bunch_insert_on_duplicate_update(trade_date_df, table_name, engine_md,
+                                             dtype={'trade_date': Date, 'exch_code': String(20)},
+                                             myisam_if_create_table=True,
+                                             primary_keys=['trade_date', 'exch_code'], schema=config.DB_SCHEMA_MD)
             logger.info('%s %d 条交易日数据导入 %s 完成', exchange_code, date_count, table_name)
-            if not has_table and engine_md.has_table(table_name):
-                alter_table_2_myisam(engine_md, [table_name])
-                create_pk_str = """ALTER TABLE {table_name}
-                CHANGE COLUMN `key` `key` VARCHAR(20) NOT NULL FIRST ,
-                CHANGE COLUMN `trade_date` `trade_date` DATA NOT NULL AFTER `key`,
-                ADD PRIMARY KEY (`key`,`trade_date`)""".format(table_name=table_name)
-                with with_db_session(engine_md) as session:
-                    session.execute(create_pk_str)
 
 
 if __name__ == "__main__":
