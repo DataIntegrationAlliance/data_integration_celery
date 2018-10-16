@@ -176,50 +176,50 @@ def import_sectorconstituent_all(chain_param=None):
     :return:
     """
     param_dic_list = [
-        {"sector_name": 'SW银行', "sector_code": '1000012612000000', 'date_start': '2018-02-23'},
-        {"sector_name": 'SW非銀金融', "sector_code": '1000012613000000', 'date_start': '2018-02-23'},
-        {"sector_name": 'SW銀行(SW港股通)', "sector_code": '1000028789000000', 'date_start': '2018-02-23'},
-        {"sector_name": 'SW非銀金融(SW港股通)', "sector_code": '1000028790000000', 'date_start': '2018-02-23'},
-
-        {"sector_name": '恒生指数成份', "sector_code": 'a002010a00000000', 'date_start': '1980-01-02', 'exch_code': 'HKEX'},
-        {"sector_name": 'HSI恒生指数成份类', "sector_code": 'a002030100000000', 'date_start': '1980-01-02',
-         'exch_code': 'HKEX'},
-        {"sector_name": 'HSI恒生综合指数成份类', "sector_code": 'a003090200000000', 'date_start': '2002-01-02',
-         'exch_code': 'HKEX'},
-        {"sector_name": 'HSI恒生中国企业指数成份类', "sector_code": 'a003090102000000', 'date_start': '1994-07-08',
-         'exch_code': 'HKEX'},
-        {"sector_name": '融资融券', "sector_code": '1000011318000000', 'date_start': '2010-03-31'},
+        # {"sector_name": 'SW银行', "sector_code": '1000012612000000', 'date_start': '2018-02-23'},
+        # {"sector_name": 'SW非銀金融', "sector_code": '1000012613000000', 'date_start': '2018-02-23'},
+        # {"sector_name": 'SW銀行(SW港股通)', "sector_code": '1000028789000000', 'date_start': '2018-02-23'},
+        # {"sector_name": 'SW非銀金融(SW港股通)', "sector_code": '1000028790000000', 'date_start': '2018-02-23'},
+        #
+        # {"sector_name": '恒生指数成份', "sector_code": 'a002010a00000000', 'date_start': '1980-01-02', 'exch_code': 'HKEX'},
+        # {"sector_name": 'HSI恒生指数成份类', "sector_code": 'a002030100000000', 'date_start': '1980-01-02',
+        #  'exch_code': 'HKEX'},
+        # {"sector_name": 'HSI恒生综合指数成份类', "sector_code": 'a003090200000000', 'date_start': '2002-01-02',
+        #  'exch_code': 'HKEX'},
+        # {"sector_name": 'HSI恒生中国企业指数成份类', "sector_code": 'a003090102000000', 'date_start': '1994-07-08',
+        #  'exch_code': 'HKEX'},
+        # {"sector_name": '融资融券', "sector_code": '1000011318000000', 'date_start': '2010-03-31'},
         {"sector_name": 'CS石油石化', "sector_code": 'b101000000000000', 'date_start': '2003-01-02'},
         {"sector_name": 'CS煤炭', "sector_code": 'b102000000000000', 'date_start': '2003-01-02'},
         {"sector_name": 'CS电力及公用事业', "sector_code": 'b104000000000000', 'date_start': '2003-01-02'},
         {"sector_name": 'CS钢铁', "sector_code": 'b105000000000000', 'date_start': '2003-01-02'},
         {"sector_name": 'CS基础化工', "sector_code": 'b106000000000000', 'date_start': '2003-01-02'},
-        {"sector_name": 'CS建筑', "sector_code": 'b107000000000000', 'date_start': '2003-01-02'},
-        {"sector_name": 'CS建材', "sector_code": 'b108000000000000', 'date_start': '2003-01-02'},
-        {"sector_name": 'CS轻工制造', "sector_code": 'b109000000000000', 'date_start': '2003-01-02'},
-        {"sector_name": 'CS机械', "sector_code": 'b10a000000000000', 'date_start': '2003-01-02'},
-        {"sector_name": 'CS电力设备', "sector_code": 'b10b000000000000', 'date_start': '2003-01-02'},
-        {"sector_name": 'CS国防军工', "sector_code": 'b10c000000000000', 'date_start': '2003-01-02'},
-        {"sector_name": 'CS汽车', "sector_code": 'b10d000000000000', 'date_start': '2003-01-02'},
-        {"sector_name": 'CS商贸零售', "sector_code": 'b10e000000000000', 'date_start': '2003-01-02'},
-        {"sector_name": 'CS餐饮旅游', "sector_code": 'b10f000000000000', 'date_start': '2003-01-02'},
-        {"sector_name": 'CS家电', "sector_code": 'b10g000000000000', 'date_start': '2003-01-02'},
-        {"sector_name": 'CS纺织服装', "sector_code": 'b10h000000000000', 'date_start': '2003-01-02'},
-        {"sector_name": 'CS医药', "sector_code": 'b10i000000000000', 'date_start': '2003-01-02'},
-        {"sector_name": 'CS食品饮料', "sector_code": 'b10j000000000000', 'date_start': '2003-01-02'},
-        {"sector_name": 'CS农林牧渔', "sector_code": 'b10k000000000000', 'date_start': '2003-01-02'},
-        {"sector_name": 'CS银行', "sector_code": 'b10l000000000000', 'date_start': '2003-01-02'},
-        {"sector_name": 'CS非银行金融', "sector_code": 'b10m000000000000', 'date_start': '2003-01-02'},
-        {"sector_name": 'CS房地产', "sector_code": 'b10n000000000000', 'date_start': '2003-01-02'},
-        {"sector_name": 'CS交通运输', "sector_code": 'b10o000000000000', 'date_start': '2003-01-02'},
-        {"sector_name": 'CS电子元器件', "sector_code": 'b10p000000000000', 'date_start': '2003-01-02'},
-        {"sector_name": 'CS通信', "sector_code": 'b10q000000000000', 'date_start': '2003-01-02'},
-        {"sector_name": 'CS计算机', "sector_code": 'b10r000000000000', 'date_start': '2003-01-02'},
-        {"sector_name": 'CS传媒', "sector_code": 'b10s000000000000', 'date_start': '2003-01-02'},
-        {"sector_name": 'CS综合', "sector_code": 'b10t000000000000', 'date_start': '2003-01-02'},
-        # 概念类
+        # {"sector_name": 'CS建筑', "sector_code": 'b107000000000000', 'date_start': '2003-01-02'},
+        # {"sector_name": 'CS建材', "sector_code": 'b108000000000000', 'date_start': '2003-01-02'},
+        # {"sector_name": 'CS轻工制造', "sector_code": 'b109000000000000', 'date_start': '2003-01-02'},
+        # {"sector_name": 'CS机械', "sector_code": 'b10a000000000000', 'date_start': '2003-01-02'},
+        # {"sector_name": 'CS电力设备', "sector_code": 'b10b000000000000', 'date_start': '2003-01-02'},
+        # {"sector_name": 'CS国防军工', "sector_code": 'b10c000000000000', 'date_start': '2003-01-02'},
+        # {"sector_name": 'CS汽车', "sector_code": 'b10d000000000000', 'date_start': '2003-01-02'},
+        # {"sector_name": 'CS商贸零售', "sector_code": 'b10e000000000000', 'date_start': '2003-01-02'},
+        # {"sector_name": 'CS餐饮旅游', "sector_code": 'b10f000000000000', 'date_start': '2003-01-02'},
+        # {"sector_name": 'CS家电', "sector_code": 'b10g000000000000', 'date_start': '2003-01-02'},
+        # {"sector_name": 'CS纺织服装', "sector_code": 'b10h000000000000', 'date_start': '2003-01-02'},
+        # {"sector_name": 'CS医药', "sector_code": 'b10i000000000000', 'date_start': '2003-01-02'},
+        # {"sector_name": 'CS食品饮料', "sector_code": 'b10j000000000000', 'date_start': '2003-01-02'},
+        # {"sector_name": 'CS农林牧渔', "sector_code": 'b10k000000000000', 'date_start': '2003-01-02'},
+        # {"sector_name": 'CS银行', "sector_code": 'b10l000000000000', 'date_start': '2003-01-02'},
+        # {"sector_name": 'CS非银行金融', "sector_code": 'b10m000000000000', 'date_start': '2003-01-02'},
+        # {"sector_name": 'CS房地产', "sector_code": 'b10n000000000000', 'date_start': '2003-01-02'},
+        # {"sector_name": 'CS交通运输', "sector_code": 'b10o000000000000', 'date_start': '2003-01-02'},
+        # {"sector_name": 'CS电子元器件', "sector_code": 'b10p000000000000', 'date_start': '2003-01-02'},
+        # {"sector_name": 'CS通信', "sector_code": 'b10q000000000000', 'date_start': '2003-01-02'},
+        # {"sector_name": 'CS计算机', "sector_code": 'b10r000000000000', 'date_start': '2003-01-02'},
+        # {"sector_name": 'CS传媒', "sector_code": 'b10s000000000000', 'date_start': '2003-01-02'},
+        # {"sector_name": 'CS综合', "sector_code": 'b10t000000000000', 'date_start': '2003-01-02'},
+        # # 概念类
+        # # {"sector_name": '概念:智能电网', "sector_code": '0201a90000000000', 'date_start': '2009-07-23'},
         # {"sector_name": '概念:智能电网', "sector_code": '0201a90000000000', 'date_start': '2009-07-23'},
-        {"sector_name": '概念:智能电网', "sector_code": '0201a90000000000', 'date_start': '2009-07-23'},
 
     ]
 
@@ -250,8 +250,8 @@ def import_sectorconstituent(sector_code, sector_name, date_start, chain_param=N
     # 从数据库中获取最近一个交易日的成分股列表，如果为空，则代表新导入数据 date, constituent_df
     date_latest, constituent_df = get_latest_constituent_df(sector_code)
     # date_constituent_df_dict[date] = constituent_df
-
-    if date_latest is None or date_latest < date_start:
+    date_latest = str_2_date(date_latest)
+    if date_latest is None or  date_latest < date_start:
         idx_start = get_last_idx(trade_date_list_sorted, lambda x: x <= date_start)
         sec_df, _ = get_sectorconstituent_2_dic(sector_code, sector_name, date_start, idx_start, trade_date_list_sorted,
                                                 date_constituent_df_dict, idx_constituent_set_dic)
@@ -280,9 +280,9 @@ def import_sectorconstituent(sector_code, sector_name, date_start, chain_param=N
     for num, (date_cur, sec_df) in enumerate(date_constituent_df_dict.items(), start=1):
         sec_df.to_sql("wind_sectorconstituent", engine_md, if_exists='append', index=False)
         logger.info("%d) %s %d 条 %s 成分股数据导入数据库", num, date_cur, sec_df.shape[0], sector_name)
-        # 仅仅调试时使用
-        # if DEBUG and num >= 2:
-        #     break
+        #仅仅调试时使用
+        if DEBUG and num >= 20:
+            break
 
 
 if __name__ == "__main__":
