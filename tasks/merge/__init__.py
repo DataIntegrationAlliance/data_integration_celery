@@ -11,7 +11,7 @@ import pandas as pd
 from functools import partial
 # import warnings
 import logging
-from tasks.utils.fh_utils import is_not_nan_or_none, log_param_when_exception, generate_range
+from tasks.utils.fh_utils import is_not_nan_or_none, log_param_when_exception, iter_2_range
 from tasks.backend import engine_md
 
 logger = logging.getLogger()
@@ -116,5 +116,5 @@ def get_wind_daily_df(table_name, date_from) -> pd.DataFrame:
 
 
 if __name__ == "__main__":
-    for x in generate_range([1, 2, 3]):
+    for x in iter_2_range([1, 2, 3]):
         print(x)

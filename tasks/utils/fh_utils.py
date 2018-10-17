@@ -81,7 +81,7 @@ def split_chunk(l: list, n: int):
         yield l[i:i + n]
 
 
-def generate_range(iterator):
+def iter_2_range(iterator, has_left_outer=True, has_right_outer=True):
     """
     将一个 N 长度的 iterator 生成 N + 1 个区间
     例如：[1,2,3] --> [[None, 1], [1, 2] [2, 3] [3, None]]
@@ -90,10 +90,12 @@ def generate_range(iterator):
     """
     last_val = None
     for val in iterator:
-        yield last_val, val
+        if last_val is not None or has_left_outer:
+            yield last_val, val
         last_val = val
     else:
-        yield last_val, None
+        if last_val is not None and has_right_outer:
+            yield last_val, None
 
 
 def zip_split(*args, sep=','):
