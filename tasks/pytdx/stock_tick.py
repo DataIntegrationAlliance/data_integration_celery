@@ -358,7 +358,7 @@ def import_tdx_tick():
                     data_df_list.append(data_df)
 
                 # 大于阀值有开始插入
-                if data_count >= 300000:
+                if data_count >= 100000:
                     data_df_all = pd.concat(data_df_list)
                     bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md, DTYPE_TDX_STOCK_TICK)
                     all_data_count += data_count

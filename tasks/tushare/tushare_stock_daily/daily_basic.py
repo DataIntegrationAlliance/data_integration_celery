@@ -31,6 +31,7 @@ INDICATOR_PARAM_LIST_TUSHARE_STOCK_DAILY_BASIC = [
     ('trade_date', Date),
     ('close', DOUBLE),
     ('turnover_rate', DOUBLE),
+    ('turnover_rate_f', DOUBLE),
     ('volume_ratio', DOUBLE),
     ('pe', DOUBLE),
     ('pe_ttm', DOUBLE),
