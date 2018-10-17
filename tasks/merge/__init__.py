@@ -11,7 +11,7 @@ import pandas as pd
 from functools import partial
 # import warnings
 import logging
-from tasks.utils.fh_utils import is_not_nan_or_none, log_param_when_exception
+from tasks.utils.fh_utils import is_not_nan_or_none, log_param_when_exception, generate_range
 from tasks.backend import engine_md
 
 logger = logging.getLogger()
@@ -113,16 +113,6 @@ def get_wind_daily_df(table_name, date_from) -> pd.DataFrame:
         sql_str = "select * from {table_name} where time >= %s".format(table_name=table_name)
         data_df = pd.read_sql(sql_str, engine_md, params=[date_from])  # , index_col='ths_code'
     return data_df
-
-
-def generate_range(iterator):
-    """将一个 N 长度的 iterator 生成 N + 1 个区间"""
-    last_val = None
-    for val in iterator:
-        yield last_val, val
-        last_val = val
-    else:
-        yield last_val, None
 
 
 if __name__ == "__main__":
