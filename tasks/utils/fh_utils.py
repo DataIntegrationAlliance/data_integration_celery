@@ -13,7 +13,6 @@ import functools
 from datetime import datetime, date, timedelta
 import pytz
 import numpy as np
-# from pandas.tslib import Timestamp
 from pandas import Timestamp
 import re
 import pandas as pd
@@ -80,6 +79,21 @@ def split_chunk(l: list, n: int):
     """
     for i in range(0, len(l), n):
         yield l[i:i + n]
+
+
+def generate_range(iterator):
+    """
+    将一个 N 长度的 iterator 生成 N + 1 个区间
+    例如：[1,2,3] --> [[None, 1], [1, 2] [2, 3] [3, None]]
+    :param iterator:
+    :return:
+    """
+    last_val = None
+    for val in iterator:
+        yield last_val, val
+        last_val = val
+    else:
+        yield last_val, None
 
 
 def zip_split(*args, sep=','):
