@@ -14,6 +14,7 @@ from direstinvoker.utils.fh_utils import date_2_str
 from tasks.backend.orm import build_primary_key
 from tasks.utils.db_utils import bunch_insert_on_duplicate_update, alter_table_2_myisam
 from tasks.backend import engine_md
+from tasks.utils.fh_utils import iter_2_range
 from tasks.utils.db_utils import with_db_session
 from tasks.merge import mean_value, prefer_left, prefer_right, merge_data, get_value
 from sqlalchemy.types import String, Date, Integer, Text
@@ -21,7 +22,7 @@ from sqlalchemy.dialects.mysql import DOUBLE
 from tasks.utils.fh_utils import is_nan_or_none
 from tasks.ifind.stock import DTYPE_STOCK_DAILY_DS, DTYPE_STOCK_DAILY_HIS, DTYPE_STOCK_DAILY_FIN, \
     DTYPE_STOCK_REPORT_DATE
-from tasks.merge import get_ifind_daily_df, get_wind_daily_df, generate_range
+from tasks.merge import get_ifind_daily_df
 
 logger = logging.getLogger()
 DEBUG = False
@@ -310,7 +311,7 @@ def merge_ifind_stock_daily(ths_code_set: set = None, date_from=None):
             logger.debug('%d/%d) 处理 %s %d 条数据', num, for_count, ths_code, ifind_his_ds_df_cur_ths_code.shape[0])
             report_date_list = list(report_date_dic.keys())
             report_date_list.sort()
-            for report_date_from, report_date_to in generate_range(report_date_list):
+            for report_date_from, report_date_to in iter_2_range(report_date_list):
                 logger.debug('%d/%d) 处理 %s [%s - %s]',
                              num, for_count, ths_code, date_2_str(report_date_from), date_2_str(report_date_to))
                 # 计算有效的日期范围

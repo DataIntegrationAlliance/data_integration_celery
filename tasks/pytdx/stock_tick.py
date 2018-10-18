@@ -5,34 +5,29 @@ Created on 2018/9/27
 contact author:ybychem@gmail.com
 """
 import pandas as pd
-import datetime
-from pytdx.hq import TdxHq_API
 from pytdx.params import TDXParams
 from tasks.utils.fh_utils import try_n_times, datetime_2_str, str_2_datetime
-from tasks.utils.db_utils import bunch_insert_on_duplicate_update, execute_sql, with_db_session
+from tasks.utils.db_utils import bunch_insert_on_duplicate_update, with_db_session
 from tasks.backend import engine_md
-import logging
-from sqlalchemy.types import String, Date, DateTime, Time,Integer
-from sqlalchemy.dialects.mysql import DOUBLE, SMALLINT,TINYINT, FLOAT
-from pytdx.errors import TdxConnectionError
-from pytdx.config.hosts import hq_hosts
+from sqlalchemy.types import String, Date, DateTime, Time, Integer
+from sqlalchemy.dialects.mysql import SMALLINT, TINYINT, FLOAT
 from pytdx.hq import TdxHq_API
 from pytdx.pool.ippool import AvailableIPPool
 import random
 import logging
-import pprint
-from pytdx.log import DEBUG, log
+from pytdx.log import log
 from functools import partial
 import time
 
-
-## 调用单个接口，重试次数，超过次数则不再重试
+# 调用单个接口，重试次数，超过次数则不再重试
 DEFAULT_API_CALL_MAX_RETRY_TIMES = 20
-## 重试间隔的休眠时间
+# 重试间隔的休眠时间
 DEFAULT_API_RETRY_INTERVAL = 0.2
+
 
 class TdxHqApiCallMaxRetryTimesReachedException(Exception):
     pass
+
 
 class TdxHqPool_API(object):
     """
@@ -59,7 +54,6 @@ class TdxHqPool_API(object):
         self.api_call_max_retry_times = DEFAULT_API_CALL_MAX_RETRY_TIMES
         self.api_call_retry_times = 0
         self.api_retry_interval = DEFAULT_API_RETRY_INTERVAL
-
 
         # 对hq_cls 里面的get_系列函数进行反射
         log.debug("perform_reflect")
@@ -95,12 +89,14 @@ class TdxHqPool_API(object):
         if result is None:
             if self.api_call_retry_times >= self.api_call_max_retry_times:
                 log.info("(method_name=%s) max retry times(%d) reached" % (method_name, self.api_call_max_retry_times))
-                raise TdxHqApiCallMaxRetryTimesReachedException("(method_name=%s) max retry times reached" % method_name)
+                raise TdxHqApiCallMaxRetryTimesReachedException(
+                    "(method_name=%s) max retry times reached" % method_name)
             old_api_ip = self.api.ip
             new_api_ip = None
             if self.hot_failover_api:
                 new_api_ip = self.hot_failover_api.ip
-                log.info("api call from init client (ip=%s) err, perform rotate to (ip =%s)..." %(old_api_ip, new_api_ip))
+                log.info(
+                    "api call from init client (ip=%s) err, perform rotate to (ip =%s)..." % (old_api_ip, new_api_ip))
                 self.api.disconnect()
                 self.api = self.hot_failover_api
             log.info("retry times is " + str(self.api_call_max_retry_times))
@@ -159,7 +155,8 @@ class TdxHqPool_API(object):
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
 
-#实例化连接池
+
+# 实例化连接池
 log.setLevel(logging.DEBUG)
 ch = logging.StreamHandler()
 ch.setLevel(logging.DEBUG)
@@ -187,15 +184,18 @@ formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(messag
 # add formatter to ch
 ch.setFormatter(formatter)
 log.addHandler(ch)
-selected_hosts = [('北京联通主站Z1', '202.108.253.130', 7709),('北京联通主站Z2', '202.108.253.131', 7709),
+selected_hosts = [('北京联通主站Z1', '202.108.253.130', 7709), ('北京联通主站Z2', '202.108.253.131', 7709),
                   ('北京联通主站Z80', '202.108.253.139', 80), ('华泰证券(南京电信)', '221.231.141.60', 7709),
-                  ('华泰证券(上海电信二)', '101.227.77.254', 7709),('招商证券深圳行情','119.147.212.81', 7709),
+                  ('华泰证券(上海电信二)', '101.227.77.254', 7709), ('招商证券深圳行情', '119.147.212.81', 7709),
                   ('华泰证券(深圳电信)', '14.215.128.18', 7709), ('华泰证券(武汉电信)', '59.173.18.140', 7709),
-                  ('长城国瑞网通', '58.23.131.163', 7709),('杭州联通主站J2', '60.12.136.250', 7709),
-                  ('安信证券', '59.36.5.11', 7709), ('安信证券', '211.139.150.61', 7709), ('广发证券', '119.29.19.242', 7709), ('广发证券', '123.138.29.107', 7709),
-                  ('广发证券', '183.57.72.21', 7709),('国泰君安', '113.105.92.100', 7709), ('国泰君安', '113.105.92.101', 7709),
-                  ('国泰君安', '113.105.92.103', 7709), ('国泰君安', '113.105.92.104', 7709),('国泰君安', '117.34.114.13', 7709), ('国泰君安', '117.34.114.14', 7709),
-                  ('国泰君安', '117.34.114.15', 7709), ('国泰君安', '117.34.114.16', 7709),('国泰君安', '117.34.114.17', 7709), ('国泰君安', '117.34.114.18', 7709), ('国泰君安', '117.34.114.20', 7709),
+                  ('长城国瑞网通', '58.23.131.163', 7709), ('杭州联通主站J2', '60.12.136.250', 7709),
+                  ('安信证券', '59.36.5.11', 7709), ('安信证券', '211.139.150.61', 7709), ('广发证券', '119.29.19.242', 7709),
+                  ('广发证券', '123.138.29.107', 7709),
+                  ('广发证券', '183.57.72.21', 7709), ('国泰君安', '113.105.92.100', 7709), ('国泰君安', '113.105.92.101', 7709),
+                  ('国泰君安', '113.105.92.103', 7709), ('国泰君安', '113.105.92.104', 7709), ('国泰君安', '117.34.114.13', 7709),
+                  ('国泰君安', '117.34.114.14', 7709),
+                  ('国泰君安', '117.34.114.15', 7709), ('国泰君安', '117.34.114.16', 7709), ('国泰君安', '117.34.114.17', 7709),
+                  ('国泰君安', '117.34.114.18', 7709), ('国泰君安', '117.34.114.20', 7709),
                   ('国泰君安', '117.34.114.27', 7709), ('国泰君安', '117.34.114.30', 7709), ('国泰君安', '117.34.114.31', 7709),
                   ('上海电信主站Z3', '180.153.39.51', 7709), ('上证云成都电信一', '218.6.170.47', 7709), ]
 ips = [(v[1], v[2]) for v in selected_hosts]
@@ -209,6 +209,7 @@ api = TdxHqPool_API(TdxHq_API, ippool)
 
 logger = logging.getLogger()
 STR_FORMAT_DATE_TS = '%Y%m%d'
+
 
 # 定义提取tick数据函数并将数据转为dataframe
 def get_tdx_tick(code, date_str):
@@ -244,7 +245,11 @@ def get_tdx_tick(code, date_str):
             code = code + '.SH'
         else:
             code = code + '.SZ'
+        if len(data_list) == 0:
+            return None
         data_df = pd.concat(data_list)
+        if data_df.shape[0] == 0:
+            return None
         trade_date = data_df.time.apply(lambda x: str_2_datetime(date_str + x, '%Y%m%d%H:%M'))
 
         data_df.insert(0, 'ts_code', code)
@@ -254,6 +259,7 @@ def get_tdx_tick(code, date_str):
         data_df.index.rename('index', inplace=True)
         data_df.reset_index(inplace=True)
         return data_df
+
 
 # zte=get_tdx_tick('000063','20181010')
 
@@ -272,7 +278,7 @@ INDICATOR_PARAM_LIST_TDX_STOCK_TICK = [
     ('price', FLOAT),
     ('vol', Integer),
     ('num', TINYINT),
-    ('index',SMALLINT),
+    ('index', SMALLINT),
     ('buyorsell', TINYINT),
 ]
 # 设置 dtype
@@ -288,43 +294,44 @@ def import_tdx_tick():
     has_table = engine_md.has_table(table_name)
     if has_table:
         sql_str = """SELECT md.ts_code, md.trade_date 
-                        FROM 
-                        tushare_stock_daily_md md 
-                        inner join 
-                        (
-							select ts_code, delist_date from tushare_stock_info where tushare_stock_info.delist_date is null
-                        ) info
-                        on info.ts_code = md.ts_code
-                        
-                        left outer join tushare_stock_daily_suspend suspend 
-                        on md.ts_code =suspend.ts_code 
-                        and md.trade_date =suspend.suspend_date 
-                        
-                         left outer join
-                        (
-                            select ts_code,max(trade_date) trade_date_max from {table_name} group by ts_code
-                        ) m
-                        on md.ts_code = m.ts_code
-						where md.trade_date>'2000-01-24' 
-                        and suspend.suspend_date is null 
-                        and (m.trade_date_max is null or md.trade_date>m.trade_date_max)""".format(table_name=table_name)
+            FROM 
+            tushare_stock_daily_md md 
+            inner join 
+            (
+                select ts_code, delist_date from tushare_stock_info where tushare_stock_info.delist_date is null
+            ) info
+            on info.ts_code = md.ts_code
+            
+            left outer join tushare_stock_daily_suspend suspend 
+            on md.ts_code =suspend.ts_code 
+            and md.trade_date =suspend.suspend_date 
+            
+             left outer join
+            (
+                select ts_code,max(trade_date) trade_date_max from {table_name} group by ts_code
+            ) m
+            on md.ts_code = m.ts_code
+            where md.trade_date>'2000-01-24' 
+            and suspend.suspend_date is null 
+            and (m.trade_date_max is null or md.trade_date>m.trade_date_max)""".format(
+            table_name=table_name)
     else:
         # sql_str = """SELECT ts_code ,trade_date trade_date_list FROM tushare_stock_daily_md where trade_date>'2000-01-24'"""
         sql_str = """
-                        SELECT md.ts_code, md.trade_date 
-                        FROM 
-                        tushare_stock_daily_md md 
-                        inner join 
-                        (
-							select ts_code, delist_date from tushare_stock_info where tushare_stock_info.delist_date is null
-                        ) info
-                        on info.ts_code = md.ts_code
-                        
-                        left outer join tushare_stock_daily_suspend suspend 
-                        on md.ts_code =suspend.ts_code 
-                        and md.trade_date =suspend.suspend_date
-                        where md.trade_date>'2000-01-24' 
-                        and suspend.suspend_date is null """
+            SELECT md.ts_code, md.trade_date 
+            FROM 
+            tushare_stock_daily_md md 
+            INNER JOIN 
+            (
+                SELECT ts_code, delist_date FROM tushare_stock_info WHERE tushare_stock_info.delist_date IS NULL
+            ) info
+            ON info.ts_code = md.ts_code
+            
+            LEFT OUTER JOIN tushare_stock_daily_suspend suspend 
+            ON md.ts_code =suspend.ts_code 
+            AND md.trade_date =suspend.suspend_date
+            WHERE md.trade_date>'2000-01-24' 
+            AND suspend.suspend_date IS NULL """
 
     with with_db_session(engine_md) as session:
         # 获取每只股票需要获取日线数据的日期区间
@@ -373,4 +380,3 @@ if __name__ == "__main__":
     # date_str, code = '20000125', '000001'
     # df=invoke_tdx_tick(code=code, date_str=date_str)
     import_tdx_tick()
-
