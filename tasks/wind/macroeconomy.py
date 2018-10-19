@@ -35,6 +35,33 @@ def import_macroeconomy_info(chain_param=None):
     indicators_dic = [
         # 企业信心指标
         ["M5786898", "BCI", "中国企业经营状况指数", "2011-09-30", None, '长江商学院'],
+        # 克强指标
+        ["M5407921", "Keqiang_Index", "克强指数当月值", "2009-07-01", None, 'wind，单位：%'],
+        ["M5407922", "Keqiang_Index_cummulative", "克强指数累积值", "2003-05-01", None, 'wind，单位：%'],
+
+        # 货运量
+        ["S0036011", "freight_volume", "货运量当月值", "1998-12-01", None, '国家统计局，单位：亿吨'],
+        ["S0036033", "freight_volume_yoy", "货运量当月同比", "1999-01-01", None, '国家统计局，单位：%'],
+        ["S0035973", "freight_cumulative_volume", "货运量累计值", "1970-12-01", None, '国家统计局，单位：万吨'],
+        ["S0035982", "freight_cumulative_volume_yoy", "货运量累计同比", "1995-01-01", None, '国家统计局，单位：%'],
+
+        ["S0036012", "railway_freight_volume", "铁路货运量当月值", "1999-01-01", None, '国家统计局，单位：亿吨'],
+        ["S0036034", "railway_freight_volume_yoy", "铁路货运量当月同比", "1999-01-01", None, '国家统计局，单位：%'],
+        ["S0035974", "railway_freight_cumulative_volume", "铁路货运量累计值", "1970-12-01", None, '国家统计局，单位：万吨'],
+        ["S0035983", "railway_freight_cumulative_volume_yoy", "铁路货运量累计同比", "1995-01-01", None, '国家统计局，单位：%'],
+
+        #信贷数据
+        ["M0009969", "loan_balances_of_financial_institutions", "金融机构各项贷款余额", "1978-12-01", None, '中国人民银行，单位：亿元'],
+        ["M0009970", "financial_institution_loan_balance_yoy", "金融机构各项贷款余额同比", "1978-12-01", None, '中国人民银行，单位：亿元'],
+        ["M5541329", "financial_institution_loan_balance_initial_value_yoy", "金融机构本外币款余额初值同比", "2003-03-01", None, '中国人民银行，单位：亿元'],
+        ["M0009973", "new_yuan_loans_from_financial_institutions", "金融机构新增人民币贷款当月值", "2001-01-01", None,'中国人民银行，单位：亿元'],
+        ["M0009976", "new_yuan_loans_from_financial_institutions_to_residents", "金融机构新增人民币居民户贷款","2007-02-01", None,'中国人民银行，单位：亿元'],
+        ["M0057875", "new_yuan_loans_from_financial_institutions_to_residents_for_long_term", "金融机构新增人民币居民户中长期贷款", "2007-02-01", None,'中国人民银行，单位：亿元'],
+        ["M0009975", "new_yuan_loans_from_financial_institutions_for_long_term", "金融机构新增中长期人民币贷款","2002-07-01", None,'中国人民银行，单位：亿元'],
+        ["M0043417", "short_term_loan_balances_of_financial_institutions", "金融机构短期贷款余额","1994-01-01", None, '中国人民银行，单位：亿元'],
+        ["M0043418", "long_term_loan_balances_of_financial_institutions", "金融机构中长期期贷款余额","1994-01-01", None, '中国人民银行，单位：亿元'],
+        ["M0009978", "deposit_loan_Difference_of_financial_institutions", "金融机构存贷差","1978-12-01", None, '中国人民银行，单位：亿元'],
+
 
         # 中国GDP 宏观数据
         # CPI

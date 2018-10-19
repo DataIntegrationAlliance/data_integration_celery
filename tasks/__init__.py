@@ -89,7 +89,7 @@ except ImportError:
 def grouped_task_daily():
     """only for test use"""
     group([
-        # wind_daily_task,
+        wind_daily_task,
         # ifind_daily_task,
         tushare_daily_task,
         # cmc_daily_task,

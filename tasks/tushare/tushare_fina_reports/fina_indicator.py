@@ -198,7 +198,7 @@ INDICATOR_PARAM_LIST_STOCK_FINA_INDICATOR = [
 DTYPE_STOCK_FINA_INDICATOR = {key: val for key, val in INDICATOR_PARAM_LIST_STOCK_FINA_INDICATOR}
 
 
-@try_n_times(times=5, sleep_time=0, logger=logger, exception=Exception, exception_sleep_time=5)
+@try_n_times(times=5, sleep_time=1, logger=logger, exception=Exception, exception_sleep_time=5)
 def invoke_fina_indicator(ts_code, start_date, end_date, fields):
     invoke_fina_indicator = pro.fina_indicator(ts_code=ts_code, start_date=start_date, end_date=end_date, fields=fields)
     return invoke_fina_indicator
@@ -279,7 +279,7 @@ def import_tushare_stock_fina_indicator(chain_param=None, ts_code_set=None):
              'ocf_yoy', 'roe_yoy', 'bps_yoy', 'assets_yoy', 'eqt_yoy', 'tr_yoy', 'or_yoy', 'q_gr_yoy', 'q_gr_qoq', 'q_sales_yoy', 'q_sales_qoq', 'q_op_yoy', 'q_op_qoq', \
              'q_profit_yoy', 'q_profit_qoq', 'q_netprofit_yoy', 'q_netprofit_qoq', 'equity_yoy', 'rd_exp'
 
-    data_len = len(code_date_range_dic)
+    data_df_list, data_count, all_data_count, data_len = [], 0, 0, len(code_date_range_dic)
     logger.info('%d stocks will been import into wind_stock_daily', data_len)
     # 将data_df数据，添加到data_df_list
 
@@ -287,38 +287,39 @@ def import_tushare_stock_fina_indicator(chain_param=None, ts_code_set=None):
     try:
         for num, (ts_code, (date_from, date_to)) in enumerate(code_date_range_dic.items(), start=1):
             logger.debug('%d/%d) %s [%s - %s]', num, data_len, ts_code, date_from, date_to)
-            df = invoke_fina_indicator(ts_code=ts_code, start_date=datetime_2_str(date_from, STR_FORMAT_DATE_TS),
+            data_df = invoke_fina_indicator(ts_code=ts_code, start_date=datetime_2_str(date_from, STR_FORMAT_DATE_TS),
                                        end_date=datetime_2_str(date_to, STR_FORMAT_DATE_TS), fields=fields)
             # logger.info(' %d data of %s between %s and %s', df.shape[0], ts_code, date_from, date_to)
-            data_df = df
-            if len(data_df) > 0:
-                while try_2_date(df['ann_date'].iloc[-1]) > date_from:
-                    last_date_in_df_last, last_date_in_df_cur = try_2_date(df['ann_date'].iloc[-1]), None
+            if len(data_df) > 0 and data_df['ann_date'].iloc[-1] is not None:
+                while try_2_date(data_df['ann_date'].iloc[-1]) > date_from:
+                    last_date_in_df_last = try_2_date(data_df['ann_date'].iloc[-1])
                     df2 = invoke_fina_indicator(ts_code=ts_code,
                                                 start_date=datetime_2_str(date_from, STR_FORMAT_DATE_TS),
                                                 end_date=datetime_2_str(
-                                                    try_2_date(df['ann_date'].iloc[-1]) - timedelta(days=1),
-                                                    STR_FORMAT_DATE_TS), fields=fields)
-                    if len(df2) > 0:
+                                                    try_2_date(data_df['ann_date'].iloc[-1]) - timedelta(days=1),STR_FORMAT_DATE_TS), fields=fields)
+                    if len(df2) > 0 and df2['ann_date'].iloc[-1] is not None:
                         last_date_in_df_cur = try_2_date(df2['ann_date'].iloc[-1])
                         if last_date_in_df_cur < last_date_in_df_last:
                             data_df = pd.concat([data_df, df2])
-                            df = df2
                         elif last_date_in_df_cur == last_date_in_df_last:
                             break
                         if data_df is None:
-                            logger.warning('%d/%d) %s has no data during %s %s', num, data_len, ts_code, date_from,
-                                           date_to)
+                            logger.warning('%d/%d) %s has no data during %s %s', num, data_len, ts_code, date_from,date_to)
                             continue
-                        logger.info('%d/%d) %d data of %s between %s and %s', num, data_len, data_df.shape[0], ts_code,
-                                    date_from, date_to)
+                        logger.info('%d/%d) %d data of %s between %s and %s', num, data_len, data_df.shape[0], ts_code,date_from, date_to)
                     elif len(df2) <= 0:
                         break
-                # 数据插入数据库
-                data_count = bunch_insert_on_duplicate_update(data_df, table_name, engine_md,
-                                                              DTYPE_STOCK_FINA_INDICATOR)
-                logging.info("更新 %s 结束 %d 条信息被更新", table_name, data_count)
-                data_df = []
+            # 把数据攒起来
+            if data_df is not None and data_df.shape[0] > 0:
+                data_count += data_df.shape[0]
+                data_df_list.append(data_df)
+            # 大于阀值有开始插入
+            if data_count >= 500 and len(data_df_list) > 0:
+                data_df_all = pd.concat(data_df_list)
+                bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md,DTYPE_TUSHARE_STOCK_TOP10_HOLDERS)
+                logger.info('%d 条财务指标将数据插入 %s 表', data_count,table_name)
+                all_data_count += data_count
+                data_df_list, data_count = [], 0
             # 仅调试使用
             Cycles = Cycles + 1
             if DEBUG and Cycles > 10:
@@ -327,7 +328,7 @@ def import_tushare_stock_fina_indicator(chain_param=None, ts_code_set=None):
         # 导入数据库
         if len(data_df) > 0:
             data_count = bunch_insert_on_duplicate_update(data_df, table_name, engine_md, DTYPE_STOCK_FINA_INDICATOR)
-            logging.info("更新 %s 结束 %d 条信息被更新", table_name, data_count)
+            logging.info("更新 %s 结束 %d 条财务指标数据信息被更新", table_name, data_count)
             # if not has_table and engine_md.has_table(table_name):
             #     alter_table_2_myisam(engine_md, [table_name])
             #     build_primary_key([table_name])
