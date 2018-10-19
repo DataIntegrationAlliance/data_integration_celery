@@ -6,8 +6,10 @@ pandas
 sqlalchemy
 mysqlclient
 xlrd
+xlwt
 DIRestInvoker
 bs4
 tushare
 cryptocmd
 pytdx
+matplotlib
