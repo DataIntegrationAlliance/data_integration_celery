@@ -109,6 +109,8 @@ venv.bak/
 
 # temp files
 *.csv
+*.xls
+*.xlsx
 
 # Celery files
 celerybeat.pid
