@@ -26,7 +26,7 @@ ONE_DAY = timedelta(days=1)
 BASE_LINE_HOUR = 16
 STR_FORMAT_DATE_TS = '%Y%m%d'
 
-@try_n_times(times=5, sleep_time=0, logger=logger, exception_sleep_time=5)
+@try_n_times(times=5, sleep_time=2, logger=logger, exception_sleep_time=5)
 def invoke_dividend(ann_date,fields):
     invoke_dividend = pro.dividend(ann_date=ann_date, fields=fields)
     return invoke_dividend

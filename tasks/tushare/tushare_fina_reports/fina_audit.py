@@ -27,7 +27,7 @@ BASE_LINE_HOUR = 16
 STR_FORMAT_DATE_TS = '%Y%m%d'
 
 
-@try_n_times(times=5, sleep_time=0, logger=logger, exception=Exception, exception_sleep_time=5)
+@try_n_times(times=5, sleep_time=2, logger=logger, exception=Exception, exception_sleep_time=5)
 def invoke_fina_audit(ts_code, start_date, end_date):
     invoke_fina_audit = pro.fina_audit(ts_code=ts_code, start_date=start_date, end_date=end_date)
     return invoke_fina_audit

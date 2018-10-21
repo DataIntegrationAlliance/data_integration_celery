@@ -26,7 +26,7 @@ BASE_LINE_HOUR = 16
 STR_FORMAT_DATE_TS = '%Y%m%d'
 
 
-@try_n_times(times=3, sleep_time=0, logger=logger, exception=Exception, exception_sleep_time=10)
+@try_n_times(times=3, sleep_time=2, logger=logger, exception=Exception, exception_sleep_time=10)
 def invoke_fina_mainbz(ts_code, start_date, end_date, type):
     invoke_fina_mainbz = pro.fina_mainbz(ts_code=ts_code, start_date=start_date, end_date=end_date, type=type)
     return invoke_fina_mainbz
