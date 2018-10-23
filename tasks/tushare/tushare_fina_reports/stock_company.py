@@ -27,58 +27,47 @@ ONE_DAY = timedelta(days=1)
 BASE_LINE_HOUR = 16
 STR_FORMAT_DATE_TS = '%Y%m%d'
 
-INDICATOR_PARAM_LIST_TUSHARE_STOCK_DAILY_ADJ_FACTOR = [
+INDICATOR_PARAM_LIST_TUSHARE_STOCK_COMPANY = [
     ('ts_code', String(20)),
-    ('name', String(200)),
-    ('management', String(60)),
-    ('custodian', String(60)),
-    ('fund_type', String(20)),
-    ('found_date', Date),
-    ('due_date', Date),
-    ('list_date', Date),
-    ('issue_date', Date),
-    ('delist_date', Date),
-    ('issue_amount', DOUBLE),
-    ('m_fee', DOUBLE),
-    ('c_fee', DOUBLE),
-    ('duration_year', DOUBLE),
-    ('p_value', DOUBLE),
-    ('min_amount', DOUBLE),
-    ('exp_return', DOUBLE),
-    ('benchmark', Text),
-    ('status', String(20)),
-    ('invest_type', String(200)),
-    ('type', String(100)),
-    ('trustee', String(20)),
-    ('purc_startdate', Date),
-    ('redm_startdate', Date),
-    ('market', String(20)),
+    ('chairman', String(20)),
+    ('manager', String(20)),
+    ('secretary', String(20)),
+    ('reg_capital', DOUBLE),
+    ('setup_date', Date),
+    ('province', String(100)),
+    ('city', String(200)),
+    ('introduction', Text),
+    ('website', String(100)),
+    ('email', String(100)),
+    ('office', String(200)),
+    ('employees', Integer),
+    ('main_business', Text),
+    ('business_scope', Text),
 ]
 # 设置 dtype
-DTYPE_TUSHARE_STOCK_DAILY_ADJ_FACTOR = {key: val for key, val in INDICATOR_PARAM_LIST_TUSHARE_STOCK_DAILY_ADJ_FACTOR}
+DTYPE_TUSHARE_STOCK_COMPANY = {key: val for key, val in INDICATOR_PARAM_LIST_TUSHARE_STOCK_COMPANY}
 
 @app.task
-def import_tushare_fund_basic(chain_param=None, ):
+def import_tushare_stock_company(chain_param=None, ):
     """
     插入股票日线数据到最近一个工作日-1。
     如果超过 BASE_LINE_HOUR 时间，则获取当日的数据
     :return:
     """
-    table_name = 'tushare_fund_basic'
+    table_name = 'tushare_stock_company'
     logging.info("更新 %s 开始", table_name)
     has_table = engine_md.has_table(table_name)
     # 进行表格判断，确定是否含有tushare_stock_daily
 
-    for market in list(['E','O']):
-        data_df = pro.fund_basic(market=market)
-        if len(data_df) > 0:
-            data_count = bunch_insert_on_duplicate_update(data_df, table_name, engine_md, DTYPE_TUSHARE_STOCK_DAILY_ADJ_FACTOR)
-            logging.info(" %s 表 %d 条基金信息被更新", table_name,  data_count)
-        else:
-            logging.info("无数据信息可被更新")
+    data_df = pro.stock_company()
+    if len(data_df) > 0:
+        data_count = bunch_insert_on_duplicate_update(data_df, table_name, engine_md, INDICATOR_PARAM_LIST_TUSHARE_STOCK_COMPANY)
+        logging.info(" %s 表 %d 条上市公司基本信息被更新", table_name,  data_count)
+    else:
+        logging.info("无数据信息可被更新")
 
 
 
 if __name__ == "__main__":
     # DEBUG = True
-    import_tushare_fund_basic()
+    import_tushare_stock_company()
