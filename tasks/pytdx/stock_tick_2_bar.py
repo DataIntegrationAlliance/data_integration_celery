@@ -5,7 +5,7 @@
 @Time    : 2018/10/22 17:41
 @File    : stock_tick_2_bar.py
 @contact : mmmaaaggg@163.com
-@desc    : 
+@desc    : 将tick数据合并成为分钟线数据
 """
 
 from tasks.backend import engine_md
@@ -16,6 +16,10 @@ logger = logging.getLogger()
 
 
 def merge_tick_2_bar():
+    """
+    将tick数据合并成为1分钟数据
+    :return: 
+    """""
     table_name = 'pytdx_stock_min1'
     tick_table_name = 'pytdx_stock_tick'
     has_table = engine_md.has_table(table_name)
