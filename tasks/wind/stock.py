@@ -588,6 +588,7 @@ def import_stock_quertarly(chain_param=None, wind_code_set=None):
         ('surpluscapitalps', DOUBLE),
         ('undistributedps', DOUBLE),
         ('stm_issuingdate', DOUBLE),
+
     ]
 
     # 获取参数列表
@@ -595,25 +596,7 @@ def import_stock_quertarly(chain_param=None, wind_code_set=None):
     dtype = {key: val for key, val in param_list}
     dtype['wind_code'] = String(20)
     dtype['trade_date'] = Date
-    # # 标示每天几点以后下载当日行情数据
-    # BASE_LINE_HOUR = 16
-    # with with_db_session(engine_md) as session:
-    #     # 获取每只股票最新交易日数据
-    #     sql_str = 'select wind_code, max(Trade_date) from wind_stock_quertarly group by wind_code'
-    #     table = session.execute(sql_str)
-    #     stock_trade_date_latest_dic = dict(table.fetchall())
-    #     # 获取市场有效交易日数据
-    #     sql_str = "select trade_date from wind_trade_date where trade_date > '2005-1-1'"
-    #     table = session.execute(sql_str)
-    #     trade_date_sorted_list = [t[0] for t in table.fetchall()]
-    #     trade_date_sorted_list.sort()
-    #     # 获取每只股票上市日期、退市日期
-    #     table = session.execute('SELECT wind_code, ipo_date, delist_date FROM wind_stock_info')
-    #     stock_date_dic = {wind_code: (ipo_date, delist_date if delist_date is None or delist_date > UN_AVAILABLE_DATE else None) for
-    #                       wind_code, ipo_date, delist_date in table.fetchall()}
-    # date_ending = date.today() - ONE_DAY if datetime.now().hour < BASE_LINE_HOUR else date.today()
-    # data_df_list = []
-    # logger.info('%d stocks will been import into wind_stock_quertarly', len(stock_date_dic))
+
     data_df_list = []
     logger.info('%d stocks will been import into wind_stock_quertarly', len(stock_date_dic))
 
