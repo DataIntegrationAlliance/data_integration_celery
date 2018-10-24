@@ -11,7 +11,7 @@
 from tasks.backend import engine_md
 from tasks.utils.db_utils import with_db_session
 import logging
-
+import pandas as pd
 logger = logging.getLogger()
 
 
@@ -21,7 +21,7 @@ def merge_tick_2_bar():
     :return: 
     """""
     table_name = 'pytdx_stock_min1'
-    tick_table_name = 'pytdx_stock_tick'
+    tick_table_name = 'pytdx_tick_temp'
     has_table = engine_md.has_table(table_name)
     sql_create_table = f"""CREATE TABLE `{table_name}` (
           `ts_code` varchar(12) NOT NULL,
@@ -66,3 +66,8 @@ def merge_tick_2_bar():
 
 if __name__ == "__main__":
     merge_tick_2_bar()
+
+# sql_str="""insert ignore pytdx_tick_temp select * from pytdx_stock_tick where ts_code in ('000001.SZ','000050.SZ')"""
+# # data=pd.read_sql(sql_str,engine_md)
+# # rslt = session.execute(sql_str)
+# insert_count = rslt.rowcount

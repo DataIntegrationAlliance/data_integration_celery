@@ -6,6 +6,7 @@ contact author:ybychem@gmail.com
 """
 
 import pandas as pd
+import numpy as np
 import logging
 from tasks.backend.orm import build_primary_key
 from datetime import date, datetime, timedelta
@@ -29,9 +30,9 @@ STR_FORMAT_DATE_TS = '%Y%m%d'
 
 INDICATOR_PARAM_LIST_TUSHARE_STOCK_COMPANY = [
     ('ts_code', String(20)),
-    ('chairman', String(20)),
-    ('manager', String(20)),
-    ('secretary', String(20)),
+    ('chairman', String(200)),
+    ('manager', String(200)),
+    ('secretary', String(200)),
     ('reg_capital', DOUBLE),
     ('setup_date', Date),
     ('province', String(100)),
@@ -48,7 +49,7 @@ INDICATOR_PARAM_LIST_TUSHARE_STOCK_COMPANY = [
 DTYPE_TUSHARE_STOCK_COMPANY = {key: val for key, val in INDICATOR_PARAM_LIST_TUSHARE_STOCK_COMPANY}
 
 @app.task
-def import_tushare_stock_company(chain_param=None, ):
+def import_tushare_stock_company(chain_param=None):
     """
     插入股票日线数据到最近一个工作日-1。
     如果超过 BASE_LINE_HOUR 时间，则获取当日的数据
@@ -60,8 +61,11 @@ def import_tushare_stock_company(chain_param=None, ):
     # 进行表格判断，确定是否含有tushare_stock_daily
 
     data_df = pro.stock_company()
+    for i in  range(len(data_df['setup_date'])):
+        if data_df['setup_date'][i] is not None and len(data_df['setup_date'][i])<8 :
+            data_df['setup_date'][i]=np.nan
     if len(data_df) > 0:
-        data_count = bunch_insert_on_duplicate_update(data_df, table_name, engine_md, INDICATOR_PARAM_LIST_TUSHARE_STOCK_COMPANY)
+        data_count = bunch_insert_on_duplicate_update(data_df, table_name, engine_md, DTYPE_TUSHARE_STOCK_COMPANY)
         logging.info(" %s 表 %d 条上市公司基本信息被更新", table_name,  data_count)
     else:
         logging.info("无数据信息可被更新")

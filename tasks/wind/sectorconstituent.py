@@ -197,7 +197,7 @@ def import_sectorconstituent_all(chain_param=None):
         # {"sector_name": 'CS建筑', "sector_code": 'b107000000000000', 'date_start': '2003-01-02'},
         # {"sector_name": 'CS建材', "sector_code": 'b108000000000000', 'date_start': '2003-01-02'},
         # {"sector_name": 'CS轻工制造', "sector_code": 'b109000000000000', 'date_start': '2003-01-02'},
-        {"sector_name": 'CS机械', "sector_code": 'b10a000000000000', 'date_start': '2003-01-02'},
+        # {"sector_name": 'CS机械', "sector_code": 'b10a000000000000', 'date_start': '2003-01-02'},
         # {"sector_name": 'CS电力设备', "sector_code": 'b10b000000000000', 'date_start': '2003-01-02'},
         # {"sector_name": 'CS国防军工', "sector_code": 'b10c000000000000', 'date_start': '2003-01-02'},
         # {"sector_name": 'CS汽车', "sector_code": 'b10d000000000000', 'date_start': '2003-01-02'},
