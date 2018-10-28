@@ -156,7 +156,7 @@ def import_tushare_stock_income(chain_param=None, ts_code_set=None):
             for ts_code, date_from, date_to in table.fetchall() if
             ts_code_set is None or ts_code in ts_code_set}
 
-    data_len = len(code_date_range_dic)
+    data_df_list, data_count, all_data_count, data_len = [], 0, 0, len(code_date_range_dic)
     logger.info('%d stocks will been import into wind_stock_daily', data_len)
     # 将data_df数据，添加到data_df_list
 
@@ -188,23 +188,34 @@ def import_tushare_stock_income(chain_param=None, ts_code_set=None):
                                     date_from, date_to)
                     elif len(df2) <= 0:
                         break
-                # 数据插入数据库
-                data_df_all = data_df
-                data_count = bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md,
-                                                              DTYPE_TUSHARE_STOCK_INCOME)
-                logging.info("成功更新 %s 结束 %d 条信息被更新", table_name, data_count)
+                # # 数据插入数据库
+                # data_df_all = data_df
+                # data_count = bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md,
+                #                                               DTYPE_TUSHARE_STOCK_INCOME)
+                # logging.info("成功更新 %s 结束 %d 条信息被更新", table_name, data_count)
 
+            # 把数据攒起来
+            if data_df is not None and data_df.shape[0] > 0:
+                data_count += data_df.shape[0]
+                data_df_list.append(data_df)
+            # 大于阀值有开始插入
+            if data_count >= 1000 and len(data_df_list) > 0:
+                data_df_all = pd.concat(data_df_list)
+                bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md, DTYPE_TUSHARE_STOCK_INCOME)
+                logger.info('%d 条财务指标将数据插入 %s 表', data_count, table_name)
+                all_data_count += data_count
+                data_df_list, data_count = [], 0
             # 仅调试使用
             Cycles = Cycles + 1
             if DEBUG and Cycles > 10:
                 break
     finally:
         # 导入数据库
-        if len(data_df) > 0:
-            data_df_all = data_df
-            data_count = bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md,
-                                                          DTYPE_TUSHARE_STOCK_INCOME)
-            logging.info("成功更新 %s 结束 %d 条信息被更新", table_name, data_count)
+        if len(data_df_list) > 0:
+            data_df_all = pd.concat(data_df_list)
+            data_count = bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md,DTYPE_TUSHARE_STOCK_INCOME)
+            all_data_count = all_data_count + data_count
+            logging.info("更新 %s 结束 %d 条信息被更新", table_name, all_data_count)
             # if not has_table and engine_md.has_table(table_name):
             #     alter_table_2_myisam(engine_md, [table_name])
             #     build_primary_key([table_name])

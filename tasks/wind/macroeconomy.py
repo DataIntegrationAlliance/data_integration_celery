@@ -35,6 +35,26 @@ def import_macroeconomy_info(chain_param=None):
     indicators_dic = [
         # 企业信心指标
         ["M5786898", "BCI", "中国企业经营状况指数", "2011-09-30", None, '长江商学院'],
+        ["M0000138", "Caixin_China_PMI", "财新中国PMI指数", "2005-09-01", None, 'Wind'],
+        ["M0061603", "Caixin_China_Service_PMI_Business_Activity_index", "财新中国服务业PMI经营活动指数", "2008-10-01", None, 'Wind'],
+        ["M0290204", "Caixin_China_Integrated_PMI_Output_Index", "财新中国综合PMI产出指数", "2015-01-01", None, 'Wind'],
+
+        ["M0017126", "PMI", "PMI", "2005-01-01", None, '国家统计局'],
+        ["M0017127", "PMI_production", "PMI生产", "2005-01-01", None, '国家统计局'],
+        ["M0017128", "PMI_new_order", "PMI新订单", "2005-01-01", None, '国家统计局'],
+        ["M0017129", "PMI_new_export_order", "PMI出口订单", "2005-01-01", None, '国家统计局'],
+        ["M0017130", "PMI_order_in_hand", "PMI在手订单", "2005-01-01", None, '国家统计局'],
+        ["M0017131", "PMI_finished_product_inventory", "PMI产成品库存", "2005-01-01", None, '国家统计局'],
+        ["M0017132", "PMI_purchase_volume", "PMI采购量", "2005-01-01", None, '国家统计局'],
+        ["M0017133", "PMI_import", "PMI进口", "2005-01-01", None, '国家统计局'],
+        ["M5766711", "PMI_factory_price", "PMI出厂价格", "2016-01-01", None, '国家统计局'],
+        ["M0017134", "PMI_main_raw_material_purchase_price", "PMI主要原材料购进价格", "2005-01-01", None, '国家统计局'],
+        ["M0017135", "PMI_material_inventory", "PMI原材料库存", "2005-01-01", None, '国家统计局'],
+        ["M0017136", "PMI_practitioners", "PMI从业人员", "2005-01-01", None, '国家统计局'],
+        ["M0017137", "PMI_supplier_delivery_time", "PMI供货商配货时间", "2005-01-01", None, '国家统计局'],
+        ["M5207790", "PMI_expected_production_operation_activities", "PMI生产经营活动预期", "2005-01-01", None, '国家统计局'],
+
+
         # 克强指标
         ["M5407921", "Keqiang_Index", "克强指数当月值", "2009-07-01", None, 'wind，单位：%'],
         ["M5407922", "Keqiang_Index_cummulative", "克强指数累积值", "2003-05-01", None, 'wind，单位：%'],
@@ -61,7 +81,14 @@ def import_macroeconomy_info(chain_param=None):
         ["M0043417", "short_term_loan_balances_of_financial_institutions", "金融机构短期贷款余额","1994-01-01", None, '中国人民银行，单位：亿元'],
         ["M0043418", "long_term_loan_balances_of_financial_institutions", "金融机构中长期期贷款余额","1994-01-01", None, '中国人民银行，单位：亿元'],
         ["M0009978", "deposit_loan_Difference_of_financial_institutions", "金融机构存贷差","1978-12-01", None, '中国人民银行，单位：亿元'],
-
+        # 外债数据
+        ["M0024339", "foreign_debt", "外债余额", "2000-12-01", None, '国家外汇管理局，单位：亿美元'],
+        ["M0024340", "foreign_debt_long_midd_term", "中长期外债余额", "2000-12-01", None, '国家外汇管理局，单位：亿美元'],
+        ["M0024341", "foreign debt_short_term", "短期外债余额", "2000-12-01", None, '国家外汇管理局，单位：亿美元'],
+        # 地方债数据
+        ["M5658437", "local_government_bond_issuance", "地方政府债券发行额", "2017-11-01", None, '财政部，单位：亿元'],
+        ["M5658438", "local_government_common_bond_issuance", "地方政府普通债券发行额", "2017-11-01", None, '财政部，单位：亿元'],
+        ["M5658439", "local_government_special_bond_issuance", "地方政府专项债券发行额", "2017-11-01", None, '财政部，单位：亿元'],
 
         # 中国GDP 宏观数据
         # CPI

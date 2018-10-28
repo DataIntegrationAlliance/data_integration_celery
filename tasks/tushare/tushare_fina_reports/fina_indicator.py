@@ -232,7 +232,7 @@ def import_tushare_stock_fina_indicator(chain_param=None, ts_code_set=None):
                 LEFT OUTER JOIN
                     (SELECT ts_code, adddate(max(ann_date),1) ann_date 
                     FROM {table_name} GROUP BY ts_code) fina_indicator
-                ON info.ts_code = fina_indicator.ts_code
+                ON info.ts_co de = fina_indicator.ts_code
             ) tt
             WHERE date_frm <= if(delist_date<end_date, delist_date, end_date) 
             ORDER BY ts_code""".format(table_name=table_name)
@@ -280,7 +280,7 @@ def import_tushare_stock_fina_indicator(chain_param=None, ts_code_set=None):
              'q_profit_yoy', 'q_profit_qoq', 'q_netprofit_yoy', 'q_netprofit_qoq', 'equity_yoy', 'rd_exp'
 
     data_df_list, data_count, all_data_count, data_len = [], 0, 0, len(code_date_range_dic)
-    logger.info('%d stocks will been import into wind_stock_daily', data_len)
+    logger.info('%d 财务指标信息将被插入 tushare_stock_fin_indicator 表', data_len)
     # 将data_df数据，添加到data_df_list
 
     Cycles = 1
@@ -303,20 +303,21 @@ def import_tushare_stock_fina_indicator(chain_param=None, ts_code_set=None):
                             data_df = pd.concat([data_df, df2])
                         elif last_date_in_df_cur == last_date_in_df_last:
                             break
-                        if data_df is None:
-                            logger.warning('%d/%d) %s has no data during %s %s', num, data_len, ts_code, date_from,date_to)
-                            continue
-                        logger.info('%d/%d) %d data of %s between %s and %s', num, data_len, data_df.shape[0], ts_code,date_from, date_to)
                     elif len(df2) <= 0:
                         break
+            if data_df is None:
+                logger.warning('%d/%d) %s has no data during %s %s', num, data_len, ts_code, date_from, date_to)
+                continue
+            elif data_df is not None:
+                logger.info('整体进度：%d/%d)， %d 条 %s 财务指标已提取，起止时间 %s 和 %s', num, data_len, data_df.shape[0], ts_code,date_from, date_to)
             # 把数据攒起来
             if data_df is not None and data_df.shape[0] > 0:
                 data_count += data_df.shape[0]
                 data_df_list.append(data_df)
             # 大于阀值有开始插入
-            if data_count >= 500 and len(data_df_list) > 0:
+            if data_count >= 1000 and len(data_df_list) > 0:
                 data_df_all = pd.concat(data_df_list)
-                bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md,DTYPE_TUSHARE_STOCK_TOP10_HOLDERS)
+                bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md,DTYPE_STOCK_FINA_INDICATOR)
                 logger.info('%d 条财务指标将数据插入 %s 表', data_count,table_name)
                 all_data_count += data_count
                 data_df_list, data_count = [], 0
@@ -326,9 +327,11 @@ def import_tushare_stock_fina_indicator(chain_param=None, ts_code_set=None):
                 break
     finally:
         # 导入数据库
-        if len(data_df) > 0:
-            data_count = bunch_insert_on_duplicate_update(data_df, table_name, engine_md, DTYPE_STOCK_FINA_INDICATOR)
-            logging.info("更新 %s 结束 %d 条财务指标数据信息被更新", table_name, data_count)
+        if len(data_df_list) > 0:
+            data_df_all = pd.concat(data_df_list)
+            data_count = bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md, DTYPE_STOCK_FINA_INDICATOR)
+            all_data_count = all_data_count + data_count
+            logging.info("更新 %s 结束 %d 条信息被更新", table_name, all_data_count)
             # if not has_table and engine_md.has_table(table_name):
             #     alter_table_2_myisam(engine_md, [table_name])
             #     build_primary_key([table_name])
@@ -338,7 +341,7 @@ if __name__ == "__main__":
     # DEBUG = True
     # import_tushare_stock_info(refresh=False)
     # 更新每日股票数据
-    import_tushare_stock_fina_indicator()
+    import_tushare_stock_fina_indicator(chain_param=None, ts_code_set=None)
 
 # sql_str = """SELECT * FROM old_tushare_stock_balancesheet """
 # df=pd.read_sql(sql_str,engine_md)
