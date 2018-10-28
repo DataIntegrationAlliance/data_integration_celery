@@ -226,7 +226,7 @@ def import_tushare_stock_balancesheet(chain_param=None, ts_code_set=None):
             for ts_code, date_from, date_to in table.fetchall() if
             ts_code_set is None or ts_code in ts_code_set}
 
-    data_len = len(code_date_range_dic)
+    data_df_list, data_count, all_data_count, data_len = [], 0, 0, len(code_date_range_dic)
     logger.info('%d stock balancesheets will been import into tushare_stock_balancesheet', data_len)
     # 将data_df数据，添加到data_df_list
 
@@ -234,47 +234,58 @@ def import_tushare_stock_balancesheet(chain_param=None, ts_code_set=None):
     try:
         for num, (ts_code, (date_from, date_to)) in enumerate(code_date_range_dic.items(), start=1):
             logger.debug('%d/%d) %s [%s - %s]', num, data_len, ts_code, date_from, date_to)
-            df = invoke_balancesheet(ts_code=ts_code, start_date=datetime_2_str(date_from, STR_FORMAT_DATE_TS),
+            data_df = invoke_balancesheet(ts_code=ts_code, start_date=datetime_2_str(date_from, STR_FORMAT_DATE_TS),
                                      end_date=datetime_2_str(date_to, STR_FORMAT_DATE_TS))
             # logger.info(' %d data of %s between %s and %s', df.shape[0], ts_code, date_from, date_to)
-            data_df = df
-            if len(data_df) > 0:
-                while try_2_date(df['ann_date'].iloc[-1]) > date_from:
-                    last_date_in_df_last, last_date_in_df_cur = try_2_date(df['ann_date'].iloc[-1]), None
+            # data_df = df
+            if len(data_df) > 0 and data_df['ann_date'].iloc[-1] is not None:
+                last_date_in_df_last = try_2_date(data_df['ann_date'].iloc[-1])
+                while try_2_date(data_df['ann_date'].iloc[-1]) > date_from:
                     df2 = invoke_balancesheet(ts_code=ts_code, start_date=datetime_2_str(date_from, STR_FORMAT_DATE_TS),
-                                              end_date=datetime_2_str(
-                                                  try_2_date(df['ann_date'].iloc[-1]) - timedelta(days=1),
-                                                  STR_FORMAT_DATE_TS))
-                    if len(df2) > 0:
+                                              end_date=datetime_2_str(try_2_date(data_df['ann_date'].iloc[-1]) - timedelta(days=1),STR_FORMAT_DATE_TS))
+                    if len(df2) > 0 and df2['ann_date'].iloc[-1] is not None:
                         last_date_in_df_cur = try_2_date(df2['ann_date'].iloc[-1])
                         if last_date_in_df_cur < last_date_in_df_last:
                             data_df = pd.concat([data_df, df2])
-                            df = df2
+                            # df = df2
                         elif last_date_in_df_cur == last_date_in_df_last:
                             break
-                        if data_df is None:
-                            logger.warning('%d/%d) %s has no data during %s %s', num, data_len, ts_code, date_from,
-                                           date_to)
-                            continue
-                        logger.info('%d/%d) %d data of %s between %s and %s', num, data_len, data_df.shape[0], ts_code,
-                                    date_from, date_to)
                     elif len(df2) <= 0:
                         break
-                # 数据插入数据库
-                data_count = bunch_insert_on_duplicate_update(data_df, table_name, engine_md,
-                                                              DTYPE_TUSHARE_STOCK_BALABCESHEET)
-                logging.info("更新 %s 结束 %d 条信息被更新", table_name, data_count)
-                data_df = []
+            if data_df is None:
+                logger.warning('%d/%d) %s has no data during %s %s', num, data_len, ts_code, date_from, date_to)
+                continue
+            elif data_df is not None:
+                logger.info('整体进度：%d/%d)， %d 条 %s 资产负债表被提取，起止时间为 %s 和 %s', num, data_len, data_df.shape[0], ts_code,date_from, date_to)
+
+            # 把数据攒起来
+            if data_df is not None and data_df.shape[0] > 0:
+                data_count += data_df.shape[0]
+                data_df_list.append(data_df)
+
+            # 大于阀值有开始插入
+            if data_count >= 1000 and len(data_df_list) > 0:
+                data_df_all = pd.concat(data_df_list)
+                bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md,DTYPE_TUSHARE_STOCK_BALABCESHEET)
+                logger.info('%d 条资产负债表数据被插入 %s 表', data_count, table_name)
+                all_data_count += data_count
+                data_df_list, data_count = [], 0
+                # # 数据插入数据库
+                # data_count = bunch_insert_on_duplicate_update(data_df, table_name, engine_md,
+                #                                               DTYPE_TUSHARE_STOCK_BALABCESHEET)
+                # logging.info("更新 %s 结束 %d 条信息被更新", table_name, data_count)
+                # data_df = []
             # 仅调试使用
             Cycles = Cycles + 1
             if DEBUG and Cycles > 10:
                 break
     finally:
         # 导入数据库
-        if len(data_df) > 0:
-            data_count = bunch_insert_on_duplicate_update(data_df, table_name, engine_md,
-                                                          DTYPE_TUSHARE_STOCK_BALABCESHEET)
-            logging.info("更新 %s 结束 %d 条信息被更新", table_name, data_count)
+        if len(data_df_list) > 0:
+            data_df_all = pd.concat(data_df_list)
+            data_count = bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md,DTYPE_TUSHARE_STOCK_BALABCESHEET)
+            all_data_count = all_data_count + data_count
+            logging.info("更新 %s 结束 %d 条资产负债表信息被更新", table_name, all_data_count)
             # if not has_table and engine_md.has_table(table_name):
             #     alter_table_2_myisam(engine_md, [table_name])
             #     build_primary_key([table_name])
