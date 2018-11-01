@@ -118,3 +118,9 @@ def import_repurchase(chain_param=None):
 if __name__ == "__main__":
     # DEBUG = True
     import_repurchase()
+
+
+# sql_str="""select * from old_tushare_stock_repurchase"""
+# df=pd.read_sql(sql_str,engine_md)
+# data_count=bunch_insert_on_duplicate_update(df,table_name,engine_md,DTYPE_TUSHARE_REPURCHASE)
+# logging.info("更新 %s 结束 %d 条信息被更新", table_name, data_count)
