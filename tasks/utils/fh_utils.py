@@ -151,6 +151,16 @@ def log_param_when_exception(func):
     return handler
 
 
+def str_2_float(sth) -> (float, None):
+    """将数据转换成 float 类型，如果是None， NAT， NAN等数据就变成 None"""
+    try:
+        ret_val = None if is_nan_or_none(sth) else float(sth)
+    except TypeError:
+        ret_val = sth
+
+    return ret_val
+
+
 def try_n_times(times=3, sleep_time=3, logger: logging.Logger=None, exception=Exception, exception_sleep_time=0):
     """
     尝试最多 times 次，异常捕获记录后继续尝试
