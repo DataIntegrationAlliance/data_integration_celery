@@ -57,7 +57,7 @@ def get_stock_code_set():
     :return:
     """
     # date_fetch_str = date_fetch.strftime(STR_FORMAT_DATE)
-    stock_df = pro.stock_basic(exchange_id='', is_hs='S', fields='ts_code,name')
+    stock_df = pro.stock_basic(exchange='', is_hs='S', fields='ts_code,name')
     if stock_df is None:
         # logging.warning('%s 获取股票代码失败', date_fetch_str)
         return None
@@ -82,7 +82,7 @@ def import_tushare_stock_info(chain_param=None, refresh=False):
         ('fullname', String(100)),
         ('enname', String(200)),
         ('market', String(100)),
-        ('exchange_id', String(20)),
+        ('exchange', String(20)),
         ('curr_type', String(20)),
         ('list_status', String(20)),
         ('list_date', Date),
@@ -97,8 +97,8 @@ def import_tushare_stock_info(chain_param=None, refresh=False):
 
     # 数据提取
 
-    stock_info_all_df = pro.stock_basic(exchange_id='',
-                                        fields='ts_code,symbol,name,area,industry,fullname,enname,market,exchange_id,curr_type,list_status,list_date,delist_date,is_hs,is_hs,is_hs')
+    stock_info_all_df = pro.stock_basic(exchange='',
+                                        fields='ts_code,symbol,name,area,industry,fullname,enname,market,exchange,curr_type,list_status,list_date,delist_date,is_hs,is_hs,is_hs')
 
     logging.info('%s stock data will be import', stock_info_all_df.shape[0])
     data_count = bunch_insert_on_duplicate_update(stock_info_all_df, table_name, engine_md, dtype=dtype)
