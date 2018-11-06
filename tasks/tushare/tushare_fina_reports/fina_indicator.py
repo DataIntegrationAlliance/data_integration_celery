@@ -232,7 +232,7 @@ def import_tushare_stock_fina_indicator(chain_param=None, ts_code_set=None):
                 LEFT OUTER JOIN
                     (SELECT ts_code, adddate(max(ann_date),1) ann_date 
                     FROM {table_name} GROUP BY ts_code) fina_indicator
-                ON info.ts_co de = fina_indicator.ts_code
+                ON info.ts_code = fina_indicator.ts_code
             ) tt
             WHERE date_frm <= if(delist_date<end_date, delist_date, end_date) 
             ORDER BY ts_code""".format(table_name=table_name)

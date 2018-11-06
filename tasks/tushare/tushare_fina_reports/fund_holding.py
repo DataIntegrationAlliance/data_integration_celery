@@ -122,5 +122,5 @@ def fresh_tushare_stock_fund_holdings(year,quarter):
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG, format='%(asctime)s: %(levelname)s [%(name)s] %(message)s')
-    #import_tushare_stock_fund_holdings()
-    fresh_tushare_stock_fund_holdings(year=2018,quarter=3)
+    import_tushare_stock_fund_holdings()
+    # fresh_tushare_stock_fund_holdings(year=2018,quarter=3)
