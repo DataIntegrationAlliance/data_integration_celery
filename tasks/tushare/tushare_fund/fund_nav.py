@@ -27,7 +27,7 @@ ONE_DAY = timedelta(days=1)
 BASE_LINE_HOUR = 16
 STR_FORMAT_DATE_TS = '%Y%m%d'
 
-@try_n_times(times=5, sleep_time=1, exception_sleep_time=60)
+@try_n_times(times=5, sleep_time=2, exception_sleep_time=60)
 def invoke_fund_nav(ts_code):
     invoke_fund_nav = pro.fund_nav(ts_code=ts_code)
     return invoke_fund_nav
