@@ -148,9 +148,9 @@ def import_tushare_stock_top10_floatholders(chain_param=None,ts_code_set=None):
                 bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md,DTYPE_TUSHARE_STOCK_TOP10_FLOATHOLDERS)
                 all_data_count += data_count
                 data_df_list, data_count = [], 0
-                # 数据插入数据库
-                data_count = bunch_insert_on_duplicate_update(data_df, table_name, engine_md, DTYPE_TUSHARE_STOCK_TOP10_FLOATHOLDERS)
-                logging.info("更新 %s 结束 %d 条信息被更新", table_name, data_count)
+                # # 数据插入数据库
+                # data_count = bunch_insert_on_duplicate_update(data_df, table_name, engine_md, DTYPE_TUSHARE_STOCK_TOP10_FLOATHOLDERS)
+                # logging.info("更新 %s 结束 %d 条信息被更新", table_name, data_count)
 
             # 仅调试使用
             Cycles = Cycles + 1
