@@ -12,9 +12,9 @@ from tasks.utils.db_utils import execute_sql, with_db_session
 from datetime import datetime
 
 
-def partition_table():
+def partition_table_pytdx_stock_tick():
     sql_str = """ALTER TABLE `pytdx_stock_tick` 
-        PARTITION BY RANGE(date) ( 
+        PARTITION BY RANGE COLUMNS(`date`) ( 
         PARTITION p2000 VALUES LESS THAN ('2001-01-01'),  
         PARTITION p2001 VALUES LESS THAN ('2002-01-01'),  
         PARTITION p2002 VALUES LESS THAN ('2003-01-01'),  
@@ -48,4 +48,4 @@ def partition_table():
 
 
 if __name__ == "__main__":
-    partition_table()
+    partition_table_pytdx_stock_tick()
