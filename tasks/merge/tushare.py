@@ -228,7 +228,7 @@ def merge_tushare_stock_daily(ths_code_set: set = None, date_from=None):
     logging.info("合成 %s 开始", table_name)
     has_table = engine_md.has_table(table_name)
     if date_from is None and has_table:
-        sql_str = "select adddate(max(`time`),1) from {table_name}".format(table_name=table_name)
+        sql_str = "select adddate(max(`trade_date`),1) from {table_name}".format(table_name=table_name)
         with with_db_session(engine_md) as session:
             date_from = date_2_str(session.execute(sql_str).scalar())
 
