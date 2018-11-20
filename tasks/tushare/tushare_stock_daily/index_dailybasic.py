@@ -125,3 +125,5 @@ def import_tushare_stock_index_dailybasic(chain_param=None):
 if __name__ == "__main__":
     # DEBUG = True
     import_tushare_stock_index_dailybasic()
+
+
