@@ -17,6 +17,7 @@ from tasks.merge.code_mapping import update_from_info_table
 from tasks.utils.db_utils import with_db_session, add_col_2_table, alter_table_2_myisam, \
     bunch_insert_on_duplicate_update
 from tasks.tushare.ts_pro_api import pro
+from tasks.config import config
 
 DEBUG = False
 logger = logging.getLogger()
@@ -87,7 +88,9 @@ def import_tushare_moneyflow_hsgt(chain_param=None):
             trade_date = datetime_2_str(trddate[i], STR_FORMAT_DATE_TS)
             data_df = invoke_moneyflow_hsgt(trade_date=trade_date)
             if len(data_df) > 0:
-                data_count = bunch_insert_on_duplicate_update(data_df, table_name, engine_md, dtype)
+                data_count = bunch_insert_on_duplicate_update(
+                    data_df, table_name, engine_md, dtype,
+                    myisam_if_create_table=True, primary_keys=['trade_date'], schema=config.DB_SCHEMA_MD)
                 logging.info("%s更新 %s 结束 %d 条信息被更新", trade_date, table_name, data_count)
             else:
                 logging.info("无数据信息可被更新")
