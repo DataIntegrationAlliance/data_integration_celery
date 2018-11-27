@@ -93,7 +93,7 @@ def import_tushare_daily_basic(chain_param=None):
         for i in range(len(trddate)):
             trade_date = datetime_2_str(trddate[i], STR_FORMAT_DATE_TS)
             data_df = invoke_daily_basic(ts_code='', trade_date=trade_date)
-            if len(data_df) > 0:
+            if data_df is not None and data_df.shape[0] > 0:
                 data_count = bunch_insert_on_duplicate_update(data_df, table_name, engine_md, DTYPE_TUSHARE_STOCK_DAILY_BASIC)
                 logging.info("%s更新 %s 结束 %d 条信息被更新", trade_date, table_name, data_count)
             else:
