@@ -14,6 +14,7 @@ from sqlalchemy.types import String, Date, Integer
 from sqlalchemy.dialects.mysql import DOUBLE
 from tasks.backend import engine_md
 from tasks.merge.code_mapping import update_from_info_table
+from tasks.config import config
 from tasks.utils.db_utils import with_db_session, add_col_2_table, alter_table_2_myisam, \
     bunch_insert_on_duplicate_update
 
@@ -101,11 +102,10 @@ def import_tushare_stock_info(chain_param=None, refresh=False):
                                         fields='ts_code,symbol,name,area,industry,fullname,enname,market,exchange,curr_type,list_status,list_date,delist_date,is_hs,is_hs,is_hs')
 
     logging.info('%s stock data will be import', stock_info_all_df.shape[0])
-    data_count = bunch_insert_on_duplicate_update(stock_info_all_df, table_name, engine_md, dtype=dtype)
+    data_count = bunch_insert_on_duplicate_update(
+        stock_info_all_df, table_name, engine_md, dtype=dtype,
+        myisam_if_create_table=True, primary_keys=['ts_code'], schema=config.DB_SCHEMA_MD)
     logging.info("更新 %s 完成 存量数据 %d 条", table_name, data_count)
-    if not has_table and engine_md.has_table(table_name):
-        alter_table_2_myisam(engine_md, [table_name])
-        build_primary_key([table_name])
 
     # 更新 code_mapping 表
     # update_from_info_table(table_name)
@@ -224,4 +224,3 @@ def import_tushare_stock_daily(chain_param=None, ts_code_set=None):
 if __name__ == "__main__":
     import_tushare_stock_info(refresh=True)
     import_tushare_stock_daily(ts_code_set=None)
-

@@ -30,7 +30,7 @@ DATE_FORMAT_STR = '%Y%m%d'
 
 
 @app.task
-def import_exchange_info():
+def import_exchange_info(chain_param=None):
     """
     交易所基本信息
     :return:
@@ -114,7 +114,7 @@ def import_exchange_info():
 
 
 @app.task
-def import_coin_info():
+def import_coin_info(chain_param=None):
     """获取全球交易币基本信息"""
     table_name = 'tushare_coin_info'
     has_table = engine_md.has_table(table_name)
@@ -141,7 +141,7 @@ def import_coin_info():
 
 
 @app.task
-def import_coin_pair_info():
+def import_coin_pair_info(chain_param=None):
     """获取交易对信息"""
     table_name = 'tushare_coin_pair_info'
     has_table = engine_md.has_table(table_name)
@@ -266,7 +266,7 @@ def import_coin_pair_info():
 
 
 @app.task
-def import_coinbar():
+def import_coinbar(chain_param=None):
     """获取行情数据"""
     freq_list = ['daily', 'week']
     for freq in freq_list:
