@@ -60,7 +60,7 @@ def import_tushare_fund_nav(chain_param=None, ):
     # if has_table is True:
     #     sql_str=""""""
     # else:
-    sql_str="""SELECT ts_code FROM md_integration.tushare_fund_basic where ts_code>'001757.OF' """
+    sql_str="""SELECT ts_code FROM md_integration.tushare_fund_basic """
 
     with with_db_session(engine_md) as session:
         # 获取交易日数据

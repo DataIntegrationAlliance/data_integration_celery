@@ -60,7 +60,7 @@ def import_tushare_stock_pledge_stat(chain_param=None,ts_code_set=None):
     has_table = engine_md.has_table(table_name)
     # 进行表格判断，确定是否含有tushare_stock_daily
 
-    sql_str = """SELECT ts_code FROM tushare_stock_info where ts_code>'600368.SH'"""
+    sql_str = """SELECT ts_code FROM tushare_stock_info """
     logger.warning('使用 tushare_stock_info 表确认需要提取股票质押数据的范围')
 
     with with_db_session(engine_md) as session:

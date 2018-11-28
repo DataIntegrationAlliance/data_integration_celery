@@ -48,7 +48,7 @@ INDICATOR_PARAM_LIST_TUSHARE_STOCK_DAILY_BASIC = [
 DTYPE_TUSHARE_STOCK_DAILY_BASIC = {key: val for key, val in INDICATOR_PARAM_LIST_TUSHARE_STOCK_DAILY_BASIC}
 
 
-@try_n_times(times=3, sleep_time=6)
+@try_n_times(times=3, sleep_time=1)
 def invoke_daily_basic(ts_code, trade_date):
     df = pro.daily_basic(ts_code=ts_code, trade_date=trade_date)
     return df

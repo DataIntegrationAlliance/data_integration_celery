@@ -62,11 +62,9 @@ def import_repurchase(chain_param=None):
     # 下面一定要注意引用表的来源，否则可能是串，提取混乱！！！比如本表是tushare_daily_basic，所以引用的也是这个，如果引用错误，就全部乱了l
     if has_table:
         sql_str = """
-               select cal_date            
-               FROM
-                (
-                 select * from tushare_trade_date trddate 
-                 where( cal_date>(SELECT max(trade_date) FROM {table_name} ))
+               select * from 
+                (select * from tushare_trade_date trddate 
+                 where (cal_date>(SELECT max(ann_date) FROM {table_name} ))
                )tt
                where (is_open=1 
                       and cal_date <= if(hour(now())<16, subdate(curdate(),1), curdate()) 
