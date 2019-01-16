@@ -64,7 +64,7 @@ class CeleryConfig:
     beat_schedule = {
         'daily_task': {
             'task': 'tasks.grouped_task_daily',
-            'schedule': crontab(hour='16', minute=3, day_of_week='1-5'),
+            'schedule': crontab(hour='16', minute='03', day_of_week='1-5'),
         },
         'weekly_task': {
             'task': 'tasks.grouped_task_weekly',
