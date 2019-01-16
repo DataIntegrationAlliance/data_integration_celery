@@ -12,7 +12,7 @@ celery -A tasks worker --loglevel=info -c 1 -P eventlet
 goto End
 
 :Beat
-ehco beat
+celery beat -A tasks
 goto End
 
 :End
