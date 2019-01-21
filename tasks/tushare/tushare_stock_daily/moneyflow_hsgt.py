@@ -68,12 +68,12 @@ def import_tushare_moneyflow_hsgt(chain_param=None):
                )tt
                where (is_open=1 
                       and cal_date <= if(hour(now())<16, subdate(curdate(),1), curdate()) 
-                      and exchange_id='SSE') """.format(table_name=table_name)
+                      and exchange='SSE') """.format(table_name=table_name)
     else:
         sql_str = """
                SELECT cal_date FROM tushare_trade_date trddate WHERE (trddate.is_open=1 
             AND cal_date <= if(hour(now())<16, subdate(curdate(),1), curdate()) 
-            AND exchange_id='SSE'  AND cal_date>='2014-11-17') ORDER BY cal_date"""
+            AND exchange='SSE'  AND cal_date>='2014-11-17') ORDER BY cal_date"""
         logger.warning('%s 不存在，仅使用 tushare_trade_date 表进行计算日期范围', table_name)
 
     with with_db_session(engine_md) as session:

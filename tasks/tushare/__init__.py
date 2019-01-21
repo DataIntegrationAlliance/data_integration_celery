@@ -34,9 +34,6 @@ from tasks.tushare.tushare_fina_reports.top10_holders import import_tushare_stoc
 from tasks.tushare.tushare_fina_reports.top10_floatholders import import_tushare_stock_top10_floatholders
 
 
-
-
-
 # 日级别加载的程序
 tushare_daily_task = (
         import_tushare_adj_factor.s() |
@@ -72,3 +69,43 @@ tushare_import_once = (
         import_tushare_stock_info.s() |
         import_trade_date.s()
 )
+
+
+def run_daily_job_local():
+    import_tushare_adj_factor()
+    import_tushare_daily_basic()
+    import_tushare_ggt_top10()
+    import_tushare_hsgt_top10()
+    import_tushare_margin()
+    import_tushare_margin_detail()
+    import_tushare_moneyflow_hsgt()
+    import_tushare_stock_daily()
+    import_tushare_suspend()
+    import_tushare_stock_index_daily()
+    import_tushare_top_list()
+    import_tushare_top_inst()
+
+
+def run_once_job_local():
+    import_tushare_stock_info()
+    import_trade_date()
+
+
+def run_weekly_job_local():
+    import_tushare_stock_info()
+    import_tushare_stock_balancesheet()
+    import_tushare_stock_cashflow()
+    import_tushare_stock_fina_audit()
+    import_tushare_stock_fina_indicator()
+    import_tushare_stock_fina_mainbz()
+    import_tushare_stock_income()
+    import_tushare_stock_top10_holders()
+    import_tushare_stock_top10_floatholders()
+
+
+if __name__ == "__main__":
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info("本地执行 tushare 任务")
+    run_once_job_local()
+    run_daily_job_local()

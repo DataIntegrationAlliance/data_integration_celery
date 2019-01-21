@@ -38,7 +38,7 @@ def import_trade_date(chain_param=None):
     exch_code_trade_date_dic = {}
     with with_db_session(engine_md) as session:
         try:
-            table = session.execute('SELECT exchange_id,max(cal_date) FROM {table_name} GROUP BY exchange_id'.format(
+            table = session.execute('SELECT exchange,max(cal_date) FROM {table_name} GROUP BY exchange'.format(
                 table_name=table_name
             ))
             exch_code_trade_date_dic = {exch_code: trade_date for exch_code, trade_date in table.fetchall()}
@@ -68,7 +68,7 @@ def import_trade_date(chain_param=None):
         logger.info("%s[%s] %d 条交易日数据将被导入 %s",
                     exchange_code_dict[exchange_code], exchange_code, date_count, table_name)
         date_count = bunch_insert_on_duplicate_update(trade_date_df, table_name, engine_md, dtype={
-            'exchange_id': String(10),
+            'exchange': String(10),
             'cal_date': Date,
             'is_open': DOUBLE,
         }, myisam_if_create_table=True)
