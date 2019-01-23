@@ -221,7 +221,9 @@ def bunch_insert_on_duplicate_update(df: pd.DataFrame, table_name, engine, dtype
                 #     CHANGE COLUMN `ths_code` `ths_code` VARCHAR(20) NOT NULL FIRST,
                 #     CHANGE COLUMN `time` `time` DATE NOT NULL AFTER `ths_code`,
                 #     ADD PRIMARY KEY (`ths_code`, `time`)""".format(table_name=table_name)
-                chg_pk_str = f"ALTER TABLE {table_name}\n" + "\n".join(col_name_sql_str_list)
+                primary_keys_str = "`" + "`, `".join(primary_keys) + "`"
+                add_primary_key_str = f",\nADD PRIMARY KEY ({primary_keys_str})"
+                chg_pk_str = f"ALTER TABLE {table_name}\n" + "\n".join(col_name_sql_str_list) + add_primary_key_str
                 logger.info('对 %s 表创建主键 %s', table_name, primary_keys)
                 session.execute(chg_pk_str)
 
