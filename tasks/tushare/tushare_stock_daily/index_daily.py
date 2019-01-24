@@ -34,7 +34,7 @@ INDICATOR_PARAM_LIST_TUSHARE_STOCK_INDEX_DAILY_MD = [
     ('close', DOUBLE),
     ('pre_close', DOUBLE),
     ('change', DOUBLE),
-    ('pct_change', DOUBLE),
+    ('pct_chg', DOUBLE),
     ('vol', DOUBLE),
     ('amount', DOUBLE),
 ]
@@ -44,7 +44,7 @@ DTYPE_TUSHARE_STOCK_INDEX_DAILY_MD['ts_code'] = String(20)
 DTYPE_TUSHARE_STOCK_INDEX_DAILY_MD['trade_date'] = Date
 
 
-@try_n_times(times=5, sleep_time=0, logger=logger, exception_sleep_time=60)
+@try_n_times(times=5, sleep_time=3, logger=logger, exception_sleep_time=60)
 def invoke_index_daily(ts_code, start_date, end_date):
     invoke_index_daily = pro.index_daily(ts_code=ts_code, start_date=start_date, end_date=end_date)
     return invoke_index_daily
