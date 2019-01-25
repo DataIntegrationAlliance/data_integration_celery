@@ -16,6 +16,7 @@ from tasks.merge.code_mapping import update_from_info_table
 from tasks.utils.db_utils import with_db_session, add_col_2_table, alter_table_2_myisam, \
     bunch_insert_on_duplicate_update
 from tasks.tushare.ts_pro_api import pro
+from tasks.config import config
 
 DEBUG = False
 logger = logging.getLogger()
@@ -49,7 +50,7 @@ def invoke_fina_mainbz(ts_code, start_date, end_date, type):
 
 
 @app.task
-def import_tushare_stock_fina_mainbz(chain_param=None,ts_code_set=None):
+def import_tushare_stock_fina_mainbz(chain_param=None, ts_code_set=None):
     """
     插入股票日线数据到最近一个工作日-1。
     如果超过 BASE_LINE_HOUR 时间，则获取当日的数据
@@ -152,8 +153,8 @@ def import_tushare_stock_fina_mainbz(chain_param=None,ts_code_set=None):
                                    date_to)
                     continue
                 elif data_df is not None:
-                    logger.info('整体进度：%d/%d)， 提取出%d 条 %s 的主营业务数据，类型为%s,起止时间为 %s 和 %s', num, data_len, data_df.shape[0],
-                                ts_code, mainbz_type, date_from, date_to)
+                    logger.info('整体进度：%d/%d)， 提取出%d 条 %s 的主营业务数据，类型为%s,起止时间为 %s 和 %s',
+                                num, data_len, data_df.shape[0], ts_code, mainbz_type, date_from, date_to)
 
                     # # 数据插入数据库
                     # data_count = bunch_insert_on_duplicate_update(data_df, table_name, engine_md, dtype)
@@ -165,8 +166,9 @@ def import_tushare_stock_fina_mainbz(chain_param=None,ts_code_set=None):
                 # 大于阀值有开始插入
                 if data_count >= 100 and len(data_df_list) > 0:
                     data_df_all = pd.concat(data_df_list)
-                    bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md,
-                                                     DTYPE_TUSHARE_STOCK_FINA_MAINBZ)
+                    bunch_insert_on_duplicate_update(
+                        data_df_all, table_name, engine_md, DTYPE_TUSHARE_STOCK_FINA_MAINBZ,
+                        myisam_if_create_table=True, primary_keys=['ts_code', 'ann_date'], schema=config.DB_SCHEMA_MD)
                     all_data_count += data_count
                     data_df_list, data_count = [], 0
             # 仅调试使用
@@ -177,8 +179,9 @@ def import_tushare_stock_fina_mainbz(chain_param=None,ts_code_set=None):
         # 导入数据库
         if len(data_df_list) > 0:
             data_df_all = pd.concat(data_df_list)
-            data_count = bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md,
-                                                          DTYPE_TUSHARE_STOCK_FINA_MAINBZ)
+            data_count = bunch_insert_on_duplicate_update(
+                data_df_all, table_name, engine_md, DTYPE_TUSHARE_STOCK_FINA_MAINBZ,
+                myisam_if_create_table=True, primary_keys=['ts_code', 'ann_date'], schema=config.DB_SCHEMA_MD)
             all_data_count = all_data_count + data_count
             if not has_table and engine_md.has_table(table_name):
                 alter_table_2_myisam(engine_md, [table_name])

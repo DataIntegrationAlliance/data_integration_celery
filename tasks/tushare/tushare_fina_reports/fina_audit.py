@@ -17,6 +17,7 @@ from tasks.merge.code_mapping import update_from_info_table
 from tasks.utils.db_utils import with_db_session, add_col_2_table, alter_table_2_myisam, \
     bunch_insert_on_duplicate_update
 from tasks.tushare.ts_pro_api import pro
+from tasks.config import config
 
 DEBUG = False
 logger = logging.getLogger()
@@ -99,6 +100,7 @@ def import_tushare_stock_fina_audit(chain_param=None, ts_code_set=None):
     data_len = len(code_date_range_dic)
     logger.info('%d stocks will been import into wind_stock_daily', data_len)
 
+    data_df = pd.DataFrame()
     Cycles = 1
     try:
         for num, (ts_code, (date_from, date_to)) in enumerate(code_date_range_dic.items(), start=1):
@@ -130,7 +132,9 @@ def import_tushare_stock_fina_audit(chain_param=None, ts_code_set=None):
                         break
                 # 数据插入数据库
                 data_df_all = data_df
-                data_count = bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md, dtype)
+                data_count = bunch_insert_on_duplicate_update(
+                    data_df_all, table_name, engine_md, dtype,
+                    myisam_if_create_table=True, primary_keys=['ts_code', 'ann_date'], schema=config.DB_SCHEMA_MD)
                 logging.info("成功更新 %s 结束 %d 条信息被更新", table_name, data_count)
 
             # 仅调试使用
@@ -141,7 +145,9 @@ def import_tushare_stock_fina_audit(chain_param=None, ts_code_set=None):
         # 导入数据库
         if len(data_df) > 0:
             data_df_all = data_df
-            data_count = bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md, dtype)
+            data_count = bunch_insert_on_duplicate_update(
+                data_df_all, table_name, engine_md, dtype,
+                myisam_if_create_table=True, primary_keys=['ts_code', 'ann_date'], schema=config.DB_SCHEMA_MD)
             logging.info("成功更新 %s 结束 %d 条信息被更新", table_name, data_count)
 
 

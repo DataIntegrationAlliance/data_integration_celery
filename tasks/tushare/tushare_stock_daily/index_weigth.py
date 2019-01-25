@@ -17,6 +17,7 @@ from tasks.merge.code_mapping import update_from_info_table
 from tasks.utils.db_utils import with_db_session, add_col_2_table, alter_table_2_myisam, \
     bunch_insert_on_duplicate_update
 from tasks.tushare.ts_pro_api import pro
+from tasks.config import config
 
 DEBUG = False
 logger = logging.getLogger()
@@ -89,7 +90,10 @@ def import_tushare_stock_index_weight(chain_param=None, ts_code_set=None):
                 # 大于阀值有开始插入
                 if data_count >= 10000:
                     data_df_all = pd.concat(data_df_list)
-                    bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md, DTYPE_TUSHARE_STOCK_INDEX_WEIGHT)
+                    bunch_insert_on_duplicate_update(
+                        data_df_all, table_name, engine_md, DTYPE_TUSHARE_STOCK_INDEX_WEIGHT,
+                        myisam_if_create_table=True, primary_keys=['index_code', 'con_code', 'trade_date'],
+                        schema=config.DB_SCHEMA_MD)
                     logging.info("正在更新 %s 表， %d 条指数成分信息被更新", table_name, data_count)
                     all_data_count += data_count
                     data_df_list, data_count = [], 0
@@ -106,11 +110,11 @@ def import_tushare_stock_index_weight(chain_param=None, ts_code_set=None):
         # 导入数据库
         if len(data_df_list) > 0:
             data_df_all = pd.concat(data_df_list)
-            data_count = bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md,DTYPE_TUSHARE_STOCK_INDEX_WEIGHT)
+            data_count = bunch_insert_on_duplicate_update(
+                data_df_all, table_name, engine_md, DTYPE_TUSHARE_STOCK_INDEX_WEIGHT,
+                myisam_if_create_table=True, primary_keys=['index_code', 'con_code', 'trade_date'],
+                schema=config.DB_SCHEMA_MD)
             logging.info("更新 %s 结束 %d 条指数成分信息被更新", table_name, data_count)
-            if not has_table and engine_md.has_table(table_name):
-                alter_table_2_myisam(engine_md, [table_name])
-                build_primary_key([table_name])
 
 
 if __name__ == "__main__":
@@ -122,7 +126,7 @@ if __name__ == "__main__":
     #     # 获取每只股票需要获取日线数据的日期区间
     #     table = session.execute(SQL)
     #     ts_code_set = list([row[0] for row in table.fetchall()])
-    ts_code_set=list(['399300.SZ','399905.SZ','399906.SZ','000852.SH','000016.SH'])
+    ts_code_set = list(['399300.SZ', '399905.SZ', '399906.SZ', '000852.SH', '000016.SH'])
     import_tushare_stock_index_weight(ts_code_set=None)
 
     # import_stock_daily_wch()
