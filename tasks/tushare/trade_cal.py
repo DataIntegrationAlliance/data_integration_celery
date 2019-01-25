@@ -16,6 +16,7 @@ from tasks.backend import engine_md
 from tasks.merge.code_mapping import update_from_info_table
 from tasks.utils.db_utils import with_db_session, bunch_insert_on_duplicate_update
 from tasks.tushare.ts_pro_api import pro
+from tasks.config import config
 
 DEBUG = False
 logger = logging.getLogger()
@@ -71,7 +72,7 @@ def import_trade_date(chain_param=None):
             'exchange': String(10),
             'cal_date': Date,
             'is_open': DOUBLE,
-        }, myisam_if_create_table=True)
+        }, myisam_if_create_table=True, primary_keys=['exchange', 'cal_date'], schema=config.DB_SCHEMA_MD)
         logger.info('%s[%s] %d 条交易日数据导入 %s 完成',
                     exchange_code_dict[exchange_code], exchange_code, date_count, table_name)
 

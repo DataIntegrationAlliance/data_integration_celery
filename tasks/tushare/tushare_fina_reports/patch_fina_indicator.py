@@ -16,6 +16,7 @@ from tasks.merge.code_mapping import update_from_info_table
 from tasks.utils.db_utils import with_db_session, add_col_2_table, alter_table_2_myisam, \
     bunch_insert_on_duplicate_update
 from tasks.tushare.ts_pro_api import pro
+from tasks.config import config
 
 DEBUG = False
 logger = logging.getLogger()
@@ -303,7 +304,10 @@ def import_tushare_stock_fina_indicator(ts_code_set=None):
     finally:
         # 导入数据库
         if len(data_df) > 0:
-            data_count = bunch_insert_on_duplicate_update(data_df, table_name, engine_md, dtype)
+            data_count = bunch_insert_on_duplicate_update(
+                data_df, table_name, engine_md, dtype,
+                myisam_if_create_table=True, primary_keys=['ts_code', 'ann_date', 'end_date'],
+                schema=config.DB_SCHEMA_MD)
             logging.info("更新 %s 结束 %d 条信息被更新", table_name, data_count)
             # if not has_table and engine_md.has_table(table_name):
             #     alter_table_2_myisam(engine_md, [table_name])

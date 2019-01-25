@@ -17,6 +17,7 @@ from tasks.merge.code_mapping import update_from_info_table
 from tasks.utils.db_utils import with_db_session, add_col_2_table, alter_table_2_myisam, \
     bunch_insert_on_duplicate_update
 from tasks.tushare.ts_pro_api import pro
+from tasks.config import config
 
 DEBUG = False
 logger = logging.getLogger()
@@ -283,7 +284,10 @@ def import_tushare_stock_balancesheet(chain_param=None, ts_code_set=None):
         # 导入数据库
         if len(data_df_list) > 0:
             data_df_all = pd.concat(data_df_list)
-            data_count = bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md,DTYPE_TUSHARE_STOCK_BALABCESHEET)
+            data_count = bunch_insert_on_duplicate_update(
+                data_df_all, table_name, engine_md, DTYPE_TUSHARE_STOCK_BALABCESHEET,
+                primary_keys=['ts_code', 'ann_date'], schema=config.DB_SCHEMA_MD
+            )
             all_data_count = all_data_count + data_count
             logging.info("更新 %s 结束 %d 条资产负债表信息被更新", table_name, all_data_count)
             # if not has_table and engine_md.has_table(table_name):

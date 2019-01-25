@@ -17,6 +17,7 @@ from tasks.merge.code_mapping import update_from_info_table
 from tasks.utils.db_utils import with_db_session, add_col_2_table, alter_table_2_myisam, \
     bunch_insert_on_duplicate_update
 from tasks.tushare.ts_pro_api import pro
+from tasks.config import config
 
 DEBUG = False
 logger = logging.getLogger()
@@ -66,19 +67,18 @@ def import_tushare_index_basic(chain_param=None):
     fields='ts_code','name','fullname','market','publisher','index_type','category','base_date','base_point','list_date','weight_rule','desc','exp_date'
     market_list=list(['MSCI','CSI','SSE','SZSE','CICC','SW','CNI','OTH'])
 
-    try:
-        for mkt in market_list:
-            # trade_date = datetime_2_str(trddate[i], STR_FORMAT_DATE_TS)
-            data_df = invoke_index_basic(market=mkt, fields=fields)
-            if len(data_df) > 0:
-                data_count = bunch_insert_on_duplicate_update(data_df, table_name, engine_md, DTYPE_TUSHARE_STOCK_INDEX_BASIC)
-                logging.info("%s更新 %s 结束 %d 条信息被更新", mkt, table_name, data_count)
-            else:
-                logging.info("无数据信息可被更新")
-    finally:
-        if not has_table and engine_md.has_table(table_name):
-            alter_table_2_myisam(engine_md, [table_name])
-            #主键在数据库中设置
+    for mkt in market_list:
+        # trade_date = datetime_2_str(trddate[i], STR_FORMAT_DATE_TS)
+        data_df = invoke_index_basic(market=mkt, fields=fields)
+        if len(data_df) > 0:
+            data_count = bunch_insert_on_duplicate_update(
+                data_df, table_name, engine_md, DTYPE_TUSHARE_STOCK_INDEX_BASIC,
+                myisam_if_create_table=True, primary_keys=['ts_code'], schema=config.DB_SCHEMA_MD
+            )
+            logging.info("%s更新 %s 结束 %d 条信息被更新", mkt, table_name, data_count)
+        else:
+            logging.info("无数据信息可被更新")
+
 
 if __name__ == "__main__":
     # DEBUG = True

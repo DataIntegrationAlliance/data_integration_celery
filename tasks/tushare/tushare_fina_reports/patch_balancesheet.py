@@ -16,6 +16,7 @@ from tasks.merge.code_mapping import update_from_info_table
 from tasks.utils.db_utils import with_db_session, add_col_2_table, alter_table_2_myisam, \
     bunch_insert_on_duplicate_update
 from tasks.tushare.ts_pro_api import pro
+from tasks.config import config
 
 DEBUG = False
 logger = logging.getLogger()
@@ -230,8 +231,8 @@ def import_tushare_stock_balancesheet(ts_code_set=None):
                             logger.warning('%d/%d) %s has no data during %s %s', num, data_len, ts_code, date_from,
                                            date_to)
                             continue
-                        logger.info('%d/%d) %d data of %s between %s and %s', num, data_len, data_df.shape[0], ts_code,
-                                    date_from, date_to)
+                        logger.info('%d/%d) %d data of %s between %s and %s',
+                                    num, data_len, data_df.shape[0], ts_code, date_from, date_to)
                     elif len(df2) <= 0:
                         break
                 # 数据插入数据库
@@ -245,7 +246,10 @@ def import_tushare_stock_balancesheet(ts_code_set=None):
     finally:
         # 导入数据库
         if len(data_df) > 0:
-            data_count = bunch_insert_on_duplicate_update(data_df, table_name, engine_md, dtype)
+            data_count = bunch_insert_on_duplicate_update(
+                data_df, table_name, engine_md, dtype,
+                myisam_if_create_table=True, primary_keys=['ts_code', 'ann_date'],
+                schema=config.DB_SCHEMA_MD)
             logging.info("更新 %s 结束 %d 条信息被更新", table_name, data_count)
             # if not has_table and engine_md.has_table(table_name):
             #     alter_table_2_myisam(engine_md, [table_name])
@@ -256,11 +260,11 @@ if __name__ == "__main__":
     # DEBUG = True
     # import_tushare_stock_info(refresh=False)
     # 更新每日股票数据
-    # SQL = """SELECT ts_code FROM tushare_stock_info where ts_code>'002538.SZ'"""
-    # with with_db_session(engine_md) as session:
-    #     # 获取每只股票需要获取日线数据的日期区间
-    #     table = session.execute(SQL)
-    #     ts_code_set = list([row[0] for row in table.fetchall()])
+    SQL = """SELECT ts_code FROM tushare_stock_info where ts_code>'002538.SZ'"""
+    with with_db_session(engine_md) as session:
+        # 获取每只股票需要获取日线数据的日期区间
+        table = session.execute(SQL)
+        ts_code_set = list([row[0] for row in table.fetchall()])
     import_tushare_stock_balancesheet(ts_code_set)
 
     # 去除重复数据用的
