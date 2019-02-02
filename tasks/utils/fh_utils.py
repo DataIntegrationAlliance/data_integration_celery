@@ -21,6 +21,7 @@ import logging
 import warnings
 from functools import reduce
 import xlrd
+import threading
 
 logger = logging.getLogger(__name__)
 STR_FORMAT_DATE = '%Y-%m-%d'
@@ -50,7 +51,7 @@ def is_not_nan_or_none(x):
     :param x:
     :return:
     """
-    return False if x is None else not((isinstance(x, float) and np.isnan(x)) or isinstance(x, pd.tslib.NaTType))
+    return False if x is None else not ((isinstance(x, float) and np.isnan(x)) or isinstance(x, pd.tslib.NaTType))
 
 
 def is_nan_or_none(x):
@@ -131,7 +132,6 @@ def populate_obj(model_obj, data_dic: dict, attr_list=None, error_if_no_key=Fals
 
 
 def log_param_when_exception(func):
-
     @functools.wraps(func)
     def handler(*arg, **kwargs):
         try:
@@ -161,7 +161,21 @@ def str_2_float(sth) -> (float, None):
     return ret_val
 
 
-def try_n_times(times=3, sleep_time=3, logger: logging.Logger=None, exception=Exception, exception_sleep_time=0):
+class TryThread(threading.Thread):
+
+    def __init__(self, target, *args, **kwargs):
+        threading.Thread.__init__(self, target=target, args=args, kwargs=kwargs, name="try_thread")
+        self.target = target
+        self.args = args
+        self.kwargs = kwargs
+        self.ret = None
+
+    def run(self):
+        self.ret = self.target(*self.args, **self.kwargs)
+
+
+def try_n_times(times=3, sleep_time=3, logger: logging.Logger = None, exception=Exception, exception_sleep_time=0,
+                timeout=None):
     """
     尝试最多 times 次，异常捕获记录后继续尝试
     :param times:
@@ -169,6 +183,7 @@ def try_n_times(times=3, sleep_time=3, logger: logging.Logger=None, exception=Ex
     :param logger: 如果异常需要 log 记录则传入参数
     :param exception: 可用于捕获指定异常，默认 Exception
     :param exception_sleep_time: 当出现异常情况下，sleep n 秒
+    :param timeout: 超时时间
     :return:
     """
     last_invoked_time = [None]
@@ -177,13 +192,34 @@ def try_n_times(times=3, sleep_time=3, logger: logging.Logger=None, exception=Ex
 
         @functools.wraps(func)
         def try_it(*arg, **kwargs):
-            for n in range(1, times+1):
-                if sleep_time > 0 and last_invoked_time[0] is not None\
+            ret_data = None
+            for n in range(1, times + 1):
+                if sleep_time > 0 and last_invoked_time[0] is not None \
                         and (time.time() - last_invoked_time[0]) < sleep_time:
                     time.sleep(sleep_time - (time.time() - last_invoked_time[0]))
 
                 try:
-                    ret_data = func(*arg, **kwargs)
+                    if timeout is None or timeout <= 0:
+                        ret_data = func(*arg, **kwargs)
+                    else:
+                        thread = TryThread(target=func, *arg, **kwargs)
+                        thread.start()
+                        wait_time = 0
+                        while wait_time < timeout:
+                            if thread.is_alive():
+                                time.sleep(0.2)
+                                wait_time += 0.2
+                            else:
+                                ret_data = thread.ret
+                                break
+                        else:
+                            if logger is not None:
+                                logger.warning("执行任务超时限(%ds)", timeout)
+                            thread.join()
+                            if logger is not None:
+                                logger.warning("终止任务完成")
+                            continue
+
                 except exception:
                     if logger is not None:
                         logger.exception("第 %d 次调用 %s(%s, %s) 出错", n, func.__name__, arg, kwargs)
@@ -194,8 +230,6 @@ def try_n_times(times=3, sleep_time=3, logger: logging.Logger=None, exception=Ex
                     last_invoked_time[0] = time.time()
 
                 break
-            else:
-                ret_data = None
 
             return ret_data
 
@@ -526,7 +560,7 @@ def return_risk_analysis_old(nav_df: pd.DataFrame, date_frm=None, date_to=None, 
     if day_per_data <= 0.005:
         freq_real = 'minute'
     elif day_per_data <= 0.2:
-            freq_real = 'hour'
+        freq_real = 'hour'
     elif day_per_data <= 2:
         freq_real = 'daily'
     elif day_per_data <= 10:
@@ -622,7 +656,7 @@ def return_risk_analysis_old(nav_df: pd.DataFrame, date_frm=None, date_to=None, 
         # End of Natural month return
         data_len = data_df.shape[0]
         date_begin = data_df.Date[0]  # .date()
-        date_end = data_df.Date[data_len-1]
+        date_end = data_df.Date[data_len - 1]
         stat_dic = OrderedDict([('起始日期', date_begin),
                                 ('截止日期', date_end),
                                 ('区间收益率', '%.2f%%' % (period_rr * 100)),
@@ -836,7 +870,7 @@ def return_risk_analysis(nav_df: pd.DataFrame, date_frm=None, date_to=None, freq
     if day_per_data <= 0.008:
         freq_real = 'minute'
     elif day_per_data <= 0.2:
-            freq_real = 'hour'
+        freq_real = 'hour'
     elif day_per_data <= 2:
         freq_real = 'daily'
     elif day_per_data <= 10:
@@ -936,7 +970,7 @@ def return_risk_analysis(nav_df: pd.DataFrame, date_frm=None, date_to=None, freq
         # End of Natural month return
         data_len = data_df.shape[0]
         date_begin = data_df.Date[0]  # .date()
-        date_end = data_df.Date[data_len-1]
+        date_end = data_df.Date[data_len - 1]
         stat_dic = OrderedDict([('起始日期', date_begin),
                                 ('截止日期', date_end),
                                 ('区间收益率', '%.2f%%' % (period_rr * 100)),
@@ -1031,7 +1065,7 @@ def _calc_mdd_4_drawback_analysis(pair, y):
     max_y = max_y_last if max_y_last > y else y
     mdd_last = pair[1]
     keep_max = pair[2]
-    dd = y / max_y -1
+    dd = y / max_y - 1
     if keep_max:
         mdd = dd if dd < mdd_last else mdd_last
     else:
@@ -1085,7 +1119,7 @@ def return_risk_analysis_by_xls(file_path, date_col=None, nav_col_list=None, enc
                 sheet = workbook.sheet_by_name(sheet_name)
                 # 取得日期索引后退出
                 col_name = sheet.cell_value(0, index_col)
-                while not(col_name is None or col_name == ""):
+                while not (col_name is None or col_name == ""):
                     if col_name == date_col:
                         break
                     index_col += 1
@@ -1110,7 +1144,8 @@ def return_risk_analysis_by_xls(file_path, date_col=None, nav_col_list=None, enc
                 suffix_name = sheet_name
             else:
                 suffix_name = None
-            stat_df_tmp, mon_rr_dic = return_risk_analysis(data_df, freq=None, suffix_name=suffix_name)  # , freq='daily'
+            stat_df_tmp, mon_rr_dic = return_risk_analysis(data_df, freq=None,
+                                                           suffix_name=suffix_name)  # , freq='daily'
             if stat_df is None:
                 stat_df = stat_df_tmp
             else:
@@ -1217,7 +1252,8 @@ def merge_nav_from_file(file_list, date_from=None):
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.DEBUG, format='%(asctime)s: %(levelname)s [%(name)s] %(message)s')
+    logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(name)s|%(funcName)s:%(lineno)d %(levelname)s %(message)s')
+    logger = logging.getLogger()
     # # 基金绩效分析
     # from pandas.io.formats.excel import ExcelCell
     # file_path = r'd:\WSPych\fof_ams\Stage\periodic_task\analysis_cache\2016-6-1_2018-6-1\各策略指数走势_按机构.csv'
@@ -1314,3 +1350,30 @@ if __name__ == "__main__":
     #     raise Exception('some error')
     #
     # foo(1, 2, 3, 4, e=5, f=6)
+
+    # 测试 try_n_times
+    try_count = [0]
+    def test_try_n_times():
+        """测试 try_n_times 方法"""
+
+        @try_n_times(times=3, logger=logger, timeout=1)
+        def func():
+            global try_count
+            try_count[0] += 1
+            logger.debug("call func %d", try_count[0])
+            if try_count[0] <= 2:
+                # 前N次尝试，每次被调用时睡眠3秒钟
+                times = 0
+                while True:
+                    time.sleep(0.1)
+                    times += 1
+                    if times >= 40:
+                        break
+
+            logger.debug("call func %d return", try_count[0])
+            return try_count[0]
+
+        ret_data = func()
+        logger.info("ret_data = %d", ret_data)
+
+    test_try_n_times()
