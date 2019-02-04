@@ -171,6 +171,7 @@ DTYPE_TUSHARE_STOCK_BALABCESHEET = {key: val for key, val in INDICATOR_PARAM_LIS
 
 @try_n_times(times=5, sleep_time=2, logger=logger, exception=Exception, exception_sleep_time=5, timeout=5)
 def invoke_balancesheet(ts_code, start_date, end_date):
+    logger.debug("invoke pro.balancesheet(ts_code=%s, start_date=%s, end_date=%s)", ts_code, start_date, end_date)
     invoke_balancesheet = pro.balancesheet(ts_code=ts_code, start_date=start_date, end_date=end_date)
     return invoke_balancesheet
 
