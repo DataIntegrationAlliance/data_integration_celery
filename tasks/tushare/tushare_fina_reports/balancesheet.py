@@ -237,13 +237,8 @@ def import_tushare_stock_balancesheet(chain_param=None, ts_code_set=None):
             logger.debug('%d/%d) %s [%s - %s]', num, data_len, ts_code, date_from, date_to)
             data_df = invoke_balancesheet(ts_code=ts_code, start_date=datetime_2_str(date_from, STR_FORMAT_DATE_TS),
                                      end_date=datetime_2_str(date_to, STR_FORMAT_DATE_TS))
-            if data_df is None:
-                logger.warning('%d/%d) %s has no data during %s %s', num, data_len, ts_code, date_from, date_to)
-                continue
 
-            logger.info('整体进度：%d/%d)， %d 条 %s 资产负债表被提取，起止时间为 %s 和 %s', num, data_len, data_df.shape[0], ts_code,date_from, date_to)
-
-            if data_df.shape[0] > 0  and data_df['ann_date'].iloc[-1] is not None:
+            if data_df is not None and data_df.shape[0] > 0 and data_df['ann_date'].iloc[-1] is not None:
                 last_date_in_df_last = try_2_date(data_df['ann_date'].iloc[-1])
                 while try_2_date(data_df['ann_date'].iloc[-1]) > date_from:
                     df2 = invoke_balancesheet(ts_code=ts_code, start_date=datetime_2_str(date_from, STR_FORMAT_DATE_TS),
@@ -259,6 +254,12 @@ def import_tushare_stock_balancesheet(chain_param=None, ts_code_set=None):
                             break
                     elif len(df2) <= 0:
                         break
+
+            if data_df is None or data_df.shape[0] == 0:
+                logger.warning('%d/%d) %s has no data during %s %s', num, data_len, ts_code, date_from, date_to)
+                continue
+
+            logger.debug('%d/%d)， %d 条 %s 资产负债表被提取，起止时间为 %s 和 %s', num, data_len, data_df.shape[0], ts_code,date_from, date_to)
 
             # 把数据攒起来
             if data_df.shape[0] > 0:
