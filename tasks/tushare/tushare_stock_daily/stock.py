@@ -8,7 +8,7 @@ import pandas as pd
 import logging
 from tasks.backend.orm import build_primary_key
 from datetime import date, datetime, timedelta
-from tasks.utils.fh_utils import try_2_date, STR_FORMAT_DATE, datetime_2_str, split_chunk, try_n_times
+from tasks.utils.fh_utils import try_2_date, STR_FORMAT_DATE, datetime_2_str, split_chunk, try_n_times, get_first, get_last
 from tasks import app
 from sqlalchemy.types import String, Date, Integer
 from sqlalchemy.dialects.mysql import DOUBLE
@@ -151,7 +151,15 @@ def import_tushare_stock_daily(chain_param=None, ts_code_set=None):
             ORDER BY ts_code"""
         logger.warning('%s 不存在，仅使用 tushare_stock_info 表进行计算日期范围', table_name)
 
+    sql_trade_date_str = """
+           SELECT cal_date FROM tushare_trade_date trddate WHERE (trddate.is_open=1 
+        AND cal_date <= if(hour(now())<16, subdate(curdate(),1), curdate()) 
+        AND exchange='SSE') ORDER BY cal_date"""
+
     with with_db_session(engine_md) as session:
+        table = session.execute(sql_trade_date_str)
+        trade_date_list = [row[0] for row in table.fetchall()]
+        trade_date_list.sort()
         # 获取每只股票需要获取日线数据的日期区间
         table = session.execute(sql_str)
         # 计算每只股票需要获取日线数据的日期区间
@@ -168,7 +176,12 @@ def import_tushare_stock_daily(chain_param=None, ts_code_set=None):
     # 将data_df数据，添加到data_df_list
 
     try:
-        for num, (ts_code, (date_from, date_to)) in enumerate(code_date_range_dic.items(), start=1):
+        for num, (ts_code, (date_from_tmp, date_to_tmp)) in enumerate(code_date_range_dic.items(), start=1):
+            date_from = get_first(trade_date_list, lambda x: x >= date_from_tmp)
+            date_to = get_last(trade_date_list, lambda x: x <= date_to_tmp)
+            if date_from is None or date_to is None or date_from > date_to:
+                logger.debug('%d/%d) %s [%s - %s] 跳过', num, data_len, ts_code, date_from, date_to)
+                continue
             logger.debug('%d/%d) %s [%s - %s]', num, data_len, ts_code, date_from, date_to)
             data_df = invoke_daily(ts_code=ts_code, start_date=datetime_2_str(date_from, STR_FORMAT_DATE_TS),
                                    end_date=datetime_2_str(date_to, STR_FORMAT_DATE_TS))
@@ -222,5 +235,5 @@ def import_tushare_stock_daily(chain_param=None, ts_code_set=None):
 
 
 if __name__ == "__main__":
-    import_tushare_stock_info(refresh=True)
+    # import_tushare_stock_info(refresh=True)
     import_tushare_stock_daily(ts_code_set=None)
