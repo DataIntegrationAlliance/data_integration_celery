@@ -186,7 +186,7 @@ def import_tushare_stock_cashflow(chain_param=None, ts_code_set=None):
     logger.info('%d stocks will been import into wind_stock_daily', data_len)
     # 将data_df数据，添加到data_df_list
 
-    Cycles = 1
+    cycles = 1
     try:
         for num, (ts_code, (date_from, date_to)) in enumerate(code_date_range_dic.items(), start=1):
             logger.debug('%d/%d) %s [%s - %s]', num, data_len, ts_code, date_from, date_to)
@@ -194,7 +194,7 @@ def import_tushare_stock_cashflow(chain_param=None, ts_code_set=None):
                                  end_date=datetime_2_str(date_to, STR_FORMAT_DATE_TS))
             # logger.info(' %d data of %s between %s and %s', df.shape[0], ts_code, date_from, date_to)
             data_df = df
-            if len(data_df) > 0:
+            if data_df is not None and len(data_df) > 0:
                 while try_2_date(df['ann_date'].iloc[-1]) > date_from:
                     last_date_in_df_last, last_date_in_df_cur = try_2_date(df['ann_date'].iloc[-1]), None
                     df2 = invoke_cashflow(ts_code=ts_code, start_date=datetime_2_str(date_from, STR_FORMAT_DATE_TS),
@@ -236,8 +236,8 @@ def import_tushare_stock_cashflow(chain_param=None, ts_code_set=None):
                 # logging.info("更新 %s 结束 %d 条信息被更新", table_name, data_count)
 
             # 仅调试使用
-            Cycles = Cycles + 1
-            if DEBUG and Cycles > 10:
+            cycles = cycles + 1
+            if DEBUG and cycles > 10:
                 break
     finally:
         # 导入数据库
