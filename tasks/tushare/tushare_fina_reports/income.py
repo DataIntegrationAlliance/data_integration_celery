@@ -168,7 +168,7 @@ def import_tushare_stock_income(chain_param=None, ts_code_set=None):
             df = invoke_income(ts_code=ts_code, start_date=datetime_2_str(date_from, STR_FORMAT_DATE_TS),
                                end_date=datetime_2_str(date_to, STR_FORMAT_DATE_TS))
             data_df = df
-            if len(data_df) > 0:
+            if data_df is not None and len(data_df) > 0:
                 while try_2_date(df['ann_date'].iloc[-1]) > date_from:
                     last_date_in_df_last, last_date_in_df_cur = try_2_date(df['ann_date'].iloc[-1]), None
                     df2 = invoke_income(ts_code=ts_code, start_date=datetime_2_str(date_from, STR_FORMAT_DATE_TS),

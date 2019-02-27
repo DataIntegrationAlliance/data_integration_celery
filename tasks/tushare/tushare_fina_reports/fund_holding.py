@@ -19,6 +19,7 @@ from tasks.backend import engine_md
 from tasks.merge.code_mapping import update_from_info_table
 from tasks.utils.db_utils import with_db_session, add_col_2_table, alter_table_2_myisam, \
     bunch_insert_on_duplicate_update
+
 DEBUG = False
 logger = logging.getLogger()
 DATE_BASE = datetime.strptime('2005-01-01', STR_FORMAT_DATE).date()
@@ -27,11 +28,11 @@ ONE_DAY = timedelta(days=1)
 BASE_LINE_HOUR = 16
 
 
-
-@try_n_times(times=5, sleep_time=0, logger=logger,exception_sleep_time=10)
-def invoke_fund_holdings(year,quarter):
-    invoke_fund_holdings = ts.fund_holdings(year=year,quarter=quarter)
+@try_n_times(times=5, sleep_time=0, logger=logger, exception_sleep_time=10)
+def invoke_fund_holdings(year, quarter):
+    invoke_fund_holdings = ts.fund_holdings(year=year, quarter=quarter)
     return invoke_fund_holdings
+
 
 @app.task
 def import_tushare_stock_fund_holdings():
@@ -50,13 +51,13 @@ def import_tushare_stock_fund_holdings():
         ('ratio', DOUBLE),
     ]
     tushare_fund_holdings_dtype = {key: val for key, val in tushare_fund_holdings_indicator_param_list}
-    data_df_list, data_count, all_data_count,= [], 0, 0
-    years=list(range(2013, 2019))
+    data_df_list, data_count, all_data_count, = [], 0, 0
+    years = list(range(2013, 2019))
     try:
         for year in years:
-            for quarter in list([1,2,3,4]):
+            for quarter in list([1, 2, 3, 4]):
                 print((year, quarter))
-                data_df=invoke_fund_holdings(year, quarter)
+                data_df = invoke_fund_holdings(year, quarter)
                 ts_code_list = []
                 for i in data_df.code:
                     if i[0] == '6':
@@ -80,7 +81,8 @@ def import_tushare_stock_fund_holdings():
     finally:
         if len(data_df_list) > 0:
             data_df_all = pd.concat(data_df_list)
-            data_count = bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md,tushare_fund_holdings_dtype)
+            data_count = bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md,
+                                                          tushare_fund_holdings_dtype)
             all_data_count = all_data_count + data_count
             logging.info("更新 %s 结束 %d 条信息被更新", table_name, all_data_count)
             if not has_table and engine_md.has_table(table_name):
@@ -89,9 +91,9 @@ def import_tushare_stock_fund_holdings():
 
 
 @app.task
-def fresh_tushare_stock_fund_holdings(year,quarter):
+def fresh_tushare_stock_fund_holdings(year, quarter):
     table_name = 'tushare_stock_fund_holdings'
-    logging.info("更新 %s 表%s年%s季度基金持股信息开始", table_name,year,quarter)
+    logging.info("更新 %s 表%s年%s季度基金持股信息开始", table_name, year, quarter)
     has_table = engine_md.has_table(table_name)
     tushare_fund_holdings_indicator_param_list = [
         ('ts_code', String(20)),
@@ -105,8 +107,8 @@ def fresh_tushare_stock_fund_holdings(year,quarter):
         ('ratio', DOUBLE),
     ]
     tushare_fund_holdings_dtype = {key: val for key, val in tushare_fund_holdings_indicator_param_list}
-    data_df_list, data_count, all_data_count,= [], 0, 0
-    data_df=invoke_fund_holdings(year, quarter)
+    data_df_list, data_count, all_data_count, = [], 0, 0
+    data_df = invoke_fund_holdings(year, quarter)
     ts_code_list = []
     for i in data_df.code:
         if i[0] == '6':
@@ -118,7 +120,8 @@ def fresh_tushare_stock_fund_holdings(year,quarter):
     data_df.code = ts_code_list
     data_df = data_df.rename(columns={'code': 'ts_code', 'name': 'sec_name', 'date': 'end_date'})
     bunch_insert_on_duplicate_update(data_df, table_name, engine_md, tushare_fund_holdings_dtype)
-    logging.info("%s年%s季度 %s 更新 %d 条基金持股信息",year,quarter,table_name,all_data_count)
+    logging.info("%s年%s季度 %s 更新 %d 条基金持股信息", year, quarter, table_name, all_data_count)
+
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG, format='%(asctime)s: %(levelname)s [%(name)s] %(message)s')

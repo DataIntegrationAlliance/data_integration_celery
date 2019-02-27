@@ -130,7 +130,7 @@ def import_tushare_stock_fina_mainbz(chain_param=None, ts_code_set=None):
                 data_df['market_type'] = mainbz_type
                 # logger.info(' %d data of %s between %s and %s', df.shape[0], ts_code, date_from, date_to)
                 # data_df = df
-                if len(data_df) > 0:
+                if data_df is not None and len(data_df) > 0:
                     while try_2_date(data_df['end_date'].iloc[-1]) > date_from:
                         last_date_in_df_last, last_date_in_df_cur = try_2_date(data_df['end_date'].iloc[-1]), None
                         df2 = invoke_fina_mainbz(ts_code=ts_code,

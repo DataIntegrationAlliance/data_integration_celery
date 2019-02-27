@@ -12,7 +12,7 @@ from tasks.backend.orm import build_primary_key
 from datetime import date, datetime, timedelta
 from tasks.utils.fh_utils import try_2_date, STR_FORMAT_DATE, datetime_2_str, split_chunk
 from tasks import app
-from sqlalchemy.types import String, Date, Integer,Text
+from sqlalchemy.types import String, Date, Integer, Text
 from sqlalchemy.dialects.mysql import DOUBLE
 from tasks.backend import engine_md
 from tasks.merge.code_mapping import update_from_info_table
@@ -48,6 +48,7 @@ INDICATOR_PARAM_LIST_TUSHARE_STOCK_COMPANY = [
 # 设置 dtype
 DTYPE_TUSHARE_STOCK_COMPANY = {key: val for key, val in INDICATOR_PARAM_LIST_TUSHARE_STOCK_COMPANY}
 
+
 @app.task
 def import_tushare_stock_company(chain_param=None):
     """
@@ -61,15 +62,14 @@ def import_tushare_stock_company(chain_param=None):
     # 进行表格判断，确定是否含有tushare_stock_daily
 
     data_df = pro.stock_company()
-    for i in  range(len(data_df['setup_date'])):
-        if data_df['setup_date'][i] is not None and len(data_df['setup_date'][i])<8 :
-            data_df['setup_date'][i]=np.nan
+    for i in range(len(data_df['setup_date'])):
+        if data_df['setup_date'][i] is not None and len(data_df['setup_date'][i]) < 8:
+            data_df['setup_date'][i] = np.nan
     if len(data_df) > 0:
         data_count = bunch_insert_on_duplicate_update(data_df, table_name, engine_md, DTYPE_TUSHARE_STOCK_COMPANY)
-        logging.info(" %s 表 %d 条上市公司基本信息被更新", table_name,  data_count)
+        logging.info(" %s 表 %d 条上市公司基本信息被更新", table_name, data_count)
     else:
         logging.info("无数据信息可被更新")
-
 
 
 if __name__ == "__main__":

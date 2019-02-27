@@ -11,7 +11,7 @@ from tasks.backend.orm import build_primary_key
 from datetime import date, datetime, timedelta
 from tasks.utils.fh_utils import try_2_date, STR_FORMAT_DATE, datetime_2_str, split_chunk, try_n_times
 from tasks import app
-from sqlalchemy.types import String, Date, Integer,Text
+from sqlalchemy.types import String, Date, Integer, Text
 from sqlalchemy.dialects.mysql import DOUBLE
 from tasks.backend import engine_md
 from tasks.merge.code_mapping import update_from_info_table
@@ -31,7 +31,7 @@ INDICATOR_PARAM_LIST_TUSHARE_STOCK_TOP10_HOLDERS = [
     ('ts_code', String(20)),
     ('ann_date', Date),
     ('end_date', Date),
-    ('holder_name',String(220)),
+    ('holder_name', String(220)),
     ('hold_amount', DOUBLE),
     ('hold_ratio', DOUBLE),
 
@@ -50,7 +50,7 @@ def invoke_top10_holders(ts_code, start_date, end_date):
 
 
 @app.task
-def import_tushare_stock_top10_holders(ts_code_set=None,chain_param=None):
+def import_tushare_stock_top10_holders(ts_code_set=None, chain_param=None):
     """
     插入股票日线数据到最近一个工作日-1。
     如果超过 BASE_LINE_HOUR 时间，则获取当日的数据
@@ -109,14 +109,17 @@ def import_tushare_stock_top10_holders(ts_code_set=None,chain_param=None):
     try:
         for num, (ts_code, (date_from, date_to)) in enumerate(code_date_range_dic.items(), start=1):
             logger.debug('%d/%d) %s [%s - %s]', num, data_len, ts_code, date_from, date_to)
-            data_df = invoke_top10_holders(ts_code=ts_code, start_date=datetime_2_str(date_from, STR_FORMAT_DATE_TS),
-                                           end_date=datetime_2_str(date_to, STR_FORMAT_DATE_TS))
-            if len(data_df) > 0 and data_df['ann_date'].iloc[-1] is not None:
+            data_df = invoke_top10_holders(
+                ts_code=ts_code, start_date=datetime_2_str(date_from, STR_FORMAT_DATE_TS),
+                end_date=datetime_2_str(date_to, STR_FORMAT_DATE_TS))
+            if data_df is not None and len(data_df) > 0 and data_df['ann_date'].iloc[-1] is not None:
                 last_date_in_df_last = try_2_date(data_df['ann_date'].iloc[-1])
                 while last_date_in_df_last > date_from:
-                    df2 = invoke_top10_holders(ts_code=ts_code,
-                                               start_date=datetime_2_str(date_from, STR_FORMAT_DATE_TS),
-                                               end_date=datetime_2_str(last_date_in_df_last - timedelta(days=1),STR_FORMAT_DATE_TS))
+                    df2 = invoke_top10_holders(
+                        ts_code=ts_code,
+                        start_date=datetime_2_str(date_from, STR_FORMAT_DATE_TS),
+                        end_date=datetime_2_str(last_date_in_df_last - timedelta(days=1),
+                                                STR_FORMAT_DATE_TS))
                     if len(df2) > 0 and df2['ann_date'].iloc[-1] is not None:
                         last_date_in_df_cur = try_2_date(df2['ann_date'].iloc[-1])
                         if last_date_in_df_cur != last_date_in_df_last:
@@ -135,15 +138,16 @@ def import_tushare_stock_top10_holders(ts_code_set=None,chain_param=None):
                     else:
                         break
             if data_df is None:
-                logger.warning('%d/%d) %s has no data during %s %s', num, data_len, ts_code, date_from,date_to)
+                logger.warning('%d/%d) %s has no data during %s %s', num, data_len, ts_code, date_from, date_to)
             elif data_df is not None:
-                logger.info('整体进度：%d/%d)， %d 条 %s 前10股东被提取，起止时间为 %s 和 %s', num, data_len, data_df.shape[0], ts_code,date_from, date_to)
+                logger.info('整体进度：%d/%d)， %d 条 %s 前10股东被提取，起止时间为 %s 和 %s', num, data_len, data_df.shape[0], ts_code,
+                            date_from, date_to)
             # 把数据攒起来
             if data_df is not None and data_df.shape[0] > 0:
                 data_count += data_df.shape[0]
                 data_df_list.append(data_df)
             # 大于阀值有开始插入
-            if data_count >= 500 and len(data_df_list)>0 :
+            if data_count >= 500 and len(data_df_list) > 0:
                 data_df_all = pd.concat(data_df_list)
                 bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md, DTYPE_TUSHARE_STOCK_TOP10_HOLDERS)
                 all_data_count += data_count
@@ -155,7 +159,8 @@ def import_tushare_stock_top10_holders(ts_code_set=None,chain_param=None):
     finally:
         if len(data_df_list) > 0:
             data_df_all = pd.concat(data_df_list)
-            data_count = bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md,DTYPE_TUSHARE_STOCK_TOP10_HOLDERS)
+            data_count = bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md,
+                                                          DTYPE_TUSHARE_STOCK_TOP10_HOLDERS)
             all_data_count = all_data_count + data_count
             logging.info("更新 %s 结束 %d 条信息被更新", table_name, all_data_count)
 

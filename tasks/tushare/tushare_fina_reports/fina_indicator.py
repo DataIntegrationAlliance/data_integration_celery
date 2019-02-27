@@ -291,7 +291,7 @@ def import_tushare_stock_fina_indicator(chain_param=None, ts_code_set=None):
             data_df = invoke_fina_indicator(ts_code=ts_code, start_date=datetime_2_str(date_from, STR_FORMAT_DATE_TS),
                                        end_date=datetime_2_str(date_to, STR_FORMAT_DATE_TS), fields=fields)
             # logger.info(' %d data of %s between %s and %s', df.shape[0], ts_code, date_from, date_to)
-            if len(data_df) > 0 and data_df['ann_date'].iloc[-1] is not None:
+            if data_df is not None and len(data_df) > 0 and data_df['ann_date'].iloc[-1] is not None:
                 while try_2_date(data_df['ann_date'].iloc[-1]) > date_from:
                     last_date_in_df_last = try_2_date(data_df['ann_date'].iloc[-1])
                     df2 = invoke_fina_indicator(ts_code=ts_code,

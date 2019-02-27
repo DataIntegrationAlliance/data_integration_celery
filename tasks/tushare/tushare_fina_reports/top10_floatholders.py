@@ -11,7 +11,7 @@ from tasks.backend.orm import build_primary_key
 from datetime import date, datetime, timedelta
 from tasks.utils.fh_utils import try_2_date, STR_FORMAT_DATE, datetime_2_str, split_chunk, try_n_times
 from tasks import app
-from sqlalchemy.types import String, Date, Integer,Text
+from sqlalchemy.types import String, Date, Integer, Text
 from sqlalchemy.dialects.mysql import DOUBLE
 from tasks.backend import engine_md
 from tasks.merge.code_mapping import update_from_info_table
@@ -31,12 +31,13 @@ INDICATOR_PARAM_LIST_TUSHARE_STOCK_TOP10_FLOATHOLDERS = [
     ('ts_code', String(20)),
     ('ann_date', Date),
     ('end_date', Date),
-    ('holder_name',String(220)),
+    ('holder_name', String(220)),
     ('hold_amount', DOUBLE),
 
 ]
 # 设置 dtype
-DTYPE_TUSHARE_STOCK_TOP10_FLOATHOLDERS = {key: val for key, val in INDICATOR_PARAM_LIST_TUSHARE_STOCK_TOP10_FLOATHOLDERS}
+DTYPE_TUSHARE_STOCK_TOP10_FLOATHOLDERS = {key: val for key, val in
+                                          INDICATOR_PARAM_LIST_TUSHARE_STOCK_TOP10_FLOATHOLDERS}
 
 
 # dtype['ts_code'] = String(20)
@@ -49,7 +50,7 @@ def invoke_top10_floatholders(ts_code, start_date, end_date):
 
 
 @app.task
-def import_tushare_stock_top10_floatholders(chain_param=None,ts_code_set=None):
+def import_tushare_stock_top10_floatholders(chain_param=None, ts_code_set=None):
     """
     插入股票日线数据到最近一个工作日-1。
     如果超过 BASE_LINE_HOUR 时间，则获取当日的数据
@@ -108,15 +109,21 @@ def import_tushare_stock_top10_floatholders(chain_param=None,ts_code_set=None):
     try:
         for num, (ts_code, (date_from, date_to)) in enumerate(code_date_range_dic.items(), start=1):
             logger.debug('%d/%d) %s [%s - %s]', num, data_len, ts_code, date_from, date_to)
-            data_df = invoke_top10_floatholders(ts_code=ts_code, start_date=datetime_2_str(date_from, STR_FORMAT_DATE_TS),
-                                 end_date=datetime_2_str(date_to, STR_FORMAT_DATE_TS))
+            data_df = invoke_top10_floatholders(
+                ts_code=ts_code,
+                start_date=datetime_2_str(date_from, STR_FORMAT_DATE_TS),
+                end_date=datetime_2_str(date_to, STR_FORMAT_DATE_TS))
             # logger.info(' %d data of %s between %s and %s', df.shape[0], ts_code, date_from, date_to)
             # data_df = df
-            if len(data_df) > 0 and data_df['ann_date'].iloc[-1] is not None:
+            if data_df is not None and len(data_df) > 0 and data_df['ann_date'].iloc[-1] is not None:
                 last_date_in_df_last = try_2_date(data_df['ann_date'].iloc[-1])
                 while try_2_date(data_df['ann_date'].iloc[-1]) > date_from:
-                    df2 = invoke_top10_floatholders(ts_code=ts_code, start_date=datetime_2_str(date_from, STR_FORMAT_DATE_TS),
-                                          end_date=datetime_2_str(try_2_date(data_df['ann_date'].iloc[-1]) - timedelta(days=1),STR_FORMAT_DATE_TS))
+                    df2 = invoke_top10_floatholders(
+                        ts_code=ts_code,
+                        start_date=datetime_2_str(date_from, STR_FORMAT_DATE_TS),
+                        end_date=datetime_2_str(
+                            try_2_date(data_df['ann_date'].iloc[-1]) - timedelta(days=1),
+                            STR_FORMAT_DATE_TS))
                     if len(df2) > 0 and df2['ann_date'].iloc[-1] is not None:
                         last_date_in_df_cur = try_2_date(df2['ann_date'].iloc[-1])
                         if last_date_in_df_cur < last_date_in_df_last:
@@ -145,7 +152,8 @@ def import_tushare_stock_top10_floatholders(chain_param=None,ts_code_set=None):
                 # 大于阀值有开始插入
             if data_count >= 500 and len(data_df_list) > 0:
                 data_df_all = pd.concat(data_df_list)
-                bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md,DTYPE_TUSHARE_STOCK_TOP10_FLOATHOLDERS)
+                bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md,
+                                                 DTYPE_TUSHARE_STOCK_TOP10_FLOATHOLDERS)
                 all_data_count += data_count
                 data_df_list, data_count = [], 0
                 # # 数据插入数据库
@@ -160,13 +168,14 @@ def import_tushare_stock_top10_floatholders(chain_param=None,ts_code_set=None):
         # 导入数据库
         if len(data_df_list) > 0:
             data_df_all = pd.concat(data_df_list)
-            data_count = bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md,DTYPE_TUSHARE_STOCK_TOP10_FLOATHOLDERS)
+            data_count = bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md,
+                                                          DTYPE_TUSHARE_STOCK_TOP10_FLOATHOLDERS)
             all_data_count = all_data_count + data_count
             logging.info("更新 %s 结束 %d 条信息被更新", table_name, all_data_count)
 
 
 if __name__ == "__main__":
-    #DEBUG = True
+    # DEBUG = True
     # import_tushare_stock_info(refresh=False)
     # 更新每日股票数据
     import_tushare_stock_top10_floatholders()
