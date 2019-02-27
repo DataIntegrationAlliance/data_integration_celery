@@ -16,6 +16,7 @@ import logging
 logger = logging.getLogger()
 ifind_info_table_pattern = re.compile(r"(?<=ifind_).+(?=_info)")
 wind_info_table_pattern = re.compile(r"(?<=wind_).+(?=_info)")
+jqdata_info_table_pattern = re.compile(r"(?<=jq_).+(?=_info)")
 
 
 def search_cap_type(pattern, table_name):
@@ -201,6 +202,7 @@ def update_from_info_table(table_name):
     """
     ifind_cap_type = search_cap_type(ifind_info_table_pattern, table_name)
     wind_cap_type = search_cap_type(wind_info_table_pattern, table_name)
+    jq_cap_type = search_cap_type(jqdata_info_table_pattern, table_name)
 
     if ifind_cap_type is not None:
         if ifind_cap_type.find('fund') >= 0:
@@ -232,6 +234,23 @@ def update_from_info_table(table_name):
                 rslt = session.execute(sql_str)
                 logger.debug('从 %s 表中更新 code_mapping 记录 %d 条', table_name, rslt.rowcount)
                 session.commit()
+    elif jq_cap_type is not None:
+        sql_str = """insert into code_mapping(unique_code, jq_code, market, type) 
+            select if(substring(jq_code, locate('.', jq_code) + 1, length(jq_code))='XSHG', 
+            concat(substring(jq_code, 1, locate('.', jq_code) - 1), '.SH'), 
+            concat(substring(jq_code, 1, locate('.', jq_code) - 1), '.SZ')
+            ) unique_code, 
+            jq_code, 
+            if(substring(jq_code, locate('.', jq_code) + 1, length(jq_code))='XSHG', 'SH', 'SZ') market, 
+            '{cap_type}' type
+            from {table_name} 
+            on duplicate key update 
+            jq_code=values(jq_code), market=values(market), type=values(type)
+            """.format(table_name=table_name, cap_type=jq_cap_type)
+        with with_db_session(engine_md) as session:
+            rslt = session.execute(sql_str)
+            logger.debug('从 %s 表中更新 code_mapping 记录 %d 条', table_name, rslt.rowcount)
+            session.commit()
     else:
         raise ValueError('不支持 %s 更新 code_mapping 数据' % table_name)
 

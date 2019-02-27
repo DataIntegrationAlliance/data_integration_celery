@@ -27,6 +27,7 @@ class CodeMapping(Base):
     unique_code = Column(String(20), primary_key=True, comment='统一编码，级别原则是 code.market，例如：600123.SH')
     wind_code = Column(String(20), comment='万得code')
     ths_code = Column(String(20), comment='同花顺code')
+    jq_code = Column(String(20), comment='聚宽code')
     market = Column(String(20), comment='所在市场：SH, SZ, HK, ')
     type = Column(String(20), comment='资产类型：stock, fund, index, future, option')
 
