@@ -248,6 +248,17 @@ def execute_sql(engine, sql_str, commit=False):
     return insert_count
 
 
+def execute_scalar(engine, sql_str):
+    """
+    执行查询 sql 语句，返回一个结果值
+    :param engine:
+    :param sql_str:
+    :return:
+    """
+    with with_db_session(engine) as session:
+        return session.scalar(sql_str)
+
+
 if __name__ == "__main__":
     from sqlalchemy import create_engine
 

@@ -31,6 +31,18 @@ PATTERN_DATE_FORMAT_RESTRICT = re.compile(r"\d{4}(\D)*\d{2}(\D)*\d{2}")
 PATTERN_DATE_FORMAT = re.compile(r"\d{4}(\D)*\d{1,2}(\D)*\d{1,2}")
 
 
+def range_date(start: date, end: date, step=1):
+    if start > end:
+        return
+    ret_date = start
+    while ret_date < end:
+        yield ret_date
+        ret_date += timedelta(days=step)
+
+    if ret_date > end:
+        yield end
+
+
 def is_any(iterable, func):
     """
     查找是否存在任何一个为True的结果，否则返回False
@@ -87,6 +99,8 @@ def iter_2_range(iterator, has_left_outer=True, has_right_outer=True):
     将一个 N 长度的 iterator 生成 N + 1 个区间
     例如：[1,2,3] --> [[None, 1], [1, 2] [2, 3] [3, None]]
     :param iterator:
+    :param has_left_outer:
+    :param has_right_outer:
     :return:
     """
     last_val = None
