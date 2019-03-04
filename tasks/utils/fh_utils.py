@@ -35,7 +35,7 @@ def range_date(start: date, end: date, step=1):
     if start > end:
         return
     ret_date = start
-    while ret_date < end:
+    while ret_date <= end:
         yield ret_date
         ret_date += timedelta(days=step)
 
