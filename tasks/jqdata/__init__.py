@@ -7,4 +7,8 @@
 @contact : mmmaaaggg@163.com
 @desc    : 
 """
+from tasks.config import config
+from jqdatasdk import *
+
+auth(config.JQ_USERNAME, config.JQ_PASSWORD)
 

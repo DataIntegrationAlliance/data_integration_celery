@@ -7,7 +7,7 @@
 @contact : mmmaaaggg@163.com
 @desc    : 
 """
-from tasks.jqdata.api import get_all_securities
+from tasks.jqdata import get_all_securities
 import pandas as pd
 import logging
 from tasks import app
