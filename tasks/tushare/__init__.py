@@ -32,6 +32,10 @@ from tasks.tushare.tushare_fina_reports.income import import_tushare_stock_incom
 # from tasks.tushare.tushare_fina_reports.patch_fina_indicator import *
 from tasks.tushare.tushare_fina_reports.top10_holders import import_tushare_stock_top10_holders
 from tasks.tushare.tushare_fina_reports.top10_floatholders import import_tushare_stock_top10_floatholders
+from tasks.tushare.tushare_fina_reports.forecast import import_tushare_stock_forecast
+from tasks.tushare.tushare_fina_reports.express import import_tushare_stock_express
+from tasks.tushare.tushare_fina_reports.dividend import import_tushare_dividend
+from tasks.tushare.tushare_stock_daily.index_basic import import_tushare_index_basic
 
 
 # 日级别加载的程序
@@ -45,6 +49,7 @@ tushare_daily_task = (
         import_tushare_moneyflow_hsgt.s() |
         import_tushare_stock_daily.s() |
         import_tushare_suspend.s() |
+        import_tushare_index_basic.s() |
         import_tushare_stock_index_daily.s()|
         import_tushare_top_list.s()|
         import_tushare_top_inst.s()
@@ -60,7 +65,10 @@ tushare_weekly_task = (
         import_tushare_stock_fina_mainbz.s() |
         import_tushare_stock_income.s() |
         import_tushare_stock_top10_holders.s() |
-        import_tushare_stock_top10_floatholders.s()
+        import_tushare_stock_top10_floatholders.s() |
+        import_tushare_stock_forecast.s() |
+        import_tushare_stock_express.s() |
+        import_tushare_dividend.s()
         # import_coin_info.s() |
         # import_coin_pair_info.s()
 )
@@ -81,7 +89,8 @@ def run_daily_job_local():
     import_tushare_moneyflow_hsgt()
     import_tushare_stock_daily()
     import_tushare_suspend()
-    import_tushare_stock_index_daily()
+    import_tushare_index_basic()
+    # import_tushare_stock_index_daily()
     import_tushare_top_list()
     import_tushare_top_inst()
 
@@ -101,6 +110,9 @@ def run_weekly_job_local():
     import_tushare_stock_income()
     import_tushare_stock_top10_holders()
     import_tushare_stock_top10_floatholders()
+    import_tushare_stock_forecast()
+    import_tushare_stock_express()
+    import_tushare_dividend()
 
 
 if __name__ == "__main__":
@@ -109,3 +121,4 @@ if __name__ == "__main__":
     logger.info("本地执行 tushare 任务")
     run_once_job_local()
     run_daily_job_local()
+    run_weekly_job_local()

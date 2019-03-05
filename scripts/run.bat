@@ -2,10 +2,11 @@ echo off
 
 cd D:\WSPych\data_integration_celery
 :Begin
-choice /C:AWBSC /M:"run: Active Evn[A] Worker[W] Beat[B] SingleWorker[S] Cancel[C]."
+choice /C:AWBCTJ /M:"run: Active Env[A] Worker[W] Beat[B] Cancel[C] Tushare Local[T] Join Quant Local[J]"
 echo "input is :" %errorlevel%
-if errorlevel 5 goto End
-if errorlevel 4 goto SingleWorker
+if errorlevel 6 goto JoinQuantLocal
+if errorlevel 5 goto TushareLocal
+if errorlevel 4 goto End
 if errorlevel 3 goto Beat
 if errorlevel 2 goto Worker
 if errorlevel 1 goto Active
@@ -23,8 +24,12 @@ goto End
 celery beat -A tasks
 goto End
 
-:SingleWorker
+:TushareLocal
 .\venv\Scripts\Python.exe -m tasks.tushare.__init__
+goto End
+
+:JoinQuantLocal
+.\venv\Scripts\Python.exe -m tasks.jqdata.app_tasks
 goto End
 
 :End
