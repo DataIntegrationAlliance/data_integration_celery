@@ -84,6 +84,11 @@ except ImportError:
     logger.exception("加载 tasks.tushare 失败，该异常不影响其他功能正常使用")
     tushare_daily_task, tushare_weekly_task, tushare_import_once = None, None, None
 
+try:
+    from tasks.jqdata.app_tasks import jq_finance_task, jq_once_task, jq_weekly_task
+except ImportError:
+    logger.exception("加载 tasks.tushare 失败，该异常不影响其他功能正常使用")
+    jq_finance_task, jq_once_task, jq_weekly_task = None, None, None
 
 @app.task
 def grouped_task_daily():
@@ -93,6 +98,7 @@ def grouped_task_daily():
         # ifind_daily_task,
         tushare_daily_task,
         # cmc_daily_task,
+        jq_finance_task,
     ]
     ).delay()
 
@@ -105,6 +111,7 @@ def grouped_task_weekly():
         # ifind_weekly_task,
         tushare_weekly_task,
         # cmc_weekly_task,
+        jq_weekly_task,
     ]
     ).delay()
 
@@ -117,6 +124,7 @@ def grouped_task_once():
         # ifind_import_once,
         tushare_import_once,
         # cmc_import_once,
+        jq_once_task,
     ]
     ).delay()
 
