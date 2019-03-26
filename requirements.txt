@@ -13,3 +13,4 @@ tushare
 cryptocmd
 pytdx
 matplotlib
+jqdatasdk
