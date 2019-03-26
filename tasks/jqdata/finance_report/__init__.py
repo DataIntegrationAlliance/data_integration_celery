@@ -21,7 +21,7 @@ class FinanceReportSaver:
     def __init__(self, table_name, dtype, statement):
         self.logger = logging.getLogger(__name__)
         self.BASE_DATE = str_2_date('1989-12-01')
-        self.loop_step = 60
+        self.loop_step = 20
         self.dtype = dtype
         self.table_name = table_name
         self.statement = statement
@@ -72,7 +72,7 @@ class FinanceReportSaver:
         # 查询最新的 pub_date
         date_end = date.today()
         if date_start >= date_end:
-            self.logger.info('%s 已经是最新数据，无需进一步获取')
+            self.logger.info('%s 已经是最新数据，无需进一步获取', date_start)
             return
         data_count_tot = 0
         try:
