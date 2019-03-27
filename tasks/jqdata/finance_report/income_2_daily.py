@@ -199,6 +199,25 @@ def fill_season_data(df: pd.DataFrame, col_name):
 def _test_fill_season_data():
     """
     测试 filll_season_data 函数
+    测试数据
+                        code report_date  revenue
+    report_date
+    2000-12-31   000001.XSHE  2000-12-31    400.0
+    2001-03-31   000001.XSHE  2001-03-31      NaN
+    2001-06-30   000001.XSHE  2001-06-30    600.0
+    2001-09-30   000001.XSHE  2001-09-30      NaN
+    2001-12-31   000001.XSHE  2001-12-31   1400.0
+    2002-12-31   000001.XSHE  2002-12-31   1600.0
+
+    转换后数据
+                        code report_date  revenue  revenue_season
+    report_date
+    2000-12-31   000001.XSHE  2000-12-31    400.0           100.0
+    2001-03-31   000001.XSHE  2001-03-31    100.0           100.0
+    2001-06-30   000001.XSHE  2001-06-30    600.0           500.0
+    2001-09-30   000001.XSHE  2001-09-30   1500.0           500.0
+    2001-12-31   000001.XSHE  2001-12-31   1400.0          -100.0
+    2002-12-31   000001.XSHE  2002-12-31   1600.0           400.0
     :return:
     """
     label = 'revenue'
@@ -208,6 +227,7 @@ def _test_fill_season_data():
         label: [400, np.nan, 600, np.nan, 1400, 1600],
     })
     df['code'] = '000001.XSHE'
+    df = df[['code', 'report_date', label]]
     df.set_index('report_date', drop=False, inplace=True)
     print(df)
     df_new = fill_season_data(df, label)
