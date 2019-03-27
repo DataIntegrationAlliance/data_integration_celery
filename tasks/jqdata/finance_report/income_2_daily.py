@@ -78,12 +78,21 @@ def save_2_daily():
         order by code, pub_date"""
     dfg_by_code = pd.read_sql(sql_str, engine_md).set_index('report_date', drop=False).groupby('code')
     dfg_len = len(dfg_by_code)
-    data_new_s_list = []
+    data_new_s_list, accumulation_col_name_list = [], None
     # 按股票代码分组，分别按日进行处理
     for num, (code, df_by_code) in enumerate(dfg_by_code, start=1):
+        df_by_code.sort_index(inplace=True)
+        # 筛选周期增长的字段，供后续代码将相关字段转化成季度值字段
+        if accumulation_col_name_list is None:
+            accumulation_col_name_list = check_accumulation_cols(df_by_code)
+
         df_len = df_by_code.shape[0]
         df_by_code[['pub_date_next', 'report_date_next']] = df_by_code[['pub_date', 'report_date']].shift(-1)
-        df_by_code = fill_season_data(df_by_code, 'total_operating_revenue')
+        # 将相关周期累加增长字段转化为季度增长字段
+        for col_name in accumulation_col_name_list:
+            # df_by_code = fill_season_data(df_by_code, 'total_operating_revenue')
+            df_by_code = fill_season_data(df_by_code, col_name)
+
         # df_by_code['code'] = code
         trade_date_latest = code_date_latest_dic[code] if code in code_date_latest_dic else None
         for num_sub, data_s in enumerate(df_by_code.T.items(), start=1):
@@ -111,7 +120,7 @@ def save_2_daily():
                 data_new_s_list.append(data_new_s)
 
         if len(data_new_s_list) > 0:
-            data_count = save_2_daily(data_new_s_list)
+            data_count = save_data(data_new_s_list)
             logger.info("%d/%d) %s %d 条记录被保存", num, dfg_len, code, data_count)
             data_new_s_list = []
 
@@ -122,6 +131,58 @@ def save_data(data_new_s_list: list):
     return data_count
 
 
+def check_accumulation_cols(df: pd.DataFrame):
+    """
+    检查当期 DataFrame 哪些 column 是周期性累加的
+    :param df:
+    :return:
+    """
+    accumulation_col_name_list = []
+    for col_name in df.columns:
+        data_s = df[col_name]
+        report_date_last, data_last, is_growing_inner_year, is_down_1st_season = None, None, None, None
+        fit_count, available_count = 0, 0
+        first_data = data_s.iloc[0]
+        if isinstance(first_data, datetime.date) or isinstance(first_data, str):
+            continue
+        for num, (report_date, data) in enumerate(data_s.items()):
+            if data is None or isinstance(data, datetime.date) or isinstance(data, str) \
+                    or (isinstance(data, float) and np.isnan(data)):
+                continue
+
+            if report_date_last is not None:
+                if report_date_last.year == report_date.year:
+                    if report_date.month > report_date_last.month:
+                        # 同一年份内，数值持续增长
+                        if is_growing_inner_year is None:
+                            is_growing_inner_year = data > data_last
+                        else:
+                            is_growing_inner_year &= data > data_last
+                    else:
+                        raise ValueError(f"report_date_last:{report_date_last} report_date:{report_date}")
+                else:
+                    # 不同年份，年报与一季报或半年报相比下降
+                    if report_date_last.month == 12 and report_date.month in (3, 6):
+                        is_down_1st_season = data < data_last
+                        available_count += 1
+                    else:
+                        is_down_1st_season = False
+
+                    if is_growing_inner_year is not None and is_down_1st_season and is_growing_inner_year:
+                        fit_count += 1
+
+                    # 重置 is_growing_inner_year 标志
+                    is_growing_inner_year = None
+
+            # 赋值 last 变量
+            report_date_last, data_last = report_date, data
+
+        if available_count >= 3 and fit_count / available_count > 0.5:
+            accumulation_col_name_list.append(col_name)
+
+    return accumulation_col_name_list
+
+
 def fill_season_data(df: pd.DataFrame, col_name):
     """
     按季度补充数据
@@ -130,6 +191,10 @@ def fill_season_data(df: pd.DataFrame, col_name):
     :return:
     """
     col_name_season = f'{col_name}_season'
+    # 更新 DTYPE_INCOME_DAILY
+    if col_name_season not in DTYPE_INCOME_DAILY:
+        DTYPE_INCOME_DAILY[col_name_season] = DTYPE_INCOME_DAILY[col_name]
+    # 没有数据则直接跳过
     if df.shape[0] == 0:
         logger.warning('df %s 没有数据', df.shape)
         df[col_name_season] = np.nan
@@ -236,5 +301,36 @@ def _test_fill_season_data():
         f"{label} {str_2_date('2001-3-31')} 应该等于前一年的 1/4，当前 {df.loc[str_2_date('2001-3-31'), label]}"
 
 
+def _test_check_accumulation_cols():
+    label = 'revenue'           # 周期增长
+    label2 = 'revenue_season'   # 非周期增长
+    df = pd.DataFrame({
+        'report_date': [
+            str_2_date('2000-3-31'), str_2_date('2000-6-30'), str_2_date('2000-9-30'), str_2_date('2000-12-31'),
+            str_2_date('2001-3-31'), str_2_date('2001-6-30'), str_2_date('2001-12-31'),
+            str_2_date('2002-6-30'), str_2_date('2002-12-31'),
+            str_2_date('2003-3-31'), str_2_date('2003-12-31')
+        ],
+        label: [
+            200, 400, 600, 800,
+            np.nan, 600, 1200,
+            700, 1400,
+            400, 1600],
+        label2: [
+            200, 200, 200, 200,
+            200, 400, 600,
+            700, 700,
+            400, 400],
+    })
+    df.set_index('report_date', drop=False, inplace=True)
+    df.sort_index(inplace=True)
+    print(df)
+    accumulation_col_name_list = check_accumulation_cols(df)
+    print("accumulation_col_name_list", accumulation_col_name_list)
+    assert len(accumulation_col_name_list) == 1, f'{accumulation_col_name_list} 长度错误'
+    assert 'revenue' in accumulation_col_name_list
+
+
 if __name__ == "__main__":
-    _test_fill_season_data()
+    # _test_fill_season_data()
+    _test_check_accumulation_cols()
