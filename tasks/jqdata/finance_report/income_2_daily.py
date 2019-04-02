@@ -7,20 +7,28 @@
 @contact : mmmaaaggg@163.com
 @desc    : 
 """
+from tasks.jqdata.finance_report import fill_season_data
 from tasks.jqdata.finance_report.income import DTYPE_INCOME, TABLE_NAME as TABLE_NAME_FIN_REPORT
 from tasks.jqdata.trade_date import TABLE_NAME as TABLE_NAME_TRADE_DATE
 from tasks.backend import engine_md, bunch_insert
 from tasks import app
 import pandas as pd
-import numpy as np
 import logging
 import datetime
 from tasks.utils.db_utils import with_db_session
-from tasks.utils.fh_utils import get_first_idx, get_last_idx, str_2_date
+from tasks.utils.fh_utils import get_first_idx, get_last_idx
 
 logger = logging.getLogger(__name__)
 TABLE_NAME = f"{TABLE_NAME_FIN_REPORT}_daily"
 DTYPE_INCOME_DAILY = DTYPE_INCOME.copy()
+# 通过 tasks/jqdata/finance_report/__init__.py get_accumulation_col_names_4_income 函数计算获得
+ACCUMULATION_COL_NAME_LIST = [
+    'total_operating_revenue', 'operating_revenue', 'total_operating_cost', 'operating_tax_surcharges',
+    'administration_expense', 'asset_impairment_loss', 'investment_income', 'invest_income_associates',
+    'exchange_income', 'other_items_influenced_income', 'operating_profit', 'non_operating_revenue',
+    'non_operating_expense', 'total_profit', 'income_tax', 'net_profit', 'np_parent_company_owners',
+    'basic_eps', 'diluted_eps']
+
 for key in ('company_name', 'company_id', 'a_code', 'b_code', 'h_code', 'source', 'id'):
     del DTYPE_INCOME_DAILY[key]
 # def get_ordered_date():
@@ -82,16 +90,16 @@ def save_2_daily():
     # 按股票代码分组，分别按日进行处理
     for num, (code, df_by_code) in enumerate(dfg_by_code, start=1):
         df_by_code.sort_index(inplace=True)
-        # 筛选周期增长的字段，供后续代码将相关字段转化成季度值字段
-        if accumulation_col_name_list is None:
-            accumulation_col_name_list = check_accumulation_cols(df_by_code)
 
         df_len = df_by_code.shape[0]
         df_by_code[['pub_date_next', 'report_date_next']] = df_by_code[['pub_date', 'report_date']].shift(-1)
         # 将相关周期累加增长字段转化为季度增长字段
-        for col_name in accumulation_col_name_list:
+        for col_name in ACCUMULATION_COL_NAME_LIST:
             # df_by_code = fill_season_data(df_by_code, 'total_operating_revenue')
-            df_by_code = fill_season_data(df_by_code, col_name)
+            df_by_code, col_name_season = fill_season_data(df_by_code, col_name)
+            # 更新 DTYPE_INCOME_DAILY
+            if col_name_season not in DTYPE_INCOME_DAILY:
+                DTYPE_INCOME_DAILY[col_name_season] = DTYPE_INCOME_DAILY[col_name]
 
         # df_by_code['code'] = code
         trade_date_latest = code_date_latest_dic[code] if code in code_date_latest_dic else None
@@ -131,206 +139,5 @@ def save_data(data_new_s_list: list):
     return data_count
 
 
-def check_accumulation_cols(df: pd.DataFrame):
-    """
-    检查当期 DataFrame 哪些 column 是周期性累加的
-    :param df:
-    :return:
-    """
-    accumulation_col_name_list = []
-    for col_name in df.columns:
-        data_s = df[col_name]
-        report_date_last, data_last, is_growing_inner_year, is_down_1st_season = None, None, None, None
-        fit_count, available_count = 0, 0
-        first_data = data_s.iloc[0]
-        if isinstance(first_data, datetime.date) or isinstance(first_data, str):
-            continue
-        for num, (report_date, data) in enumerate(data_s.items()):
-            if data is None or isinstance(data, datetime.date) or isinstance(data, str) \
-                    or (isinstance(data, float) and np.isnan(data)):
-                continue
-
-            if report_date_last is not None:
-                if report_date_last.year == report_date.year:
-                    if report_date.month > report_date_last.month:
-                        # 同一年份内，数值持续增长
-                        if is_growing_inner_year is None:
-                            is_growing_inner_year = data > data_last
-                        else:
-                            is_growing_inner_year &= data > data_last
-                    else:
-                        raise ValueError(f"report_date_last:{report_date_last} report_date:{report_date}")
-                else:
-                    # 不同年份，年报与一季报或半年报相比下降
-                    if report_date_last.month == 12 and report_date.month in (3, 6):
-                        is_down_1st_season = data < data_last
-                        available_count += 1
-                    else:
-                        is_down_1st_season = False
-
-                    if is_growing_inner_year is not None and is_down_1st_season and is_growing_inner_year:
-                        fit_count += 1
-
-                    # 重置 is_growing_inner_year 标志
-                    is_growing_inner_year = None
-
-            # 赋值 last 变量
-            report_date_last, data_last = report_date, data
-
-        if available_count >= 3 and fit_count / available_count > 0.5:
-            accumulation_col_name_list.append(col_name)
-
-    return accumulation_col_name_list
-
-
-def fill_season_data(df: pd.DataFrame, col_name):
-    """
-    按季度补充数据
-    :param df:
-    :param col_name:
-    :return:
-    """
-    col_name_season = f'{col_name}_season'
-    # 更新 DTYPE_INCOME_DAILY
-    if col_name_season not in DTYPE_INCOME_DAILY:
-        DTYPE_INCOME_DAILY[col_name_season] = DTYPE_INCOME_DAILY[col_name]
-    # 没有数据则直接跳过
-    if df.shape[0] == 0:
-        logger.warning('df %s 没有数据', df.shape)
-        df[col_name_season] = np.nan
-        return
-    # 例如：null_col_index_list = list(df.index[df['total_operating_revenue'].isnull()])
-    # [datetime.date(1989, 12, 31)]
-    if col_name_season not in df:
-        df[col_name_season] = np.nan
-    else:
-        logger.warning('%s df %s 已经存在 %s 列数据', df['code'].iloc[0], df.shape, col_name_season)
-
-    data_last_s, report_date_last, df_len = None, None, df.shape[0]
-    for row_num, (report_date, data_s) in enumerate(df.T.items()):
-        # 当期 col_name_season 值：
-        # 1） 如果前一条 col_name 值不为空， 且当前 col_name 值不为空，且上一条记录与当前记录为同一年份
-        #     使用前一条记录的 col_name 值 与 当前 col_name 值 的差
-        # 2） 如果（前一条 col_name 值为空 或 上一条记录与当前记录为同一年份）， 且当前 col_name 值不为空
-        #    1）季报数据直接使用
-        #    2）半年报数据 1/2
-        #    3）三季报数据 1/3
-        #    4）年报数据 1/4
-        # 3） 如果前一条 col_name 值不为空， 且当前 col_name 值为空
-        #     使用前一条 col_name 值
-        #     同时，使用线性增长，设置当期 col_name 值
-
-        # 前一条 col_name 值为空
-        is_nan_last_col_name = data_last_s is None or np.isnan(data_last_s[col_name])
-        # 当前 col_name 值为空
-        is_nan_curr_col_name = np.isnan(data_s[col_name])
-        # 当期记录与前一条记录为同一年份
-        is_same_year = report_date_last.year == report_date.year if report_date_last is not None else False
-        if not is_nan_last_col_name and not is_nan_curr_col_name and is_same_year:
-            value = data_s[col_name] - data_last_s[col_name]
-            data_s[col_name_season] = value / ((report_date.month - report_date_last.month) / 3)
-        elif (is_nan_last_col_name or not is_same_year) and not is_nan_curr_col_name:
-            value = data_s[col_name]
-            month = report_date.month
-            if month == 3:
-                pass
-            elif month in (6, 9, 12):
-                value = value / (month / 3)
-            else:
-                raise ValueError(f"{report_date} 不是有效的日期")
-            data_s[col_name_season] = value
-        elif not is_nan_last_col_name and is_nan_curr_col_name:
-            value = data_last_s[col_name_season]
-            data_s[col_name_season] = value
-            # 将当前 col_name 值设置为 前一记录 col_name 值 加上 value 意味着线性增长
-            month = report_date.month
-            if month == 3:
-                data_s[col_name] = value
-            elif month in (6, 9, 12):
-                data_s[col_name] = value * (month / 3)
-            else:
-                raise ValueError(f"{report_date} 不是有效的日期")
-        else:
-            logger.warning("%d/%d) %s 缺少数据无法补充缺失字段 %s", row_num, df_len, report_date, col_name)
-
-        # 保存当期记录到 data_last_s
-        data_last_s = data_s
-        report_date_last = report_date
-        df.loc[report_date] = data_s
-
-    return df
-
-
-def _test_fill_season_data():
-    """
-    测试 filll_season_data 函数
-    测试数据
-                        code report_date  revenue
-    report_date
-    2000-12-31   000001.XSHE  2000-12-31    400.0
-    2001-03-31   000001.XSHE  2001-03-31      NaN
-    2001-06-30   000001.XSHE  2001-06-30    600.0
-    2001-09-30   000001.XSHE  2001-09-30      NaN
-    2001-12-31   000001.XSHE  2001-12-31   1400.0
-    2002-12-31   000001.XSHE  2002-12-31   1600.0
-
-    转换后数据
-                        code report_date  revenue  revenue_season
-    report_date
-    2000-12-31   000001.XSHE  2000-12-31    400.0           100.0
-    2001-03-31   000001.XSHE  2001-03-31    100.0           100.0
-    2001-06-30   000001.XSHE  2001-06-30    600.0           500.0
-    2001-09-30   000001.XSHE  2001-09-30   1500.0           500.0
-    2001-12-31   000001.XSHE  2001-12-31   1400.0          -100.0
-    2002-12-31   000001.XSHE  2002-12-31   1600.0           400.0
-    :return:
-    """
-    label = 'revenue'
-    df = pd.DataFrame({
-        'report_date': [str_2_date('2000-12-31'), str_2_date('2001-3-31'), str_2_date('2001-6-30'),
-                       str_2_date('2001-9-30'), str_2_date('2001-12-31'), str_2_date('2002-12-31')],
-        label: [400, np.nan, 600, np.nan, 1400, 1600],
-    })
-    df['code'] = '000001.XSHE'
-    df = df[['code', 'report_date', label]]
-    df.set_index('report_date', drop=False, inplace=True)
-    print(df)
-    df_new = fill_season_data(df, label)
-    print(df_new)
-    assert df.loc[str_2_date('2001-3-31'), label] == 100, \
-        f"{label} {str_2_date('2001-3-31')} 应该等于前一年的 1/4，当前 {df.loc[str_2_date('2001-3-31'), label]}"
-
-
-def _test_check_accumulation_cols():
-    label = 'revenue'           # 周期增长
-    label2 = 'revenue_season'   # 非周期增长
-    df = pd.DataFrame({
-        'report_date': [
-            str_2_date('2000-3-31'), str_2_date('2000-6-30'), str_2_date('2000-9-30'), str_2_date('2000-12-31'),
-            str_2_date('2001-3-31'), str_2_date('2001-6-30'), str_2_date('2001-12-31'),
-            str_2_date('2002-6-30'), str_2_date('2002-12-31'),
-            str_2_date('2003-3-31'), str_2_date('2003-12-31')
-        ],
-        label: [
-            200, 400, 600, 800,
-            np.nan, 600, 1200,
-            700, 1400,
-            400, 1600],
-        label2: [
-            200, 200, 200, 200,
-            200, 400, 600,
-            700, 700,
-            400, 400],
-    })
-    df.set_index('report_date', drop=False, inplace=True)
-    df.sort_index(inplace=True)
-    print(df)
-    accumulation_col_name_list = check_accumulation_cols(df)
-    print("accumulation_col_name_list", accumulation_col_name_list)
-    assert len(accumulation_col_name_list) == 1, f'{accumulation_col_name_list} 长度错误'
-    assert 'revenue' in accumulation_col_name_list
-
-
 if __name__ == "__main__":
-    # _test_fill_season_data()
-    _test_check_accumulation_cols()
+    save_2_daily()
