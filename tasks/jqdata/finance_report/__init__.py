@@ -296,18 +296,18 @@ def _test_check_accumulation_cols():
 def get_accumulation_col_names(table_name, dtype: dict):
     # 获取季度、半年、年报财务数据
     col_name_list = list(dtype.keys())
-    col_name_list_str = ','.join([f'income.`{col_name}` {col_name}' for col_name in col_name_list])
-    sql_str = f"""SELECT {col_name_list_str} FROM {table_name} income inner join 
+    col_name_list_str = ','.join([f'report.`{col_name}` {col_name}' for col_name in col_name_list])
+    sql_str = f"""SELECT {col_name_list_str} FROM {table_name} report inner join 
         (
             select code, pub_date, max(report_date) report_date 
             from {table_name} where report_type=0 group by code, pub_date
         ) base_date
-        where income.report_type=0
-        and income.code = base_date.code
-        and income.pub_date = base_date.pub_date
-        and income.report_date = base_date.report_date
-        and income.code = '000001.XSHE'
-        order by code, income.report_date"""
+        where report.report_type=0
+        and report.code = base_date.code
+        and report.pub_date = base_date.pub_date
+        and report.report_date = base_date.report_date
+        and report.code = '000001.XSHE'
+        order by code, report.report_date"""
     df = pd.read_sql(sql_str, engine_md).set_index('report_date', drop=False)
     accumulation_col_name_list = check_accumulation_cols(df)
     logger.info("%s 周期性增长列名称包括：\n%s", table_name, accumulation_col_name_list)
@@ -320,12 +320,15 @@ def get_accumulation_col_names_for(report):
     :return:
     """
     if report == 'income':
-        from tasks.jqdata.finance_report.income import TABLE_NAME as TABLE_NAME_FIN_REPORT
-        from tasks.jqdata.finance_report.income_2_daily import DTYPE_INCOME_DAILY
+        from tasks.jqdata.finance_report.income import TABLE_NAME, DTYPE
     elif report == 'cashflow':
-        from tasks.jqdata.finance_report.cashflow import TABLE_NAME as TABLE_NAME_FIN_REPORT
+        from tasks.jqdata.finance_report.cashflow import TABLE_NAME, DTYPE
+    elif report == 'balance':
+        from tasks.jqdata.finance_report.balance import TABLE_NAME, DTYPE
+    else:
+        raise KeyError(f"report '{report}' 无效")
 
-    accumulation_col_name_list = get_accumulation_col_names(TABLE_NAME_FIN_REPORT, DTYPE_INCOME_DAILY)
+    accumulation_col_name_list = get_accumulation_col_names(TABLE_NAME, DTYPE)
     return accumulation_col_name_list
 
 
@@ -448,5 +451,5 @@ def save_data_2_daily_table(data_new_s_list: list, table_name, dtype: dict):
 if __name__ == "__main__":
     # _test_fill_season_data()
     # _test_check_accumulation_cols()
-    for report in {'income'}:
+    for report in {'income', 'cashflow', 'balance'}:
         get_accumulation_col_names_for(report)

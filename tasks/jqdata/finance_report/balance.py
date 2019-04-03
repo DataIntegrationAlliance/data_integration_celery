@@ -13,15 +13,7 @@ from tasks import app
 from sqlalchemy.types import String, Date, Integer
 from sqlalchemy.dialects.mysql import DOUBLE
 
-
-@app.task
-def import_jq_stock_balance(chain_param=None, ts_code_set=None):
-    """
-    插入股票日线数据到最近一个工作日-1。
-    如果超过 BASE_LINE_HOUR 时间，则获取当日的数据
-    :return:
-    """
-    dtype = {
+DTYPE = {
         "id": Integer,
         "company_id": Integer,
         "company_name": String(100),
@@ -127,12 +119,21 @@ def import_jq_stock_balance(chain_param=None, ts_code_set=None):
         "preferred_shares_noncurrent": DOUBLE,
         "pepertual_liability_noncurrent": DOUBLE,
         "longterm_salaries_payable": DOUBLE,
-        "other_equity_tools": DOUBLE,
+        "dother_equity_tools": DOUBLE,
         "preferred_shares_equity": DOUBLE,
         "pepertual_liability_equity": DOUBLE,
     }
-    table_name = 'jq_stock_balance'
-    saver = FinanceReportSaver(table_name, dtype, finance.STK_BALANCE_SHEET)
+TABLE_NAME = 'jq_stock_balance'
+
+
+@app.task
+def import_jq_stock_balance(chain_param=None):
+    """
+    插入股票日线数据到最近一个工作日-1。
+    如果超过 BASE_LINE_HOUR 时间，则获取当日的数据
+    :return:
+    """
+    saver = FinanceReportSaver(TABLE_NAME, DTYPE, finance.STK_BALANCE_SHEET)
     saver.save()
 
 

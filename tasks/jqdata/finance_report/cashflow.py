@@ -14,7 +14,7 @@ from sqlalchemy.types import String, Date, Integer
 from sqlalchemy.dialects.mysql import DOUBLE
 
 
-DTYPE_CASHFLOW = {
+DTYPE = {
         "id": Integer,
         "company_id": Integer,
         "company_name": String(100),
@@ -39,10 +39,10 @@ DTYPE_CASHFLOW = {
         "net_operate_cash_flow": DOUBLE,
         "invest_withdrawal_cash": DOUBLE,
         "invest_proceeds": DOUBLE,
-        "fix_Integeran_other_asset_dispo_cash": DOUBLE,
+        "fix_intan_other_asset_dispo_cash": DOUBLE,
         "net_cash_deal_subcompany": DOUBLE,
         "subtotal_invest_cash_inflow": DOUBLE,
-        "fix_Integeran_other_asset_acqui_cash": DOUBLE,
+        "fix_intan_other_asset_acqui_cash": DOUBLE,
         "invest_cash_paid": DOUBLE,
         "impawned_loan_net_increase": DOUBLE,
         "net_cash_from_sub_company": DOUBLE,
@@ -53,7 +53,7 @@ DTYPE_CASHFLOW = {
         "cash_from_bonds_issue": DOUBLE,
         "subtotal_finance_cash_inflow": DOUBLE,
         "borrowing_repayment": DOUBLE,
-        "dividend_Integererest_payment": DOUBLE,
+        "dividend_interest_payment": DOUBLE,
         "subtotal_finance_cash_outflow": DOUBLE,
         "net_finance_cash_flow": DOUBLE,
         "exchange_rate_change_effect": DOUBLE,
@@ -64,9 +64,9 @@ DTYPE_CASHFLOW = {
         "net_profit": DOUBLE,
         "assets_depreciation_reserves": DOUBLE,
         "fixed_assets_depreciation": DOUBLE,
-        "Integerangible_assets_amortization": DOUBLE,
+        "intangible_assets_amortization": DOUBLE,
         "defferred_expense_amortization": DOUBLE,
-        "fix_Integeran_other_asset_dispo_loss": DOUBLE,
+        "fix_intan_other_asset_dispo_loss": DOUBLE,
         "fixed_asset_scrap_loss": DOUBLE,
         "fair_value_change_loss": DOUBLE,
         "financial_cost": DOUBLE,
@@ -75,12 +75,12 @@ DTYPE_CASHFLOW = {
         "deffered_tax_liability_increase": DOUBLE,
         "inventory_decrease": DOUBLE,
         "operate_receivables_decrease": DOUBLE,
-        "operate_payable_increase": DOUBLE,
+        "operate_operate_payable_increase": DOUBLE,
         "others": DOUBLE,
         "net_operate_cash_flow_indirect": DOUBLE,
         "debt_to_capital": DOUBLE,
         "cbs_expiring_in_one_year": DOUBLE,
-        "financial_lease_fixed_assets": DOUBLE,
+        "financial_lease_fixed_assets_fixed_assets": DOUBLE,
         "cash_at_end": DOUBLE,
         "cash_at_beginning": DOUBLE,
         "equivalents_at_end": DOUBLE,
@@ -94,7 +94,7 @@ DTYPE_CASHFLOW = {
         "net_cash_received_from_reinsurance_business": DOUBLE,
         "net_insurer_deposit_investment": DOUBLE,
         "net_deal_trading_assets": DOUBLE,
-        "Integererest_and_commission_cashin": DOUBLE,
+        "interest_and_commission_cashin": DOUBLE,
         "net_increase_in_placements": DOUBLE,
         "net_buyback": DOUBLE,
         "net_loan_and_advance_increase": DOUBLE,
@@ -110,13 +110,13 @@ TABLE_NAME = 'jq_stock_cashflow'
 
 
 @app.task
-def import_jq_stock_cashflow(chain_param=None, ts_code_set=None):
+def import_jq_stock_cashflow(chain_param=None):
     """
     插入股票日线数据到最近一个工作日-1。
     如果超过 BASE_LINE_HOUR 时间，则获取当日的数据
     :return:
     """
-    saver = FinanceReportSaver(TABLE_NAME, DTYPE_CASHFLOW, finance.STK_CASHFLOW_STATEMENT)
+    saver = FinanceReportSaver(TABLE_NAME, DTYPE, finance.STK_CASHFLOW_STATEMENT)
     saver.save()
 
 

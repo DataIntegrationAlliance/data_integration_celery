@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 BASE_DATE = str_2_date('1989-12-01')
 LOOP_STEP = 20
 TABLE_NAME = 'jq_stock_income'
-DTYPE_INCOME = {
+DTYPE = {
     "id": Integer,
     "company_id": Integer,
     "company_name": String(100),
@@ -147,7 +147,7 @@ def import_jq_stock_income(chain_param=None, ts_code_set=None):
             # logger.debug('%d) [%s ~ %s] 包含 %d 条数据', num, date_from, date_to, df.shape[0])
             data_count = bunch_insert_on_duplicate_update(
                 df, TABLE_NAME, engine_md,
-                dtype=DTYPE_INCOME, myisam_if_create_table=True,
+                dtype=DTYPE, myisam_if_create_table=True,
                 primary_keys=['id'], schema=config.DB_SCHEMA_MD)
             data_count_tot += data_count
     finally:
