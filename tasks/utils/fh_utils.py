@@ -13,7 +13,6 @@ import functools
 from datetime import datetime, date, timedelta
 import pytz
 import numpy as np
-from pandas import Timestamp
 import re
 import pandas as pd
 from collections import OrderedDict
@@ -63,7 +62,7 @@ def is_not_nan_or_none(x):
     :param x:
     :return:
     """
-    return False if x is None else not ((isinstance(x, float) and np.isnan(x)) or isinstance(x, pd.tslib.NaTType))
+    return False if x is None else not ((isinstance(x, float) and np.isnan(x)) or pd.isna(x))
 
 
 def is_nan_or_none(x):
@@ -72,7 +71,7 @@ def is_nan_or_none(x):
     :param x:
     :return:
     """
-    return True if x is None else (isinstance(x, float) and np.isnan(x)) or isinstance(x, pd.tslib.NaTType)
+    return True if x is None else (isinstance(x, float) and np.isnan(x)) or pd.isna(x)
 
 
 def try_2_float(data):
@@ -254,7 +253,7 @@ def try_n_times(times=3, sleep_time=3, logger: logging.Logger = None, exception=
 
 def date_2_str(dt, format=STR_FORMAT_DATE):
     """将日期类型转换为字符串"""
-    if dt is not None and type(dt) in (date, datetime, Timestamp):
+    if dt is not None and type(dt) in (date, datetime, pd.Timestamp):
         dt_str = dt.strftime(format)
     else:
         dt_str = dt
@@ -262,7 +261,7 @@ def date_2_str(dt, format=STR_FORMAT_DATE):
 
 
 def datetime_2_str(dt, format=STR_FORMAT_DATETIME):
-    if dt is not None and type(dt) in (date, datetime, Timestamp):
+    if dt is not None and type(dt) in (date, datetime, pd.Timestamp):
         dt_str = dt.strftime(format)
     else:
         dt_str = dt
@@ -273,7 +272,7 @@ def str_2_datetime(datetime_str, format=STR_FORMAT_DATETIME):
     if datetime_str is not None:
         if type(datetime_str) == str:
             date_ret = datetime.strptime(datetime_str, format)
-        elif type(datetime_str) in (Timestamp, datetime):
+        elif type(datetime_str) in (pd.Timestamp, datetime):
             date_ret = datetime_str
         else:
             date_ret = datetime_str
@@ -341,7 +340,7 @@ def try_2_date(something):
         if type(something) == str:
             date_str_format = pattern_data_format(something)
             date_ret = datetime.strptime(something, date_str_format).date()
-        elif type(something) in (Timestamp, datetime):
+        elif type(something) in (pd.Timestamp, datetime):
             date_ret = something.date()
         else:
             date_ret = something
@@ -407,7 +406,7 @@ def str_2_date(date_str, date_str_format=STR_FORMAT_DATE):
     if date_str is not None:
         if type(date_str) == str:
             date_ret = datetime.strptime(date_str, date_str_format).date()
-        elif type(date_str) in (Timestamp, datetime):
+        elif type(date_str) in (pd.Timestamp, datetime):
             date_ret = date_str.date()
         else:
             date_ret = date_str

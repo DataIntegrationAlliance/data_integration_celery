@@ -9,7 +9,6 @@
 """
 import pandas as pd
 import numpy as np
-from pandas._libs.tslibs.nattype import NaTType
 from sqlalchemy import MetaData, Table
 from sqlalchemy.orm.session import Session
 from sqlalchemy.orm import sessionmaker
@@ -184,7 +183,7 @@ def bunch_insert_on_duplicate_update(df: pd.DataFrame, table_name, engine, dtype
         data_dic_list = df.to_dict('records')
         for data_dic in data_dic_list:
             for k, v in data_dic.items():
-                if (isinstance(v, float) and np.isnan(v)) or isinstance(v, NaTType):
+                if pd.isnull(v):
                     data_dic[k] = None
         with with_db_session(engine) as session:
             rslt = session.execute(sql_str, params=data_dic_list)
