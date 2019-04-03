@@ -52,15 +52,15 @@ class FinanceReportSaver:
             df_len = df.shape[0]
             if df_len >= df_len_limit:
                 if step >= 2:
-                    self.logger.warning('%s%d) [%s ~ %s] 包含 %d 条数据，可能已经超越 %d 条提取上限，开始进一步分割日期',
-                                        '  ' * deep, num, date_from, date_to, df_len, df_len_limit)
+                    self.logger.warning('%s%s%d) [%s ~ %s] 包含 %d 条数据，可能已经超越 %d 条提取上限，开始进一步分割日期',
+                                        self.table_name, '  ' * deep, num, date_from, date_to, df_len, df_len_limit)
                     yield from self.get_df_iter(date_from, date_to, step // 2, deep=deep + 1)
                 else:
-                    self.logger.warning('%s%d) [%s ~ %s] 包含 %d 条数据，可能已经超越 %d 条提取上限且无法再次分割日期范围，手动需要补充提取剩余数据',
-                                        '  ' * deep, num, date_from, date_to, df_len, df_len_limit)
+                    self.logger.warning('%s%s%d) [%s ~ %s] 包含 %d 条数据，可能已经超越 %d 条提取上限且无法再次分割日期范围，手动需要补充提取剩余数据',
+                                        self.table_name, '  ' * deep, num, date_from, date_to, df_len, df_len_limit)
                     yield df, date_from, date_to
             else:
-                self.logger.debug('%s%d) [%s ~ %s] 包含 %d 条数据', '  ' * deep, num, date_from, date_to, df_len)
+                self.logger.debug('%s%s%d) [%s ~ %s] 包含 %d 条数据', self.table_name, '  ' * deep, num, date_from, date_to, df_len)
                 yield df, date_from, date_to
 
     def save(self):
@@ -78,7 +78,7 @@ class FinanceReportSaver:
         # 查询最新的 pub_date
         date_end = datetime.date.today()
         if date_start >= date_end:
-            self.logger.info('%s 已经是最新数据，无需进一步获取', date_start)
+            self.logger.info('%s %s 已经是最新数据，无需进一步获取', self.table_name, date_start)
             return
         data_count_tot = 0
         try:
@@ -412,23 +412,25 @@ def transfer_report_2_daily(table_name_report: str, table_name_daily: str, table
                 date_to_idx = get_last_idx(trade_date_list, lambda x: x < pub_date_next)
 
             if date_from_idx is None:
-                logger.warning('%d/%d) %d/%d) %s 没有找到有效的起始日期 pub_date: %s trade_date_latest: %s ',
-                               num, dfg_len, num_sub, df_len, code, pub_date, trade_date_latest)
+                logger.warning('%s %d/%d) %d/%d) %s 没有找到有效的起始日期 pub_date: %s trade_date_latest: %s ',
+                               table_name_report, num, dfg_len, num_sub, df_len, code, pub_date, trade_date_latest)
                 continue
             if date_to_idx is None:
-                logger.warning('%d/%d) %d/%d) %s 没有找到有效的截至日期 today: %s pub_date_next: %s ',
-                               num, dfg_len, num_sub, df_len, code, today, pub_date_next)
+                logger.warning('%s %d/%d) %d/%d) %s 没有找到有效的截至日期 today: %s pub_date_next: %s ',
+                               table_name_report, num, dfg_len, num_sub, df_len, code, today, pub_date_next)
                 continue
             if date_from_idx > date_to_idx:
                 logger.warning(
-                    '%d/%d) %d/%d) %s %s > %s 不匹配 pub_date: %s trade_date_latest: %s today: %s pub_date_next: %s ',
-                    num, dfg_len, num_sub, df_len, code, trade_date_list[date_from_idx], trade_date_list[date_to_idx],
+                    '%s %d/%d) %d/%d) %s %s > %s 不匹配 pub_date: %s trade_date_latest: %s today: %s pub_date_next: %s ',
+                    table_name_report, num, dfg_len, num_sub, df_len, code,
+                    trade_date_list[date_from_idx], trade_date_list[date_to_idx],
                     pub_date, trade_date_latest, today, pub_date_next)
                 continue
 
             logger.debug(
-                '%d/%d) %d/%d) %s [%s, %s) 预计转化 %d 条日级别数据，报告日：%s，',
-                num, dfg_len, num_sub, df_len, code, trade_date_list[date_from_idx], trade_date_list[date_to_idx],
+                '%s %d/%d) %d/%d) %s [%s, %s) 预计转化 %d 条日级别数据，报告日：%s，',
+                table_name_report, num, dfg_len, num_sub, df_len, code,
+                trade_date_list[date_from_idx], trade_date_list[date_to_idx],
                 date_to_idx - date_from_idx + 1, report_date)
             # 补充交易日区间的每日数据
             for trade_date in trade_date_list[date_from_idx:(date_to_idx + 1)]:
@@ -438,7 +440,7 @@ def transfer_report_2_daily(table_name_report: str, table_name_daily: str, table
 
         if len(data_new_s_list) > 0:
             data_count = save_data_2_daily_table(data_new_s_list, table_name_daily, dtype_daily)
-            logger.info("%d/%d) %s %d 条记录被保存", num, dfg_len, code, data_count)
+            logger.info("%s %d/%d) %s %d 条记录被保存", table_name_report, num, dfg_len, code, data_count)
             data_new_s_list = []
 
 
