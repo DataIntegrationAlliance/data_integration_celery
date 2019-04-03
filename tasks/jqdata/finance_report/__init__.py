@@ -7,12 +7,13 @@
 @contact : mmmaaaggg@163.com
 @desc    : 
 """
+import datetime
 from tasks.jqdata import finance, query
 import logging
 from datetime import date
-from tasks.utils.fh_utils import str_2_date, date_2_str, iter_2_range, range_date
-from tasks.backend import engine_md
-from tasks.utils.db_utils import bunch_insert_on_duplicate_update, execute_scalar
+from tasks.utils.fh_utils import str_2_date, date_2_str, iter_2_range, range_date, get_first_idx, get_last_idx
+from tasks.backend import engine_md, bunch_insert
+from tasks.utils.db_utils import bunch_insert_on_duplicate_update, execute_scalar, with_db_session
 import pandas as pd
 import numpy as np
 from tasks.config import config
@@ -75,7 +76,7 @@ class FinanceReportSaver:
             self.logger.warning('%s 不存在，使用基础日期 %s', self.table_name, date_2_str(date_start))
 
         # 查询最新的 pub_date
-        date_end = date.today()
+        date_end = datetime.date.today()
         if date_start >= date_end:
             self.logger.info('%s 已经是最新数据，无需进一步获取', date_start)
             return
@@ -168,7 +169,7 @@ def fill_season_data(df: pd.DataFrame, col_name):
         logger.warning('%s df %s 已经存在 %s 列数据', code, df.shape, col_name_season)
 
     data_last_s, report_date_last, df_len = None, None, df.shape[0]
-    for row_num, (report_date, data_s) in enumerate(df.T.items()):
+    for row_num, (report_date, data_s) in enumerate(df.T.items(), start=1):
         # 当期 col_name_season 值：
         # 1） 如果前一条 col_name 值不为空， 且当前 col_name 值不为空，且上一条记录与当前记录为同一年份
         #     使用前一条记录的 col_name 值 与 当前 col_name 值 的差
@@ -292,21 +293,14 @@ def _test_check_accumulation_cols():
     assert 'revenue' in accumulation_col_name_list
 
 
-def get_accumulation_col_names_4_income():
-    """
-    筛选周期增长的字段，供后续代码将相关字段转化成季度值字段
-    :return:
-    """
-    from tasks.jqdata.finance_report.income import TABLE_NAME as TABLE_NAME_FIN_REPORT
-    from tasks.jqdata.finance_report.income_2_daily import DTYPE_INCOME_DAILY
-
+def get_accumulation_col_names(table_name, dtype: dict):
     # 获取季度、半年、年报财务数据
-    col_name_list = list(DTYPE_INCOME_DAILY.keys())
+    col_name_list = list(dtype.keys())
     col_name_list_str = ','.join([f'income.`{col_name}` {col_name}' for col_name in col_name_list])
-    sql_str = f"""SELECT {col_name_list_str} FROM {TABLE_NAME_FIN_REPORT} income inner join 
+    sql_str = f"""SELECT {col_name_list_str} FROM {table_name} income inner join 
         (
             select code, pub_date, max(report_date) report_date 
-            from {TABLE_NAME_FIN_REPORT} where report_type=0 group by code, pub_date
+            from {table_name} where report_type=0 group by code, pub_date
         ) base_date
         where income.report_type=0
         and income.code = base_date.code
@@ -316,11 +310,143 @@ def get_accumulation_col_names_4_income():
         order by code, income.report_date"""
     df = pd.read_sql(sql_str, engine_md).set_index('report_date', drop=False)
     accumulation_col_name_list = check_accumulation_cols(df)
-    logger.info("%s 周期性增长列名称包括：\n%s", TABLE_NAME_FIN_REPORT, accumulation_col_name_list)
+    logger.info("%s 周期性增长列名称包括：\n%s", table_name, accumulation_col_name_list)
     return accumulation_col_name_list
+
+
+def get_accumulation_col_names_for(report):
+    """
+    筛选周期增长的字段，供后续代码将相关字段转化成季度值字段
+    :return:
+    """
+    if report == 'income':
+        from tasks.jqdata.finance_report.income import TABLE_NAME as TABLE_NAME_FIN_REPORT
+        from tasks.jqdata.finance_report.income_2_daily import DTYPE_INCOME_DAILY
+    elif report == 'cashflow':
+        from tasks.jqdata.finance_report.cashflow import TABLE_NAME as TABLE_NAME_FIN_REPORT
+
+    accumulation_col_name_list = get_accumulation_col_names(TABLE_NAME_FIN_REPORT, DTYPE_INCOME_DAILY)
+    return accumulation_col_name_list
+
+
+def transfer_report_2_daily(table_name_report: str, table_name_daily: str, table_name_trade_date: str,
+                            dtype_daily: dict, accumulation_col_name_list):
+    """
+    将财务数据（季度）保存成日级别数据
+    :param table_name_report:
+    :param table_name_daily:
+    :param table_name_trade_date:
+    :param dtype_daily:
+    :param accumulation_col_name_list:
+    :return:
+    """
+    if not engine_md.has_table(table_name_report):
+        logger.info('%s 不存在，无需转化成日级别数据', table_name_report)
+    today = datetime.date.today()
+
+    has_table = engine_md.has_table(table_name_daily)
+    # 获取每只股票最新的交易日，以及截至当期日期的全部交易日数据
+    with with_db_session(engine_md) as session:
+        sql_str = f"""select trade_date from {table_name_trade_date} where trade_date<=:today order by trade_date"""
+        table = session.execute(sql_str, params={"today": today})
+        trade_date_list = [_[0] for _ in table.fetchall()]
+        if has_table:
+            sql_str = f"""select code, max(trade_date) from {table_name_daily} group by code"""
+            table = session.execute(sql_str)
+            code_date_latest_dic = dict(table.fetchall())
+        else:
+            code_date_latest_dic = {}
+
+    # 获取季度、半年、年报财务数据
+    col_name_list = list(dtype_daily.keys())
+    col_name_list_str = ','.join([f'report.`{col_name}` {col_name}' for col_name in col_name_list])
+    sql_str = f"""SELECT {col_name_list_str} FROM {table_name_report} report inner join 
+        (
+            select code, pub_date, max(report_date) report_date 
+            from {table_name_report} where report_type=0 group by code, pub_date
+        ) base_date
+        where report.report_type=0
+        and report.code = base_date.code
+        and report.pub_date = base_date.pub_date
+        and report.report_date = base_date.report_date
+        order by code, pub_date"""
+    dfg_by_code = pd.read_sql(sql_str, engine_md).set_index('report_date', drop=False).sort_index().groupby('code')
+    dfg_len = len(dfg_by_code)
+    data_new_s_list = []
+    # 按股票代码分组，分别按日进行处理
+    for num, (code, df_by_code) in enumerate(dfg_by_code, start=1):
+        # df_by_code.sort_index(inplace=True)  # 前面代码以及有此功能
+        df_by_code = df_by_code.copy()
+        df_len = df_by_code.shape[0]
+        # df_by_code.loc[:, ['pub_date_next', 'report_date_next']] = df_by_code[['pub_date', 'report_date']].shift(-1)
+        df_by_code.loc[:, 'pub_date_next'] = df_by_code['pub_date'].shift(-1)
+        df_by_code.loc[:, 'report_date_next'] = df_by_code['report_date'].shift(-1)
+        # 将相关周期累加增长字段转化为季度增长字段
+        for col_name in accumulation_col_name_list:
+            # df_by_code = fill_season_data(df_by_code, 'total_operating_revenue')
+            df_by_code, col_name_season = fill_season_data(df_by_code, col_name)
+            # 更新 dtype_daily
+            if col_name_season not in dtype_daily:
+                dtype_daily[col_name_season] = dtype_daily[col_name]
+
+        # df_by_code['code'] = code
+        trade_date_latest = code_date_latest_dic[code] if code in code_date_latest_dic else None
+        for num_sub, (report_date, data_s) in enumerate(df_by_code.T.items(), start=1):
+            pub_date = data_s['pub_date']
+            # report_date = data_s['report_date']
+            pub_date_next = data_s['pub_date_next']
+            # 检查 最新交易日是否已经大于下一条财报日期，如果是则跳过当前数据
+            if not pd.isnull(trade_date_latest) and not pd.isnull(pub_date_next) and trade_date_latest > pub_date_next:
+                continue
+            # 获取 交易日区间
+            if pd.isnull(trade_date_latest):
+                date_from_idx = get_first_idx(trade_date_list, lambda x: x >= pub_date)
+            else:
+                date_from_idx = get_first_idx(trade_date_list, lambda x: x > trade_date_latest)
+            if pd.isnull(pub_date_next):
+                date_to_idx = get_last_idx(trade_date_list, lambda x: x <= today)
+            else:
+                date_to_idx = get_last_idx(trade_date_list, lambda x: x < pub_date_next)
+
+            if date_from_idx is None:
+                logger.warning('%d/%d) %d/%d) %s 没有找到有效的起始日期 pub_date: %s trade_date_latest: %s ',
+                               num, dfg_len, num_sub, df_len, code, pub_date, trade_date_latest)
+                continue
+            if date_to_idx is None:
+                logger.warning('%d/%d) %d/%d) %s 没有找到有效的截至日期 today: %s pub_date_next: %s ',
+                               num, dfg_len, num_sub, df_len, code, today, pub_date_next)
+                continue
+            if date_from_idx > date_to_idx:
+                logger.warning(
+                    '%d/%d) %d/%d) %s %s > %s 不匹配 pub_date: %s trade_date_latest: %s today: %s pub_date_next: %s ',
+                    num, dfg_len, num_sub, df_len, code, trade_date_list[date_from_idx], trade_date_list[date_to_idx],
+                    pub_date, trade_date_latest, today, pub_date_next)
+                continue
+
+            logger.debug(
+                '%d/%d) %d/%d) %s [%s, %s) 预计转化 %d 条日级别数据，报告日：%s，',
+                num, dfg_len, num_sub, df_len, code, trade_date_list[date_from_idx], trade_date_list[date_to_idx],
+                date_to_idx - date_from_idx + 1, report_date)
+            # 补充交易日区间的每日数据
+            for trade_date in trade_date_list[date_from_idx:(date_to_idx + 1)]:
+                data_new_s = data_s.copy()
+                data_new_s['trade_date'] = trade_date
+                data_new_s_list.append(data_new_s)
+
+        if len(data_new_s_list) > 0:
+            data_count = save_data_2_daily_table(data_new_s_list, table_name_daily, dtype_daily)
+            logger.info("%d/%d) %s %d 条记录被保存", num, dfg_len, code, data_count)
+            data_new_s_list = []
+
+
+def save_data_2_daily_table(data_new_s_list: list, table_name, dtype: dict):
+    df = pd.DataFrame(data_new_s_list)
+    data_count = bunch_insert(df, table_name, dtype=dtype, primary_keys=['id', 'trade_date'])
+    return data_count
 
 
 if __name__ == "__main__":
     # _test_fill_season_data()
     # _test_check_accumulation_cols()
-    get_accumulation_col_names_4_income()
+    for report in {'income'}:
+        get_accumulation_col_names_for(report)
