@@ -9,7 +9,7 @@
 """
 from tasks.jqdata import finance, query
 import logging
-from datetime import date
+import datetime
 from tasks.utils.fh_utils import str_2_date, date_2_str, iter_2_range, range_date
 from tasks import app
 from sqlalchemy.types import String, Date, Integer
@@ -137,7 +137,7 @@ def import_jq_stock_income(chain_param=None, ts_code_set=None):
         logger.warning('%s 不存在，使用基础日期 %s', TABLE_NAME, date_2_str(date_start))
 
     # 查询最新的 pub_date
-    date_end = date.today()
+    date_end = datetime.date.today()
     if date_start >= date_end:
         logger.info('%s 已经是最新数据，无需进一步获取', date_start)
         return
