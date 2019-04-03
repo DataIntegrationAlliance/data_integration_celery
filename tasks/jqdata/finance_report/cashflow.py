@@ -14,14 +14,7 @@ from sqlalchemy.types import String, Date, Integer
 from sqlalchemy.dialects.mysql import DOUBLE
 
 
-@app.task
-def import_jq_stock_cashflow(chain_param=None, ts_code_set=None):
-    """
-    插入股票日线数据到最近一个工作日-1。
-    如果超过 BASE_LINE_HOUR 时间，则获取当日的数据
-    :return:
-    """
-    dtype = {
+DTYPE_CASHFLOW = {
         "id": Integer,
         "company_id": Integer,
         "company_name": String(100),
@@ -113,8 +106,17 @@ def import_jq_stock_cashflow(chain_param=None, ts_code_set=None):
         "proceeds_from_sub_to_mino_s": DOUBLE,
         "investment_property_depreciation": DOUBLE,
     }
-    table_name = 'jq_stock_cashflow'
-    saver = FinanceReportSaver(table_name, dtype, finance.STK_CASHFLOW_STATEMENT)
+TABLE_NAME = 'jq_stock_cashflow'
+
+
+@app.task
+def import_jq_stock_cashflow(chain_param=None, ts_code_set=None):
+    """
+    插入股票日线数据到最近一个工作日-1。
+    如果超过 BASE_LINE_HOUR 时间，则获取当日的数据
+    :return:
+    """
+    saver = FinanceReportSaver(TABLE_NAME, DTYPE_CASHFLOW, finance.STK_CASHFLOW_STATEMENT)
     saver.save()
 
 
