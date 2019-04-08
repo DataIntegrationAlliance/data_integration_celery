@@ -13,11 +13,11 @@ from datetime import datetime, date, timedelta
 from sqlalchemy.types import String, Date, Float
 from pandas import Timestamp
 from sqlalchemy.dialects.mysql import DOUBLE, TEXT
-from tasks.utils.db_utils import with_db_session, bunch_insert_on_duplicate_update, alter_table_2_myisam
+from ibats_utils.db import with_db_session, bunch_insert_on_duplicate_update, alter_table_2_myisam
 from tasks.wind import invoker
 from tasks.backend import engine_md
 from tasks.merge.code_mapping import update_from_info_table
-from tasks.utils.fh_utils import STR_FORMAT_DATE, date_2_str, str_2_date
+from ibats_utils.mess import STR_FORMAT_DATE, date_2_str, str_2_date
 import logging
 
 DEBUG = False

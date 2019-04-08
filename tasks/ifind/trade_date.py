@@ -8,8 +8,8 @@ from datetime import date, datetime, timedelta
 from sqlalchemy.types import String, Date, Integer
 from tasks import app
 from tasks.ifind import invoker
-from tasks.utils.fh_utils import STR_FORMAT_DATE
-from tasks.utils.db_utils import with_db_session, bunch_insert_on_duplicate_update, alter_table_2_myisam
+from ibats_utils.mess import STR_FORMAT_DATE
+from ibats_utils.db import with_db_session, bunch_insert_on_duplicate_update, alter_table_2_myisam
 from tasks.backend import engine_md
 import logging
 logger = logging.getLogger()

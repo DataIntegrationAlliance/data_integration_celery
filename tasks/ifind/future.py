@@ -6,7 +6,7 @@ Created on 2017/5/2
 """
 import logging
 from datetime import datetime, date, timedelta
-from tasks.utils.db_utils import with_db_session, bunch_insert_on_duplicate_update, alter_table_2_myisam
+from ibats_utils.db import with_db_session, bunch_insert_on_duplicate_update, alter_table_2_myisam
 from tasks.backend import engine_md
 from tasks.backend.orm import build_primary_key
 from tasks.ifind import invoker
@@ -16,7 +16,7 @@ from sqlalchemy.dialects.mysql import DOUBLE
 from sqlalchemy.types import String, Date, Integer
 import re
 import pandas as pd
-from tasks.utils.fh_utils import STR_FORMAT_DATE, unzip_join
+from ibats_utils.mess import STR_FORMAT_DATE, unzip_join
 
 DEBUG = False
 TRIAL = True

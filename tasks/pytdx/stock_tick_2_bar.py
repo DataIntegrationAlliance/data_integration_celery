@@ -9,7 +9,7 @@
 """
 
 from tasks.backend import engine_md
-from tasks.utils.db_utils import with_db_session
+from ibats_utils.db import with_db_session
 import logging
 import pandas as pd
 logger = logging.getLogger()

@@ -15,9 +15,9 @@ from tasks import app
 from tasks.wind import invoker
 from tasks.backend import engine_md
 from tasks.backend.orm import build_primary_key
-from tasks.utils.db_utils import with_db_session, add_col_2_table, alter_table_2_myisam, \
+from ibats_utils.db import with_db_session, add_col_2_table, alter_table_2_myisam, \
     bunch_insert_on_duplicate_update
-from tasks.utils.fh_utils import STR_FORMAT_DATE, split_chunk, get_last, get_first, date_2_str, str_2_date
+from ibats_utils.mess import STR_FORMAT_DATE, split_chunk, get_last, get_first, date_2_str, str_2_date
 from direstinvoker import APIError, UN_AVAILABLE_DATE
 from sqlalchemy.types import String, Date
 from sqlalchemy.dialects.mysql import DOUBLE

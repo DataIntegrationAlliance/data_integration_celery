@@ -10,12 +10,12 @@
 from tasks.jqdata import finance, query
 import logging
 import datetime
-from tasks.utils.fh_utils import str_2_date, date_2_str, iter_2_range, range_date
+from ibats_utils.mess import str_2_date, date_2_str, iter_2_range, range_date
 from tasks import app
 from sqlalchemy.types import String, Date, Integer
 from sqlalchemy.dialects.mysql import DOUBLE
 from tasks.backend import engine_md
-from tasks.utils.db_utils import bunch_insert_on_duplicate_update, execute_scalar
+from ibats_utils.db import bunch_insert_on_duplicate_update, execute_scalar
 from tasks.config import config
 
 logger = logging.getLogger(__name__)

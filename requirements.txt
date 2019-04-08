@@ -14,3 +14,4 @@ cryptocmd
 pytdx
 matplotlib
 jqdatasdk
+IBATS-Utils

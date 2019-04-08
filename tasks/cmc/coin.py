@@ -16,8 +16,8 @@ from cryptocmd.utils import InvalidCoinCode, get_url_data, extract_data, downloa
 from sqlalchemy.types import String, Date, Integer
 from sqlalchemy.dialects.mysql import DOUBLE, DATETIME
 from tasks.backend import engine_md
-from tasks.utils.db_utils import with_db_session, alter_table_2_myisam, bunch_insert_on_duplicate_update, execute_sql
-from tasks.utils.fh_utils import str_2_date, date_2_str, str_2_datetime
+from ibats_utils.db import with_db_session, alter_table_2_myisam, bunch_insert_on_duplicate_update, execute_sql
+from ibats_utils.mess import str_2_date, date_2_str, str_2_datetime
 from tasks.config import config
 import logging
 

@@ -8,12 +8,12 @@ import logging
 from datetime import date, datetime, timedelta
 from direstinvoker.utils.fh_utils import str_2_date, date_2_str
 from tasks.wind import invoker, APIError
-from tasks.utils.fh_utils import STR_FORMAT_DATE, split_chunk
+from ibats_utils.mess import STR_FORMAT_DATE, split_chunk
 from tasks import app
 from sqlalchemy.types import String, Date, Integer, Text
 from sqlalchemy.dialects.mysql import DOUBLE
 from tasks.backend import engine_md
-from tasks.utils.db_utils import with_db_session, alter_table_2_myisam, \
+from ibats_utils.db import with_db_session, alter_table_2_myisam, \
     bunch_insert_on_duplicate_update
 
 DEBUG = False

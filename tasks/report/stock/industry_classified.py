@@ -11,8 +11,8 @@ import matplotlib.pyplot as plt
 from pylab import mpl
 from tasks.backend import engine_md
 import pandas as pd
-from tasks.utils.db_utils import with_db_session
-from tasks.utils.fh_utils import iter_2_range
+from ibats_utils.db import with_db_session
+from ibats_utils.mess import iter_2_range
 from collections import defaultdict
 import logging
 

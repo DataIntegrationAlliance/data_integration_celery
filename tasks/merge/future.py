@@ -10,11 +10,11 @@ import numpy as np
 from direstinvoker.utils.fh_utils import date_2_str
 from tasks import bunch_insert_on_duplicate_update, alter_table_2_myisam, build_primary_key
 from tasks.backend import engine_md
-from tasks.utils.db_utils import with_db_session
+from ibats_utils.db import with_db_session
 from tasks.merge import mean_value, prefer_left, prefer_right, merge_data, get_value
 from sqlalchemy.types import String, Date, Integer, Text
 from sqlalchemy.dialects.mysql import DOUBLE
-from tasks.utils.fh_utils import log_param_when_exception
+from ibats_utils.mess import log_param_when_exception
 
 logger = logging.getLogger()
 

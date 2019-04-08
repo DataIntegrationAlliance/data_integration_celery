@@ -11,9 +11,9 @@ import datetime
 from tasks.jqdata import finance, query
 import logging
 from datetime import date
-from tasks.utils.fh_utils import str_2_date, date_2_str, iter_2_range, range_date, get_first_idx, get_last_idx
+from ibats_utils.mess import str_2_date, date_2_str, iter_2_range, range_date, get_first_idx, get_last_idx
 from tasks.backend import engine_md, bunch_insert
-from tasks.utils.db_utils import bunch_insert_on_duplicate_update, execute_scalar, with_db_session
+from ibats_utils.db import bunch_insert_on_duplicate_update, execute_scalar, with_db_session
 import pandas as pd
 import numpy as np
 from tasks.config import config

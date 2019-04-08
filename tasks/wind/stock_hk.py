@@ -10,14 +10,14 @@ from tasks import app
 from datetime import date, datetime, timedelta
 from tasks.backend import engine_md
 from tasks.wind import invoker
-from tasks.utils.db_utils import with_db_session, add_col_2_table, alter_table_2_myisam
-from tasks.utils.fh_utils import STR_FORMAT_DATE, split_chunk
+from ibats_utils.db import with_db_session, add_col_2_table, alter_table_2_myisam
+from ibats_utils.mess import STR_FORMAT_DATE, split_chunk
 from direstinvoker import APIError
 from sqlalchemy.types import String, Date, Integer
 from sqlalchemy.dialects.mysql import DOUBLE
 from tasks.backend.orm import build_primary_key
 from tasks.merge.code_mapping import update_from_info_table
-from tasks.utils.db_utils import bunch_insert_on_duplicate_update
+from ibats_utils.db import bunch_insert_on_duplicate_update
 
 DEBUG = False
 logger = logging.getLogger()

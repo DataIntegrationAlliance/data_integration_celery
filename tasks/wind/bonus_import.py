@@ -13,9 +13,9 @@ from tasks.wind import invoker
 from datetime import datetime, date
 from tasks.backend import engine_md
 from tasks.backend.orm import build_primary_key
-from tasks.utils.db_utils import with_db_session, bunch_insert_on_duplicate_update
-from tasks.utils.fh_utils import STR_FORMAT_DATE
-from tasks.utils.db_utils import alter_table_2_myisam
+from ibats_utils.db import with_db_session, bunch_insert_on_duplicate_update
+from ibats_utils.mess import STR_FORMAT_DATE
+from ibats_utils.db import alter_table_2_myisam
 from sqlalchemy.types import String, Date, FLOAT
 from sqlalchemy.dialects.mysql import DOUBLE
 

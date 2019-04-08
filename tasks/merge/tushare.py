@@ -15,8 +15,8 @@ from tasks import app
 from tasks.backend import engine_md
 from tasks.backend.orm import build_primary_key
 from tasks.merge import iter_2_range
-from tasks.utils.db_utils import with_db_session, bunch_insert_on_duplicate_update
-from tasks.utils.fh_utils import is_any, is_nan_or_none, date_2_str
+from ibats_utils.db import with_db_session, bunch_insert_on_duplicate_update
+from ibats_utils.mess import is_any, is_nan_or_none, date_2_str
 from tasks.tushare.tushare_stock_daily.adj_factor import DTYPE_TUSHARE_STOCK_DAILY_ADJ_FACTOR
 from tasks.tushare.tushare_stock_daily.daily_basic import DTYPE_TUSHARE_STOCK_DAILY_BASIC
 from tasks.tushare.tushare_stock_daily.stock import DTYPE_TUSHARE_STOCK_DAILY_MD

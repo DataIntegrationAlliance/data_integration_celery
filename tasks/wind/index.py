@@ -7,7 +7,7 @@ Created on Thu Apr  6 11:11:26 2017
 from direstinvoker import APIError
 import pandas as pd
 from tasks import app
-from tasks.utils.fh_utils import get_last, get_first, str_2_date, date_2_str, get_cache_file_path
+from ibats_utils.mess import get_last, get_first, str_2_date, date_2_str, get_cache_file_path
 from datetime import date, timedelta, datetime
 from sqlalchemy.types import String, Date
 from sqlalchemy.dialects.mysql import DOUBLE
@@ -15,7 +15,7 @@ from tasks.wind import invoker
 from tasks.backend import engine_md
 from tasks.backend.orm import build_primary_key
 from tasks.merge.code_mapping import update_from_info_table
-from tasks.utils.db_utils import with_db_session, bunch_insert_on_duplicate_update, alter_table_2_myisam
+from ibats_utils.db import with_db_session, bunch_insert_on_duplicate_update, alter_table_2_myisam
 import logging
 
 DEBUG = False

@@ -16,8 +16,8 @@ import re
 from sqlalchemy.dialects.mysql import DOUBLE
 from sqlalchemy.types import String, Date, Time, DateTime, Integer
 from tasks.backend import engine_md
-from tasks.utils.db_utils import with_db_session, bunch_insert_on_duplicate_update
-from tasks.utils.fh_utils import str_2_float
+from ibats_utils.db import with_db_session, bunch_insert_on_duplicate_update
+from ibats_utils.mess import str_2_float
 from tasks.config import config
 
 logger = logging.getLogger()

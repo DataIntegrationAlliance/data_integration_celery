@@ -9,7 +9,7 @@
 """
 import re
 # from tasks.backend.orm import CodeMapping
-from tasks.utils.db_utils import with_db_session
+from ibats_utils.db import with_db_session
 from tasks.backend import engine_md
 import logging
 

@@ -12,8 +12,8 @@ from datetime import date, timedelta
 from sqlalchemy.dialects.mysql import DOUBLE
 from tasks.backend.orm import build_primary_key
 from direstinvoker import APIError, UN_AVAILABLE_DATE
-from tasks.utils.fh_utils import STR_FORMAT_DATE, split_chunk, str_2_date
-from tasks.utils.db_utils import with_db_session, add_col_2_table, alter_table_2_myisam, \
+from ibats_utils.mess import STR_FORMAT_DATE, split_chunk, str_2_date
+from ibats_utils.db import with_db_session, add_col_2_table, alter_table_2_myisam, \
     bunch_insert_on_duplicate_update
 
 logger = logging.getLogger()

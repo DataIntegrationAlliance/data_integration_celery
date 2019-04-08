@@ -17,8 +17,8 @@ from pytdx.crawler.base_crawler import demo_reporthook
 from pytdx.crawler.history_financial_crawler import HistoryFinancialCrawler
 import logging
 import re
-from tasks.utils.fh_utils import try_n_times, str_2_date
-from tasks.utils.db_utils import bunch_insert_on_duplicate_update, execute_sql, with_db_session
+from ibats_utils.mess import try_n_times, str_2_date
+from ibats_utils.db import bunch_insert_on_duplicate_update, execute_sql, with_db_session
 from tasks.backend import engine_md
 
 logger = logging.getLogger()

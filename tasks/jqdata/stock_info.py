@@ -16,7 +16,7 @@ from sqlalchemy.dialects.mysql import DOUBLE
 from tasks.backend import engine_md
 from tasks.merge.code_mapping import update_from_info_table
 from tasks.config import config
-from tasks.utils.db_utils import with_db_session, add_col_2_table, alter_table_2_myisam, \
+from ibats_utils.db import with_db_session, add_col_2_table, alter_table_2_myisam, \
     bunch_insert_on_duplicate_update
 
 @app.task

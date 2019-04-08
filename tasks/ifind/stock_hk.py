@@ -11,15 +11,15 @@ from datetime import date, datetime, timedelta
 import pandas as pd
 from tasks.backend.orm import build_primary_key
 from tasks.ifind import invoker
-from tasks.utils.fh_utils import STR_FORMAT_DATE, str_2_date
+from ibats_utils.mess import STR_FORMAT_DATE, str_2_date
 from sqlalchemy.types import String, Date, Integer, Text
 from sqlalchemy.dialects.mysql import DOUBLE
-from tasks.utils.fh_utils import unzip_join
-from tasks.utils.db_utils import with_db_session, add_col_2_table, alter_table_2_myisam
+from ibats_utils.mess import unzip_join
+from ibats_utils.db import with_db_session, add_col_2_table, alter_table_2_myisam
 from tasks.backend import engine_md
 from tasks import app
 from tasks.merge.code_mapping import update_from_info_table
-from tasks.utils.db_utils import bunch_insert_on_duplicate_update
+from ibats_utils.db import bunch_insert_on_duplicate_update
 
 DEBUG = False
 logger = logging.getLogger()

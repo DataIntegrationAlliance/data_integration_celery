@@ -10,11 +10,11 @@
 from sqlalchemy import MetaData, Column, Integer, String, UniqueConstraint, TIMESTAMP, Table
 from sqlalchemy.dialects.mysql import DOUBLE
 from sqlalchemy.ext.declarative import declarative_base
-from tasks.utils.db_utils import with_db_session
+from ibats_utils.db import with_db_session
 from tasks.backend import engine_md
 from tasks.config import config
 import logging
-from tasks.utils.db_utils import alter_table_2_myisam
+from ibats_utils.db import alter_table_2_myisam
 
 logger = logging.getLogger()
 Base = declarative_base(bind=engine_md)

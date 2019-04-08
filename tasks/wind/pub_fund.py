@@ -9,11 +9,11 @@ from datetime import date, datetime, timedelta
 from tasks import app
 from tasks.backend.orm import build_primary_key
 from tasks.merge.code_mapping import update_from_info_table
-from tasks.utils.db_utils import alter_table_2_myisam
+from ibats_utils.db import alter_table_2_myisam
 from tasks.wind import invoker, bunch_insert_on_duplicate_update
 from tasks.backend import engine_md
-from tasks.utils.db_utils import with_db_session
-from tasks.utils.fh_utils import STR_FORMAT_DATE
+from ibats_utils.db import with_db_session
+from ibats_utils.mess import STR_FORMAT_DATE
 from direstinvoker import APIError, UN_AVAILABLE_DATE
 from sqlalchemy.types import String, Date, Integer, Text
 

@@ -9,10 +9,10 @@
 """
 import pandas as pd
 from tasks import app
-from tasks.utils.fh_utils import date_2_str, str_2_date, str_2_datetime, try_n_times
+from ibats_utils.mess import date_2_str, str_2_date, str_2_datetime, try_n_times
 from sqlalchemy.types import String, Date, Integer, DateTime
 from sqlalchemy.dialects.mysql import DOUBLE
-from tasks.utils.db_utils import with_db_session, bunch_insert_on_duplicate_update, alter_table_2_myisam
+from ibats_utils.db import with_db_session, bunch_insert_on_duplicate_update, alter_table_2_myisam
 from tasks.backend import engine_md
 import logging
 from datetime import date

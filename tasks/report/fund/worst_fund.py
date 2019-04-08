@@ -9,8 +9,8 @@
 """
 import pandas as pd
 from tasks.backend import engine_md
-from tasks.utils.db_utils import with_db_session
-from tasks.utils.fh_utils import date_2_str
+from ibats_utils.db import with_db_session
+from ibats_utils.mess import date_2_str
 import logging
 
 logger = logging.getLogger(__name__)

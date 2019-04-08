@@ -11,7 +11,7 @@ import pandas as pd
 from functools import partial
 # import warnings
 import logging
-from tasks.utils.fh_utils import is_not_nan_or_none, log_param_when_exception, iter_2_range
+from ibats_utils.mess import is_not_nan_or_none, log_param_when_exception, iter_2_range
 from tasks.backend import engine_md
 
 logger = logging.getLogger()

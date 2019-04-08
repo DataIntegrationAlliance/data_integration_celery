@@ -8,7 +8,7 @@
 @desc    : 
 """
 from tasks.backend import engine_md
-from tasks.utils.db_utils import execute_sql, with_db_session
+from ibats_utils.db import execute_sql, with_db_session
 from datetime import datetime
 
 

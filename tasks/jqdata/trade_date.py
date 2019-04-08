@@ -14,7 +14,7 @@ from tasks.jqdata import get_all_trade_days, get_trade_days
 from tasks.backend import engine_md
 import logging
 from sqlalchemy.types import Date
-from tasks.utils.db_utils import execute_scalar, bunch_insert_on_duplicate_update
+from ibats_utils.db import execute_scalar, bunch_insert_on_duplicate_update
 
 logger = logging.getLogger(__name__)
 TABLE_NAME = 'jq_trade_date'

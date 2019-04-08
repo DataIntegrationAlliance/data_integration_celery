@@ -51,11 +51,6 @@ def test_task():
 
 
 try:
-    from tasks.task2 import div
-except ImportError:
-    logger.exception("加载 tasks.task2 失败，该异常不影响其他功能正常使用")
-
-try:
     from tasks.ifind import ifind_import_once, ifind_weekly_task, ifind_daily_task
 except ImportError:
     logger.exception("加载 tasks.ifind 失败，该异常不影响其他功能正常使用")

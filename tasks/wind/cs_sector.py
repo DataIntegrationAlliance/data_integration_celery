@@ -11,9 +11,9 @@ from tasks import app
 from tasks.wind import invoker
 from datetime import date, timedelta
 from sqlalchemy.types import String, Date
-from tasks.utils.db_utils import with_db_session, alter_table_2_myisam
+from ibats_utils.db import with_db_session, alter_table_2_myisam
 from tasks.backend import engine_md
-from tasks.utils.db_utils import bunch_insert_on_duplicate_update
+from ibats_utils.db import bunch_insert_on_duplicate_update
 from tasks.backend.orm import build_primary_key
 
 

@@ -7,7 +7,7 @@
 @contact : mmmaaaggg@163.com
 @desc    : 
 """
-from tasks.utils.fh_utils import zip_split
+from ibats_utils.mess import zip_split
 from tasks.config import config
 from direstinvoker.ifind import IFinDInvoker
 
