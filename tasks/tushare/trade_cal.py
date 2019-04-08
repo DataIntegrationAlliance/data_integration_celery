@@ -25,6 +25,7 @@ ONE_DAY = timedelta(days=1)
 # 标示每天几点以后下载当日行情数据
 BASE_LINE_HOUR = 16
 STR_FORMAT_DATE_TS = '%Y%m%d'
+TABLE_NAME = "tushare_trade_date"
 
 
 @app.task
@@ -35,16 +36,18 @@ def import_trade_date(chain_param=None):
     日后将会考虑将两张表进行合并
     :return:
     """
-    table_name = "tushare_trade_date"
+    table_name = TABLE_NAME
     exch_code_trade_date_dic = {}
-    with with_db_session(engine_md) as session:
-        try:
-            table = session.execute('SELECT exchange,max(cal_date) FROM {table_name} GROUP BY exchange'.format(
-                table_name=table_name
-            ))
-            exch_code_trade_date_dic = {exch_code: trade_date for exch_code, trade_date in table.fetchall()}
-        except Exception as exp:
-            logger.exception("交易日获取异常")
+    has_table = engine_md.has_table(table_name)
+    if has_table:
+        with with_db_session(engine_md) as session:
+            try:
+                table = session.execute('SELECT exchange,max(cal_date) FROM {table_name} GROUP BY exchange'.format(
+                    table_name=table_name
+                ))
+                exch_code_trade_date_dic = {exch_code: trade_date for exch_code, trade_date in table.fetchall()}
+            except Exception as exp:
+                logger.exception("交易日获取异常")
 
     exchange_code_dict = {
         "HKEX": "香港联合交易所",
