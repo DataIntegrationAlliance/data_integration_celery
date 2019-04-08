@@ -19,11 +19,15 @@ from tasks.config import config
 from ibats_utils.db import with_db_session, add_col_2_table, alter_table_2_myisam, \
     bunch_insert_on_duplicate_update
 
+
+TABLE_NAME = 'jq_stock_info'
+
+
 @app.task
 def import_jq_stock_info(chain_param=None, refresh=False):
     """ 获取全市场股票代码及名称
     """
-    table_name = 'jq_stock_info'
+    table_name = TABLE_NAME
     logging.info("更新 %s 开始", table_name)
     # has_table = engine_md.has_table(table_name)
     tushare_indicator_param_list = [
