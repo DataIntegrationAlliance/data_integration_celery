@@ -3,7 +3,7 @@
 """
 @author  : MG
 @Time    : 19-4-8 上午9:36
-@File    : stock_daily.py
+@File    : check.py
 @contact : mmmaaaggg@163.com
 @desc    : 获取 jqdatasdk 日级别数据（前复权）
 """
@@ -42,6 +42,7 @@ DTYPE_QUERY = [
 DTYPE = {key: val for key, val in DTYPE_QUERY}
 DTYPE['jq_code'] = String(20)
 DTYPE['trade_date'] = Date
+TABLE_NAME = 'jq_stock_daily_md_pre'
 
 
 @try_n_times(times=5, sleep_time=1, logger=logger, exception_sleep_time=60)
@@ -70,7 +71,7 @@ def import_jq_stock_daily(chain_param=None, code_set=None):
     :return:
     """
     table_name_info = TABLE_NAME_INFO
-    table_name = 'jq_stock_daily_md_pre'
+    table_name = TABLE_NAME
     logging.info("更新 %s 开始", table_name)
 
     has_table = engine_md.has_table(table_name)

@@ -51,8 +51,18 @@ def check_diff(table_name, table_name_backup=None):
     :param table_name_backup:
     :return:
     """
+    has_table = engine_md.has_table(table_name)
+    if not has_table:
+        logger.warning('%s 表不存在无需检查', table_name)
+        return None
+
     if table_name_backup is None:
         table_name_backup = f'{table_name}_bak'
+    has_table = engine_md.has_table(table_name_backup)
+    if not has_table:
+        logger.warning('%s 表不存在无需检查', table_name_backup)
+        return None
+
     # table_name, table_name_backup = 'jq_stock_daily_md_pre', 'jq_stock_daily_md_pre_bak'  # 测试使用
     col_list = get_table_col(table_name, engine_md, config.DB_SCHEMA_MD)
     # 主键字段名称列表
