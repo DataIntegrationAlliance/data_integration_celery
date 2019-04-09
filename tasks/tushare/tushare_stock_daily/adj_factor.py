@@ -77,7 +77,7 @@ def import_tushare_adj_factor(chain_param=None, ):
             data_df = pro.adj_factor(ts_code='', trade_date=trade_date)
             if len(data_df) > 0:
                 data_count = bunch_insert_on_duplicate_update(data_df, table_name, engine_md, DTYPE_TUSHARE_STOCK_DAILY_ADJ_FACTOR)
-                logging.info(" %s 表 %s 日 %d 条信息被更新", table_name, trade_date, data_count)
+                logging.info(" %s 表自 %s 日起的 %d 条信息被更新", table_name, trade_date, data_count)
             else:
                 logging.info("无数据信息可被更新")
     finally:
