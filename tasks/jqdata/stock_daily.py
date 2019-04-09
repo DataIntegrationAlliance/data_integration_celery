@@ -139,7 +139,7 @@ def import_jq_stock_daily(chain_param=None, code_set=None):
                 data_df = invoke_daily(key_code=key_code, start_date=date_2_str(date_from),
                                        end_date=date_2_str(date_to))
             except Exception as exp:
-                df = None
+                data_df = None
                 logger.exception('%s [%s - %s]', key_code, date_2_str(date_from), date_2_str(date_to))
                 if exp.args[0].find('超过了每日最大查询限制'):
                     break
