@@ -9,7 +9,7 @@
 """
 from ibats_utils.db import get_table_col
 import pandas as pd
-from tasks.backend import with_db_session, engine_md
+from tasks.backend import with_db_session_p, engine_md
 from tasks.config import config
 import logging
 
@@ -28,7 +28,7 @@ def backup_table(table_name):
 
     table_name_backup = f'{table_name}_bak'
     has_table = engine_md.has_table(table_name_backup)
-    with with_db_session() as session:
+    with with_db_session_p() as session:
         if has_table:
             sql_str = f'truncate table {table_name_backup}'
             session.execute(sql_str)
