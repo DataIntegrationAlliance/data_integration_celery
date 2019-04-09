@@ -45,7 +45,6 @@ DTYPE['trade_date'] = Date
 TABLE_NAME = 'jq_stock_daily_md_pre'
 
 
-@try_n_times(times=5, sleep_time=1, logger=logger, exception_sleep_time=60)
 def invoke_daily(key_code, start_date, end_date):
     """
     调用接口获取行情数据
@@ -56,7 +55,8 @@ def invoke_daily(key_code, start_date, end_date):
     """
     fields = [_[0] for _ in DTYPE_QUERY]
     df = get_price(key_code, start_date=start_date, end_date=end_date, frequency='daily', fields=fields, fq='pre')
-    if df.shape[0] > 0:
+
+    if df is not None and df.shape[0] > 0:
         df['jq_code'] = key_code
         df.index.rename('trade_date', inplace=True)
         df.reset_index(drop=False, inplace=True)
@@ -105,7 +105,7 @@ def import_jq_stock_daily(chain_param=None, code_set=None):
         logger.warning('%s 不存在，仅使用 %s 表进行计算日期范围', table_name, table_name_info)
 
     sql_trade_date_str = """SELECT trade_date FROM jq_trade_date trddate 
-           WHERE trade_date <= if(hour(now())<16, subdate(curdate(),1), curdate()) ORDER BY trade_date"""
+       WHERE trade_date <= if(hour(now())<16, subdate(curdate(),1), curdate()) ORDER BY trade_date"""
 
     with with_db_session(engine_md) as session:
         # 获取截至当期全部交易日前
@@ -135,8 +135,15 @@ def import_jq_stock_daily(chain_param=None, code_set=None):
                 logger.debug('%d/%d) %s [%s - %s] 跳过', num, data_len, key_code, date_from, date_to)
                 continue
             logger.debug('%d/%d) %s [%s - %s]', num, data_len, key_code, date_from, date_to)
-            data_df = invoke_daily(key_code=key_code, start_date=date_2_str(date_from),
-                                   end_date=date_2_str(date_to))
+            try:
+                data_df = invoke_daily(key_code=key_code, start_date=date_2_str(date_from),
+                                       end_date=date_2_str(date_to))
+            except Exception as exp:
+                df = None
+                logger.exception('%s [%s - %s]', key_code, date_2_str(date_from), date_2_str(date_to))
+                if exp.args[0].find('超过了每日最大查询限制'):
+                    break
+
             # 把数据攒起来
             if data_df is not None and data_df.shape[0] > 0:
                 data_count += data_df.shape[0]
