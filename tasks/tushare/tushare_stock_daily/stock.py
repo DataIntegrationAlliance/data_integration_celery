@@ -12,7 +12,7 @@ from ibats_utils.mess import try_2_date, STR_FORMAT_DATE, datetime_2_str, split_
 from tasks import app
 from sqlalchemy.types import String, Date, Integer
 from sqlalchemy.dialects.mysql import DOUBLE
-from tasks.backend import engine_md
+from tasks.backend import engine_md, bunch_insert
 from tasks.merge.code_mapping import update_from_info_table
 from tasks.config import config
 from ibats_utils.db import with_db_session, add_col_2_table, alter_table_2_myisam, \
@@ -217,16 +217,19 @@ def import_tushare_stock_daily(chain_param=None, ts_code_set=None):
             if data_count >= 500:
                 data_df_all = pd.concat(data_df_list)
                 bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md, DTYPE_TUSHARE_STOCK_DAILY_MD)
+                data_count = bunch_insert(
+                    data_df_all, table_name=table_name, dtype=DTYPE_TUSHARE_STOCK_DAILY_MD,
+                    primary_keys=['ts_code', 'trade_date'])
                 all_data_count += data_count
                 data_df_list, data_count = [], 0
-
 
     finally:
         # 导入数据库
         if len(data_df_list) > 0:
             data_df_all = pd.concat(data_df_list)
-            data_count = bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md,
-                                                          DTYPE_TUSHARE_STOCK_DAILY_MD)
+            data_count = bunch_insert(
+                data_df_all, table_name=table_name, dtype=DTYPE_TUSHARE_STOCK_DAILY_MD,
+                primary_keys=['ts_code', 'trade_date'])
             all_data_count = all_data_count + data_count
             logging.info("更新 %s 结束 %d 条信息被更新", table_name, all_data_count)
             if not has_table and engine_md.has_table(table_name):
