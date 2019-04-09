@@ -16,6 +16,7 @@ from tasks.backend import engine_md
 from tasks.merge.code_mapping import update_from_info_table
 from ibats_utils.db import with_db_session, add_col_2_table, alter_table_2_myisam, \
     bunch_insert_on_duplicate_update
+from tasks.backend import bunch_insert
 from tasks.tushare.ts_pro_api import pro
 
 DEBUG = False
@@ -86,30 +87,25 @@ def import_tushare_ggt_top10(chain_param=None):
     with with_db_session(engine_md) as session:
         # 获取交易日数据
         table = session.execute(sql_str)
-        trddate = list(row[0] for row in table.fetchall())
+        trade_date_list = list(row[0] for row in table.fetchall())
     # 设置 dtype
     dtype = {key: val for key, val in param_list}
 
     try:
-        for i in range(len(trddate)):
-            trade_date = datetime_2_str(trddate[i], STR_FORMAT_DATE_TS)
+        trade_date_list_len = len(trade_date_list)
+        for num, trade_date in enumerate(trade_date_list, start=1):
+            trade_date = datetime_2_str(trade_date, STR_FORMAT_DATE_TS)
             for market_type in list(['2', '4']):
                 data_df = invoke_ggt_top10(trade_date=trade_date, market_type=market_type)
                 if len(data_df) > 0:
-                    data_count = bunch_insert_on_duplicate_update(data_df, table_name, engine_md, dtype)
-                    logging.info("%s更新 %s 结束 %d 条信息被更新", trade_date, table_name, data_count)
+                    data_count = bunch_insert(
+                        data_df, table_name=table_name, dtype=dtype, primary_keys=['ts_code', 'trade_date'])
+                    logging.info("%d/%d) %s更新 %s 结束 %d 条信息被更新",
+                                 num, trade_date_list_len, trade_date, table_name, data_count)
                 else:
                     logging.info("无数据信息可被更新")
-    finally:
-        if not has_table and engine_md.has_table(table_name):
-            alter_table_2_myisam(engine_md, [table_name])
-            # build_primary_key([table_name])
-            create_pk_str = """ALTER TABLE {table_name}
-                CHANGE COLUMN `trade_date` `trade_date` VARCHAR(20) NOT NULL FIRST,
-                ADD PRIMARY KEY (`trade_date`)""".format(table_name=table_name)
-            with with_db_session(engine_md) as session:
-                session.execute(create_pk_str)
-            logger.info('%s 表  `trade_date` 主键设置完成', table_name)
+    except:
+        logger.exception('更新 %s 表异常', table_name)
 
 
 if __name__ == "__main__":
