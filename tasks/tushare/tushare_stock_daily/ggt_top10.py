@@ -103,7 +103,7 @@ def import_tushare_ggt_top10(chain_param=None):
                     logging.info("%d/%d) %s更新 %s 结束 %d 条信息被更新",
                                  num, trade_date_list_len, trade_date, table_name, data_count)
                 else:
-                    logging.info("无数据信息可被更新")
+                    logging.info("%s %s无数据信息可被更新", market_type, trade_date)
     except:
         logger.exception('更新 %s 表异常', table_name)
 
