@@ -193,7 +193,7 @@ def import_tushare_stock_daily(chain_param=None, ts_code_set=None):
                                        end_date=datetime_2_str(
                                            try_2_date(data_df['trade_date'].iloc[-1]) - timedelta(days=1),
                                            STR_FORMAT_DATE_TS))
-                    if len(df2 > 0):
+                    if df2 is not None and len(df2) > 0:
                         last_date_in_df_cur = try_2_date(df2['trade_date'].iloc[-1])
                         if last_date_in_df_cur < last_date_in_df_last:
                             data_df = pd.concat([data_df, df2])
