@@ -13,7 +13,7 @@ from ibats_utils.mess import try_2_date, STR_FORMAT_DATE, datetime_2_str, split_
 from tasks import app
 from sqlalchemy.types import String, Date, Text
 from sqlalchemy.dialects.mysql import DOUBLE
-from tasks.backend import engine_md
+from tasks.backend import engine_md, bunch_insert
 from tasks.merge.code_mapping import update_from_info_table
 from ibats_utils.db import with_db_session, add_col_2_table, alter_table_2_myisam, \
     bunch_insert_on_duplicate_update
@@ -42,7 +42,7 @@ INDICATOR_PARAM_LIST_TUSHARE_STOCK_TOP_LIST = [
     ('net_rate', DOUBLE),
     ('amount_rate', DOUBLE),
     ('float_values', DOUBLE),
-    ('reason', String(1000)),
+    ('reason', String(310)),  # reason 作为主键之一，总台所有主键长度不得超过1000bytes，因此，该字段最大长度受限
 ]
 # 设置 dtype
 DTYPE_TUSHARE_STOCK_TOP_LIST = {key: val for key, val in INDICATOR_PARAM_LIST_TUSHARE_STOCK_TOP_LIST}
@@ -87,13 +87,14 @@ def import_tushare_top_list(chain_param=None):
     with with_db_session(engine_md) as session:
         # 获取交易日数据
         table = session.execute(sql_str)
-        trddate = list(row[0] for row in table.fetchall())
+        trade_date_list = list(row[0] for row in table.fetchall())
 
-    #定义相应的中间变量
-    data_df_list, data_count, all_data_count, data_len = [], 0, 0, len(trddate)
+    # 定义相应的中间变量
+    data_df_list, data_count, all_data_count, data_len = [], 0, 0, len(trade_date_list)
     try:
-        for i in range(len(trddate)):
-            trade_date = datetime_2_str(trddate[i], STR_FORMAT_DATE_TS)
+        trade_date_list_len = len(trade_date_list)
+        for num, trade_date in enumerate(trade_date_list, start=1):
+            trade_date = datetime_2_str(trade_date, STR_FORMAT_DATE_TS)
             data_df = invoke_top_list(trade_date=trade_date)
             # 把数据攒起来
             if data_df is not None and data_df.shape[0] > 0:
@@ -102,35 +103,26 @@ def import_tushare_top_list(chain_param=None):
             # 大于阀值有开始插入
             if data_count >= 2000:
                 data_df_all = pd.concat(data_df_list)
-                bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md, DTYPE_TUSHARE_STOCK_TOP_LIST)
-                logging.info("更新 %s 结束 ,截至%s日 %d 条信息被更新", table_name, trade_date, all_data_count)
+                data_count = bunch_insert(
+                    data_df_all, table_name=table_name, dtype=DTYPE_TUSHARE_STOCK_TOP_LIST,
+                    primary_keys=['ts_code', 'trade_date', 'reason'])
+                logging.info("%d/%d) 更新 %s 结束 ,截至%s日 %d 条信息被更新",
+                             num, trade_date_list_len, table_name, trade_date, all_data_count)
                 all_data_count += data_count
                 data_df_list, data_count = [], 0
+    except:
+        logger.exception('更新 %s 表异常', table_name)
     finally:
         if len(data_df_list) > 0:
             data_df_all = pd.concat(data_df_list)
-            data_count = bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md, DTYPE_TUSHARE_STOCK_TOP_LIST)
-            all_data_count=all_data_count+data_count
-            logging.info("更新 %s 结束 %d 条信息被更新", table_name, all_data_count)
-        if not has_table and engine_md.has_table(table_name):
-            alter_table_2_myisam(engine_md, [table_name])
-            # build_primary_key([table_name])
-            create_pk_str = """ALTER TABLE {table_name}
-                CHANGE COLUMN `ts_code` `ts_code` VARCHAR(20) NOT NULL FIRST,
-                CHANGE COLUMN `trade_date` `trade_date` DATE NOT NULL AFTER `ts_code`,
-                ADD PRIMARY KEY (`ts_code`, `trade_date`)""".format(table_name=table_name)
-            with with_db_session(engine_md) as session:
-                session.execute(create_pk_str)
-            logger.info('%s 表 `ts_code`, `trade_date` 主键设置完成', table_name)
+            data_count = bunch_insert(
+                data_df_all, table_name=table_name, dtype=DTYPE_TUSHARE_STOCK_TOP_LIST,
+                primary_keys=['ts_code', 'trade_date', 'reason'])
+            all_data_count = all_data_count + data_count
+
+        logging.info("更新 %s 结束 %d 条信息被更新", table_name, all_data_count)
 
 
 if __name__ == "__main__":
     # DEBUG = True
     import_tushare_top_list()
-
-
-# 下面代码是生成fields和par的
-# sub=pd.read_excel('tasks/tushare/tushare_fina_reports/fina_indicator.xlsx',header=0)[['code','types']]
-# for a, b in [tuple(x) for x in sub.values]:
-#     print("('%s', %s)," % (a, b))
-#     # print("'%s'," % (a))
