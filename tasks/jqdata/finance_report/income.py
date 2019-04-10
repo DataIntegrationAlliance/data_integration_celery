@@ -130,7 +130,7 @@ def import_jq_stock_income(chain_param=None, ts_code_set=None):
     # 判断表是否已经存在
     if has_table:
         sql_str = f"""select max(pub_date) from {TABLE_NAME}"""
-        date_start = execute_scalar(engine_md, sql_str)
+        date_start = execute_scalar(sql_str, engine_md)
         logger.info('查询 %s 数据使用起始日期 %s', TABLE_NAME, date_2_str(date_start))
     else:
         date_start = BASE_DATE

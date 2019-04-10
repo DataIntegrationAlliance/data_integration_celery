@@ -378,7 +378,7 @@ def import_coin_latest(chain_param=None, ):
         CHANGE COLUMN `id` `id` VARCHAR(60) NOT NULL FIRST ,
         CHANGE COLUMN `last_updated` `last_updated` DATETIME NOT NULL AFTER `id`,
         ADD PRIMARY KEY (`id`, `last_updated`)""".format(table_name=table_name)
-        execute_sql(engine_md, create_pk_str)
+        execute_sql(create_pk_str, engine_md)
 
 
 @app.task

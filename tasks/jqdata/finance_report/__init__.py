@@ -69,7 +69,7 @@ class FinanceReportSaver:
         # 判断表是否已经存在
         if has_table:
             sql_str = f"""select max(pub_date) from {self.table_name}"""
-            date_start = execute_scalar(engine_md, sql_str)
+            date_start = execute_scalar(sql_str, engine_md)
             self.logger.info('查询 %s 数据使用起始日期 %s', self.table_name, date_2_str(date_start))
         else:
             date_start = self.BASE_DATE

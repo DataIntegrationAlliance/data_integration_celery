@@ -422,7 +422,7 @@ def import_stock_fin():
                 CHANGE COLUMN `ts_code` `ts_code` VARCHAR(20) NOT NULL FIRST,
                 CHANGE COLUMN `report_date` `report_date` DATE NOT NULL AFTER `ts_code`,
                 ADD PRIMARY KEY (`ts_code`, `report_date`)""".format(table_name=table_name)
-            execute_sql(engine_md, create_pk_str, commit=True)
+            execute_sql(create_pk_str, engine_md, commit=True)
             logger.info('%s 建立主键 [code, report_date]', table_name)
 
 

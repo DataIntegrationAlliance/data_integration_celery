@@ -31,7 +31,7 @@ def import_jq_trade_date(chain_param=None):
     # 判断表是否已经存在
     has_table = engine_md.has_table(TABLE_NAME)
     if has_table:
-        trade_day_max = execute_scalar(engine_md, f'SELECT max(trade_date) FROM {TABLE_NAME}')
+        trade_day_max = execute_scalar(f'SELECT max(trade_date) FROM {TABLE_NAME}', engine_md)
         trade_date_list = get_trade_days(start_date=(trade_day_max + timedelta(days=1)),
                                          end_date=(date.today() + timedelta(days=366)))
     else:
