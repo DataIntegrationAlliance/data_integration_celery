@@ -96,7 +96,7 @@ def import_tushare_top_inst(chain_param=None):
                 # bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md, DTYPE_TUSHARE_STOCK_TOP_INST)
                 data_count = bunch_insert(
                     data_df_all, table_name=table_name, dtype=DTYPE_TUSHARE_STOCK_TOP_INST,
-                    primary_keys=['ts_code', 'trade_date'])
+                    primary_keys=['ts_code', 'trade_date', 'exalter', 'buy', 'sell'])
                 logging.info("更新 %s 结束 ,截至%s日 %d 条信息被更新", table_name, trade_date, all_data_count)
                 all_data_count += data_count
                 data_df_list, data_count = [], 0
@@ -105,7 +105,7 @@ def import_tushare_top_inst(chain_param=None):
             data_df_all = pd.concat(data_df_list)
             data_count = bunch_insert(
                 data_df_all, table_name=table_name, dtype=DTYPE_TUSHARE_STOCK_TOP_INST,
-                primary_keys=['ts_code', 'trade_date'])
+                primary_keys=['ts_code', 'trade_date', 'exalter', 'buy', 'sell'])
             all_data_count = all_data_count + data_count
             logging.info("更新 %s 结束 ,截至%s日 %d 条信息被更新", table_name, trade_date, all_data_count)
 
