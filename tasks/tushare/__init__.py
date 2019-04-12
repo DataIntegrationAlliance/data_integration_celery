@@ -90,7 +90,7 @@ def run_daily_job_local():
     import_tushare_stock_daily()
     import_tushare_suspend()
     import_tushare_index_basic()
-    # import_tushare_stock_index_daily()
+    import_tushare_stock_index_daily()
     import_tushare_top_list()
     import_tushare_top_inst()
 
