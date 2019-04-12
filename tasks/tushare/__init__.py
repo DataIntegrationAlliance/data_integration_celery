@@ -96,7 +96,7 @@ def run_daily_job_local():
 
 
 def run_once_job_local():
-    import_tushare_stock_info()
+    # import_tushare_stock_info()
     import_trade_date()
 
 
@@ -120,5 +120,5 @@ if __name__ == "__main__":
     logger = logging.getLogger(__name__)
     logger.info("本地执行 tushare 任务")
     run_once_job_local()
-    run_daily_job_local()
     run_weekly_job_local()
+    run_daily_job_local()
