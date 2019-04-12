@@ -9,6 +9,13 @@
 """
 from tasks.config import config
 from jqdatasdk import *
+import logging
 
-auth(config.JQ_USERNAME, config.JQ_PASSWORD)
+
+logger = logging.getLogger(__name__)
+
+try:
+    auth(config.JQ_USERNAME, config.JQ_PASSWORD)
+except:
+    logger.exception("jqdatasdk 授权异常")
 
