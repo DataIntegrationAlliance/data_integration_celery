@@ -7,7 +7,7 @@
 @contact : mmmaaaggg@163.com
 @desc    : 用于检查环境基础组建是否运行正常
 """
-import os, sys, time
+import time
 from kombu import Connection, Queue
 from kombu.mixins import ConsumerMixin
 import logging
@@ -73,6 +73,7 @@ def sender(url):
                         time.sleep(0.5)
                         break
                     time.sleep(1)
+
 
 def test(url):
     from kombu import Exchange, Queue, Connection, Consumer, Producer
