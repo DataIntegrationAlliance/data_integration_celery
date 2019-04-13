@@ -363,8 +363,9 @@ def check_table_4_match_cols():
     # table_name_mysql = 'tushare_stock_daily_md'
     file_name_table_name_pair_list = [
         ('DB_adjfactor.db', 'tushare_stock_daily_adj_factor'),
-        ('DB_CashFlow.db', 'tushare_stock_cashflow'),
         ('DB_Balancesheet.db', 'tushare_stock_balancesheet'),
+        ('DB_BlockTrade.db', 'tushare_block_trade'),
+        ('DB_CashFlow.db', 'tushare_stock_cashflow'),
         # ('DB_Dailybar.db', 'tushare_stock_daily_md'),
         # ('DB_Dailybasic.db', 'tushare_stock_daily_basic'),
         # ('DB_EquityIndex.db', 'tushare_stock_index_daily_md'),
