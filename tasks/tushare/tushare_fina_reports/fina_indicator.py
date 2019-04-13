@@ -289,15 +289,16 @@ def import_tushare_stock_fina_indicator(chain_param=None, ts_code_set=None):
         for num, (ts_code, (date_from, date_to)) in enumerate(code_date_range_dic.items(), start=1):
             logger.debug('%d/%d) %s [%s - %s]', num, data_len, ts_code, date_from, date_to)
             data_df = invoke_fina_indicator(ts_code=ts_code, start_date=datetime_2_str(date_from, STR_FORMAT_DATE_TS),
-                                       end_date=datetime_2_str(date_to, STR_FORMAT_DATE_TS), fields=fields)
+                                            end_date=datetime_2_str(date_to, STR_FORMAT_DATE_TS), fields=fields)
             # logger.info(' %d data of %s between %s and %s', df.shape[0], ts_code, date_from, date_to)
             if data_df is not None and len(data_df) > 0 and data_df['ann_date'].iloc[-1] is not None:
                 while try_2_date(data_df['ann_date'].iloc[-1]) > date_from:
                     last_date_in_df_last = try_2_date(data_df['ann_date'].iloc[-1])
-                    df2 = invoke_fina_indicator(ts_code=ts_code,
-                                                start_date=datetime_2_str(date_from, STR_FORMAT_DATE_TS),
-                                                end_date=datetime_2_str(
-                                                    try_2_date(data_df['ann_date'].iloc[-1]) - timedelta(days=1),STR_FORMAT_DATE_TS), fields=fields)
+                    df2 = invoke_fina_indicator(
+                        ts_code=ts_code, start_date=datetime_2_str(date_from, STR_FORMAT_DATE_TS),
+                        end_date=datetime_2_str(try_2_date(data_df['ann_date'].iloc[-1]) - timedelta(days=1),
+                                                STR_FORMAT_DATE_TS),
+                        fields=fields)
                     if len(df2) > 0 and df2['ann_date'].iloc[-1] is not None:
                         last_date_in_df_cur = try_2_date(df2['ann_date'].iloc[-1])
                         if last_date_in_df_cur < last_date_in_df_last:
@@ -310,7 +311,8 @@ def import_tushare_stock_fina_indicator(chain_param=None, ts_code_set=None):
                 logger.warning('%d/%d) %s has no data during %s %s', num, data_len, ts_code, date_from, date_to)
                 continue
             elif data_df is not None:
-                logger.info('整体进度：%d/%d)， %d 条 %s 财务指标已提取，起止时间 %s 和 %s', num, data_len, data_df.shape[0], ts_code,date_from, date_to)
+                logger.info('%d/%d)， %d 条 %s 财务指标已提取，起止时间 %s 和 %s',
+                            num, data_len, data_df.shape[0], ts_code, date_from, date_to)
             # 把数据攒起来
             if data_df is not None and data_df.shape[0] > 0:
                 data_count += data_df.shape[0]
@@ -318,8 +320,8 @@ def import_tushare_stock_fina_indicator(chain_param=None, ts_code_set=None):
             # 大于阀值有开始插入
             if data_count >= 1000 and len(data_df_list) > 0:
                 data_df_all = pd.concat(data_df_list)
-                bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md,DTYPE_STOCK_FINA_INDICATOR)
-                logger.info('%d 条财务指标将数据插入 %s 表', data_count,table_name)
+                bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md, DTYPE_STOCK_FINA_INDICATOR)
+                logger.info('%d 条财务指标将数据插入 %s 表', data_count, table_name)
                 all_data_count += data_count
                 data_df_list, data_count = [], 0
             # 仅调试使用
@@ -336,26 +338,9 @@ def import_tushare_stock_fina_indicator(chain_param=None, ts_code_set=None):
             )
             all_data_count = all_data_count + data_count
             logging.info("更新 %s 结束 %d 条信息被更新", table_name, all_data_count)
-            # if not has_table and engine_md.has_table(table_name):
-            #     alter_table_2_myisam(engine_md, [table_name])
-            #     build_primary_key([table_name])
 
 
 if __name__ == "__main__":
     # DEBUG = True
-    # import_tushare_stock_info(refresh=False)
     # 更新每日股票数据
     import_tushare_stock_fina_indicator(chain_param=None, ts_code_set=None)
-
-# sql_str = """SELECT * FROM old_tushare_stock_balancesheet """
-# df=pd.read_sql(sql_str,engine_md)
-# #将数据插入新表
-# data_count = bunch_insert_on_duplicate_update(df, table_name, engine_md, dtype)
-# logging.info("更新 %s 结束 %d 条信息被更新", table_name, data_count)
-
-
-# #  下面代码是生成fields和par的
-# sub=pd.read_excel('tasks/tushare/tushare_fina_reports/fina_indicator.xlsx',header=0)[['code','types']]
-# for a, b in [tuple(x) for x in sub.values]:
-#     # print("('%s', %s)," % (a, b))
-#     print("'%s'" % (a),end=',')
