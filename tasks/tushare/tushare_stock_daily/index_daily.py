@@ -6,16 +6,13 @@ Created on 2018/8/14
 from tasks.tushare.ts_pro_api import pro
 import pandas as pd
 import logging
-from tasks.backend.orm import build_primary_key
 from datetime import date, datetime, timedelta
 from ibats_utils.mess import try_2_date, STR_FORMAT_DATE, datetime_2_str, split_chunk, try_n_times
 from tasks import app
 from sqlalchemy.types import String, Date, Integer
 from sqlalchemy.dialects.mysql import DOUBLE
-from tasks.backend import engine_md
-from tasks.merge.code_mapping import update_from_info_table
-from ibats_utils.db import with_db_session, add_col_2_table, alter_table_2_myisam, \
-    bunch_insert_on_duplicate_update
+from tasks.backend import engine_md, bunch_insert
+from ibats_utils.db import with_db_session, bunch_insert_on_duplicate_update
 
 DEBUG = False
 logger = logging.getLogger()
@@ -109,7 +106,7 @@ def import_tushare_stock_index_daily(chain_param=None, ts_code_set=None):
         for num, (ts_code, (date_from, date_to)) in enumerate(code_date_range_dic.items(), start=1):
             logger.debug('%d/%d) %s [%s - %s]', num, data_len, ts_code, date_from, date_to)
             data_df = invoke_index_daily(ts_code=ts_code, start_date=datetime_2_str(date_from, STR_FORMAT_DATE_TS),
-                                    end_date=datetime_2_str(date_to, STR_FORMAT_DATE_TS))
+                                         end_date=datetime_2_str(date_to, STR_FORMAT_DATE_TS))
             # data_df = df
             if len(data_df) > 0:
                 while try_2_date(data_df['trade_date'].iloc[-1]) > date_from:
@@ -126,9 +123,11 @@ def import_tushare_stock_index_daily(chain_param=None, ts_code_set=None):
                         elif last_date_in_df_cur == last_date_in_df_last:
                             break
                         if data_df is None:
-                            logger.warning('%d/%d) %s has no data during %s %s', num, data_len, ts_code, date_from,date_to)
+                            logger.warning('%d/%d) %s has no data during %s %s', num, data_len, ts_code, date_from,
+                                           date_to)
                             continue
-                        logger.info('%d/%d) %d data of %s between %s and %s', num, data_len, data_df.shape[0], ts_code,date_from, date_to)
+                        logger.info('%d/%d) %d data of %s between %s and %s', num, data_len, data_df.shape[0], ts_code,
+                                    date_from, date_to)
                     else:
                         break
 
@@ -144,41 +143,21 @@ def import_tushare_stock_index_daily(chain_param=None, ts_code_set=None):
             # 大于阀值有开始插入
             if data_count >= 500:
                 data_df_all = pd.concat(data_df_list)
-                bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md,
-                                                 DTYPE_TUSHARE_STOCK_INDEX_DAILY_MD)
+                bunch_insert(data_df_all, table_name=table_name, dtype=DTYPE_TUSHARE_STOCK_INDEX_DAILY_MD,
+                             primary_keys=["ts_code", "trade_date"])
                 all_data_count += data_count
                 data_df_list, data_count = [], 0
-
-                # # 数据插入数据库
-                # data_df_all = data_df
-                # data_count = bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md,
-                #                                               DTYPE_TUSHARE_STOCK_INDEX_DAILY_MD)
-                # logging.info("更新 %s 结束 %d 条信息被更新", table_name, data_count)
-                # data_df = []
 
     finally:
         # 导入数据库
         if len(data_df_list) > 0:
             data_df_all = pd.concat(data_df_list)
-            data_count = bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md,
-                                                          DTYPE_TUSHARE_STOCK_INDEX_DAILY_MD)
-            logging.info("更新 %s 结束 %d 条信息被更新", table_name, data_count)
-            if not has_table and engine_md.has_table(table_name):
-                alter_table_2_myisam(engine_md, [table_name])
-                build_primary_key([table_name])
+            data_count = bunch_insert(data_df_all, table_name=table_name, dtype=DTYPE_TUSHARE_STOCK_INDEX_DAILY_MD,
+                                      primary_keys=["ts_code", "trade_date"])
+            all_data_count += data_count
+            logging.info("更新 %s 结束 %d 条信息被更新", table_name, all_data_count)
 
 
 if __name__ == "__main__":
     # DEBUG = True
-    # import_tushare_stock_info(refresh=False)
-    # 更新每日股票数据
-    # SQL = """SELECT ts_code FROM tushare_stock_info where ts_code>'603033.SH'"""
-    # with with_db_session(engine_md) as session:
-    #     # 获取每只股票需要获取日线数据的日期区间
-    #     table = session.execute(SQL)
-    #     ts_code_set = list([row[0] for row in table.fetchall()])
     import_tushare_stock_index_daily(ts_code_set=None)
-
-    # import_stock_daily_wch()
-    # wind_code_set = None
-    # add_new_col_data('ebitdaps', '',wind_code_set=wind_code_set)
