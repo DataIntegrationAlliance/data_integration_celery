@@ -134,7 +134,7 @@ def import_tushare_stock_fina_audit(chain_param=None, ts_code_set=None):
                 data_df_all = data_df
                 data_count = bunch_insert_on_duplicate_update(
                     data_df_all, table_name, engine_md, dtype,
-                    myisam_if_create_table=True, primary_keys=['ts_code', 'ann_date'], schema=config.DB_SCHEMA_MD)
+                    myisam_if_create_table=True, primary_keys=['ts_code', 'ann_date', 'end_date'], schema=config.DB_SCHEMA_MD)
                 logging.info("成功更新 %s 结束 %d 条信息被更新", table_name, data_count)
 
             # 仅调试使用
