@@ -111,6 +111,7 @@ venv.bak/
 *.csv
 *.xls
 *.xlsx
+/sqlite_db/*.db
 
 # Celery files
 celerybeat.pid
