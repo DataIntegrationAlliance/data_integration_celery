@@ -74,7 +74,7 @@ except AttributeError:
     logger.exception("加载 tushare token 设置失败，该异常不影响其他功能正常使用")
 
 try:
-    from tasks.tushare import tushare_daily_task, tushare_weekly_task, tushare_import_once
+    from tasks.tushare.app_tasks import tushare_daily_task, tushare_weekly_task, tushare_import_once
 except ImportError:
     logger.exception("加载 tasks.tushare 失败，该异常不影响其他功能正常使用")
     tushare_daily_task, tushare_weekly_task, tushare_import_once = None, None, None
