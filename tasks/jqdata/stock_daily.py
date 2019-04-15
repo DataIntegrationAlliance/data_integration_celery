@@ -16,7 +16,7 @@ from sqlalchemy.dialects.mysql import DOUBLE
 from tasks.backend import engine_md, bunch_insert, execute_sql_commit
 from ibats_utils.db import with_db_session, bunch_insert_on_duplicate_update
 from tasks.jqdata.stock_info import TABLE_NAME as TABLE_NAME_INFO
-from jqdatasdk import get_price
+from tasks.jqdata import get_price
 
 DEBUG = False
 logger = logging.getLogger()

@@ -7,6 +7,7 @@
 @contact : mmmaaaggg@163.com
 @desc    : 
 """
+from tasks.jqdata.stock_daily import import_jq_stock_daily
 from tasks.jqdata.stock_info import import_jq_stock_info
 from tasks.jqdata.finance_report.balance import import_jq_stock_balance
 from tasks.jqdata.finance_report.cashflow import import_jq_stock_cashflow
@@ -26,13 +27,21 @@ jq_finance_task = (
     import_jq_stock_balance.s() |
     check_all.s()
 )
+jq_daily_task = (
+    import_jq_stock_daily.s()
+)
 
 
-def run_daily_job_local():
+def run_finance_job_local():
     import_jq_stock_income()
     import_jq_stock_cashflow()
     import_jq_stock_balance()
+    import_jq_stock_daily()
     check_all()
+
+
+def run_daily_job_local():
+    import_jq_stock_daily()
 
 
 def run_once_job_local():
@@ -42,3 +51,4 @@ def run_once_job_local():
 if __name__ == '__main__':
     run_once_job_local()
     run_daily_job_local()
+    run_finance_job_local()
