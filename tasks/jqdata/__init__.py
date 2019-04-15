@@ -38,15 +38,16 @@ def check_before_run(check_func):
 
 def auth_once():
     global HAS_AUTHORIZED, AUTHORIZED_SUCC
-    if HAS_AUTHORIZED:
+    if not HAS_AUTHORIZED:
         try:
             jqdatasdk.auth(config.JQ_USERNAME, config.JQ_PASSWORD)
             AUTHORIZED_SUCC = True
             logger.info('jqdatasdk.auth 授权成功')
         except:
+            AUTHORIZED_SUCC = False
             logger.exception("jqdatasdk 授权异常")
-
-        HAS_AUTHORIZED = True
+        finally:
+            HAS_AUTHORIZED = True
 
     return AUTHORIZED_SUCC
 
