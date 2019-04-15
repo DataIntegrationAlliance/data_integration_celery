@@ -204,7 +204,8 @@ def import_tushare_stock_income(chain_param=None, ts_code_set=None):
                 data_df_all = pd.concat(data_df_list)
                 bunch_insert_on_duplicate_update(
                     data_df_all, table_name, engine_md, DTYPE_TUSHARE_STOCK_INCOME,
-                    myisam_if_create_table=True, primary_keys=['ts_code', 'ann_date'], schema=config.DB_SCHEMA_MD)
+                    myisam_if_create_table=True,
+                    primary_keys=['ts_code', 'ann_date', 'end_date'], schema=config.DB_SCHEMA_MD)
                 logger.info('%d 条财务指标将数据插入 %s 表', data_count, table_name)
                 all_data_count += data_count
                 data_df_list, data_count = [], 0
@@ -218,7 +219,8 @@ def import_tushare_stock_income(chain_param=None, ts_code_set=None):
             data_df_all = pd.concat(data_df_list)
             data_count = bunch_insert_on_duplicate_update(
                 data_df_all, table_name, engine_md, DTYPE_TUSHARE_STOCK_INCOME,
-                myisam_if_create_table=True, primary_keys=['ts_code', 'ann_date'], schema=config.DB_SCHEMA_MD)
+                myisam_if_create_table=True,
+                primary_keys=['ts_code', 'ann_date', 'end_date'], schema=config.DB_SCHEMA_MD)
             all_data_count = all_data_count + data_count
             logging.info("更新 %s 结束 %d 条信息被更新", table_name, all_data_count)
             # if not has_table and engine_md.has_table(table_name):
