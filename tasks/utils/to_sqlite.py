@@ -8,7 +8,7 @@
 @desc    : 用于将 mysql 数据库表转换成 sqlite 表
 """
 from collections import defaultdict
-
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from ibats_utils.db import with_db_session
 from ibats_utils.mess import get_folder_path, split_chunk
 import os
@@ -394,16 +394,64 @@ def transfer_mysql_to_sqlite():
             ],
             "batch_size": 200,
         },
+        {
+            "doit": True,
+            "file_name": 'DB_Income.db',
+            "table_name": 'tushare_stock_income',
+            "field_pair_list": [
+                ('ann_date', 'ann_date'),
+                ('f_ann_date', 'f_ann_date'),
+                ('end_date', 'end_date'),
+                ('report_type', 'report_type'),
+                ('basic_eps', 'basic_eps'),
+                ('diluted_eps', 'diluted_eps'),
+                ('total_revenue', 'total_revenue'),
+                ('revenue', 'revenue'),
+                ('int_income', 'int_income'),
+                ('n_oth_income', 'n_oth_income'),
+                ('n_oth_b_income', 'n_oth_b_income'),
+                ('fv_value_chg_gain', 'fv_value_chg_gain'),
+                ('invest_income', 'invest_income'),
+                ('ass_invest_income', 'ass_invest_income'),
+                ('total_cogs', 'total_cogs'),
+                ('oper_cost', 'oper_cost'),
+                ('int_exp', 'int_exp'),
+                ('biz_tax_surchg', 'biz_tax_surchg'),
+                ('assets_impair_loss', 'assets_impair_loss'),
+                ('operate_profit', 'operate_profit'),
+                ('nca_disploss', 'nca_disploss'),
+                ('total_profit', 'total_profit'),
+                ('income_tax', 'income_tax'),
+                ('n_income', 'n_income'),
+                ('n_income_attr_p', 'n_income_attr_p'),
+                ('minority_gain', 'minority_gain'),
+                ('t_compr_income', 't_compr_income'),
+                ('compr_inc_attr_p', 'compr_inc_attr_p'),
+                ('compr_inc_attr_m_s', 'compr_inc_attr_m_s'),
+                ('ebit', 'ebit'),
+                ('ebitda', 'ebitda'),
+                ('undist_profit', 'undist_profit'),
+                ('distable_profit', 'distable_profit'),
+            ],
+            "batch_size": 200,
+        },
     ]
     # batch_size = 200
     # tushare_to_sqlite_batch(file_name, table_name, field_pair_list, batch_size=batch_size)
     # tushare_to_sqlite_pre_ts_code(file_name, table_name, field_pair_list)
     # tushare_to_sqlite_tot_select(file_name, table_name, field_pair_list)
     transfer_param_list_len = len(transfer_param_list)
-    for num, dic in enumerate(transfer_param_list, start=1):
-        if dic['doit']:
-            logger.info("%d/%d) 转化 %s -> %s", num, transfer_param_list_len, dic["table_name"], dic["file_name"])
-            tushare_to_sqlite_batch(**dic)
+    with ProcessPoolExecutor() as executor:
+        futures = [executor.submit(tushare_to_sqlite_batch, **dic) for dic in transfer_param_list if dic['doit']]
+        for num, future in enumerate(as_completed(futures)):
+            try:
+                logger.info('tushare_to_sqlite_batch %s 完成', transfer_param_list[num])
+            except:
+                logger.exception('tushare_to_sqlite_batch %s 执行异常', transfer_param_list[num])
+    # for num, dic in enumerate(transfer_param_list, start=1):
+    #     if dic['doit']:
+    #         logger.info("%d/%d) 转化 %s -> %s", num, transfer_param_list_len, dic["table_name"], dic["file_name"])
+    #         tushare_to_sqlite_batch(**dic)
 
 
 def get_sqlite_conn(file_name):
@@ -565,7 +613,7 @@ if __name__ == "__main__":
     # 对比王淳 sqlite 与 mysql 数据库字段差距并合成相应的参数供 transfer_mysql_to_sqlite 使用
     # check_table_4_match_cols()
     # mysql 转化为 sqlite
-    # transfer_mysql_to_sqlite()
+    transfer_mysql_to_sqlite()
 
     # 重建立主键，删除表中重复数据
     # from ibats_utils.db import drop_duplicate_data_from_table
