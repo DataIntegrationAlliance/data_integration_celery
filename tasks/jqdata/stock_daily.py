@@ -187,7 +187,7 @@ def import_jq_stock_daily(chain_param=None, code_set=None):
                     # 根据交易日数据取交集，避免不用的请求耽误时间
                     date_from = get_first(trade_date_list, lambda x: x >= date_from_tmp)
                     date_to = get_last(trade_date_list, lambda x: x <= date_to_tmp)
-                    if date_from is None or date_to is None or date_from > date_to:
+                    if date_from is None or date_to is None or date_from >= date_to:
                         logger.debug('%d/%d) %s [%s - %s] 跳过', num, data_len, key_code, date_from, date_to)
                         break
                     logger.debug('%d/%d) %s [%s - %s] %s',
