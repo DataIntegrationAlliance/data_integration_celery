@@ -174,14 +174,14 @@ def import_tushare_stock_income(chain_param=None, ts_code_set=None):
                     df2 = invoke_income(ts_code=ts_code, start_date=datetime_2_str(date_from, STR_FORMAT_DATE_TS),
                                         end_date=datetime_2_str(try_2_date(df['ann_date'].iloc[-1]) - timedelta(days=1),
                                                                 STR_FORMAT_DATE_TS))
-                    if len(df2) > 0:
+                    if df2 is not None and df2.shape[0] > 0:
                         last_date_in_df_cur = try_2_date(df2['ann_date'].iloc[-1])
                         if last_date_in_df_cur < last_date_in_df_last:
                             data_df = pd.concat([data_df, df2])
                             df = df2
                         elif last_date_in_df_cur == last_date_in_df_last:
                             break
-                    elif len(df2) <= 0:
+                    elif df2 is None or df2.shape[0] <= 0:
                         break
             if data_df is None:
                 logger.warning('%d/%d) %s has no data during %s %s', num, data_len, ts_code, date_from, date_to)
