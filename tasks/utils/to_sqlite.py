@@ -491,6 +491,7 @@ def check_table_4_match_cols():
         # ('DB_Dailybasic.db', 'tushare_stock_daily_basic'),
         # ('DB_EquityIndex.db', 'tushare_stock_index_daily_md'),
         ('DB_FinaIndicator.db', 'tushare_stock_fin_indicator'),
+        ('DB_Income.db', 'tushare_stock_income'),
     ]
     for file_name_sqlite, table_name_mysql in file_name_table_name_pair_list:
         logger.debug("mysql %s 与 sqlite %s 开始匹配", table_name_mysql, file_name_sqlite)
