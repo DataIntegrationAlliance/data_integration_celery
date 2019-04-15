@@ -108,7 +108,7 @@ def import_tushare_stock_index_daily(chain_param=None, ts_code_set=None):
             data_df = invoke_index_daily(ts_code=ts_code, start_date=datetime_2_str(date_from, STR_FORMAT_DATE_TS),
                                          end_date=datetime_2_str(date_to, STR_FORMAT_DATE_TS))
             # data_df = df
-            if len(data_df) > 0:
+            if data_df is not None and data_df.shape[0] > 0:
                 while try_2_date(data_df['trade_date'].iloc[-1]) > date_from:
                     last_date_in_df_last, last_date_in_df_cur = try_2_date(data_df['trade_date'].iloc[-1]), None
                     df2 = invoke_index_daily(ts_code=ts_code, start_date=datetime_2_str(date_from, STR_FORMAT_DATE_TS),
@@ -131,8 +131,7 @@ def import_tushare_stock_index_daily(chain_param=None, ts_code_set=None):
                     else:
                         break
 
-            # 把数据攒起来
-            if data_df is not None and data_df.shape[0] > 0:
+                # 把数据攒起来
                 data_count += data_df.shape[0]
                 data_df_list.append(data_df)
 
