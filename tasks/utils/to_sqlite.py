@@ -58,7 +58,7 @@ def tushare_to_sqlite_pre_ts_code(file_name, table_name, field_pair_list):
 
 
 @decorator_timer
-def tushare_to_sqlite_batch(file_name, table_name, field_pair_list, batch_size=500, **kwargs):
+def tushare_to_sqlite_batch(file_name, table_name, field_pair_list, batch_size=500, sort_by='trade_date', **kwargs):
     """
     将Mysql数据导入到sqlite，全量读取然后导出
     速度适中，可更加 batch_size 调剂对内存的需求
@@ -66,7 +66,8 @@ def tushare_to_sqlite_batch(file_name, table_name, field_pair_list, batch_size=5
     :param table_name:
     :param field_pair_list:
     :param batch_size:
-    :param **kwargs:
+    :param sort_by:
+    :param kwargs:
     :return:
     """
     logger.info('mysql %s 导入到 sqlite %s 开始', table_name, file_name)
@@ -98,7 +99,7 @@ def tushare_to_sqlite_batch(file_name, table_name, field_pair_list, batch_size=5
             logger.debug('%4d/%d) mysql %s -> sqlite %s %s %d 条记录',
                          num, code_count, table_name, file_name, sqlite_table_name, df_len)
             df.drop('ts_code', axis=1, inplace=True)
-            df.to_sql(sqlite_table_name, conn, index=False, if_exists='replace')
+            df.sort_values(sort_by).to_sql(sqlite_table_name, conn, index=False, if_exists='replace')
 
     logger.info('mysql %s 导入到 sqlite %s 结束，导出数据 %d 条', table_name, file_name, data_count)
 
@@ -153,6 +154,7 @@ def transfer_mysql_to_sqlite():
                 ('adj_factor', 'adj_factor'),
             ],
             "batch_size": 100,
+            "sort_by": "trade_date",
         },
         {
             "doit": True,
@@ -226,6 +228,7 @@ def transfer_mysql_to_sqlite():
                 ('minority_int', 'minority_int'),
             ],
             "batch_size": 100,
+            "sort_by": "ann_date",
         },
         {
             "doit": True,
@@ -240,6 +243,7 @@ def transfer_mysql_to_sqlite():
                 ('seller', 'Seller'),
             ],
             "batch_size": 100,
+            "sort_by": "trade_date",
         },
         {
             "doit": True,
@@ -255,6 +259,7 @@ def transfer_mysql_to_sqlite():
                 ('net_profit', 'net_profit'),
             ],
             "batch_size": 100,
+            "sort_by": "ann_date",
         },
         {
             "doit": True,
@@ -270,6 +275,7 @@ def transfer_mysql_to_sqlite():
                 ('amount', 'Amount'),
             ],
             "batch_size": 100,
+            "sort_by": "trade_date",
         },
         {
             "doit": True,
@@ -288,6 +294,7 @@ def transfer_mysql_to_sqlite():
                 ('circ_mv', 'Circ_MV'),
             ],
             "batch_size": 100,
+            "sort_by": "trade_date",
         },
         {
             "doit": True,
@@ -395,6 +402,7 @@ def transfer_mysql_to_sqlite():
                 ('equity_yoy', 'equity_yoy'),
             ],
             "batch_size": 100,
+            "sort_by": "ann_date",
         },
         {
             "doit": True,
@@ -436,6 +444,7 @@ def transfer_mysql_to_sqlite():
                 ('distable_profit', 'distable_profit'),
             ],
             "batch_size": 100,
+            "sort_by": "ann_date",
         },
     ]
     # batch_size = 200
@@ -533,17 +542,17 @@ def check_table_4_match_cols():
     # file_name_sqlite = 'DB_Dailybar.db'
     # table_name_mysql = 'tushare_stock_daily_md'
     file_name_table_name_pair_list = [
-        # ('DB_adjfactor.db', 'tushare_stock_daily_adj_factor'),
-        # ('DB_Balancesheet.db', 'tushare_stock_balancesheet'),
-        # ('DB_BlockTrade.db', 'tushare_block_trade'),
-        # ('DB_CashFlow.db', 'tushare_stock_cashflow'),
-        # ('DB_Dailybar.db', 'tushare_stock_daily_md'),
-        # ('DB_Dailybasic.db', 'tushare_stock_daily_basic'),
-        # ('DB_EquityIndex.db', 'tushare_stock_index_daily_md'),
-        ('DB_FinaIndicator.db', 'tushare_stock_fin_indicator'),
-        ('DB_Income.db', 'tushare_stock_income'),
+        # ('DB_adjfactor.db', 'tushare_stock_daily_adj_factor', 'trade_date'),
+        # ('DB_Balancesheet.db', 'tushare_stock_balancesheet', 'ann_date'),
+        # ('DB_BlockTrade.db', 'tushare_block_trade', 'trade_date'),
+        # ('DB_CashFlow.db', 'tushare_stock_cashflow', 'ann_date'),
+        # ('DB_Dailybar.db', 'tushare_stock_daily_md', 'trade_date'),
+        # ('DB_Dailybasic.db', 'tushare_stock_daily_basic', 'trade_date'),
+        # ('DB_EquityIndex.db', 'tushare_stock_index_daily_md', 'trade_date'),
+        ('DB_FinaIndicator.db', 'tushare_stock_fin_indicator', 'ann_date'),
+        ('DB_Income.db', 'tushare_stock_income', 'ann_date'),
     ]
-    for file_name_sqlite, table_name_mysql in file_name_table_name_pair_list:
+    for file_name_sqlite, table_name_mysql, sort_by in file_name_table_name_pair_list:
         logger.debug("mysql %s 与 sqlite %s 开始匹配", table_name_mysql, file_name_sqlite)
         match_list, mis_match_mysql, mis_match_sqlite = check_match_column(
             table_name_mysql=table_name_mysql, file_name_sqlite=file_name_sqlite)
@@ -585,6 +594,7 @@ def check_table_4_match_cols():
         #        ('circ_mv', 'Circ_MV'),
         #    ],
         #    "batch_size": 100,
+        #    "sort_by": "ann_date",
         # },
 
         logger_str = f"""合成参数代码：
@@ -594,6 +604,7 @@ def check_table_4_match_cols():
    "table_name": '{table_name_mysql}',
    "field_pair_list": {field_pair_list_str},
    "batch_size": 100,
+   "sort_by": "{sort_by}",
 }},
         """
         logger.debug(logger_str)
