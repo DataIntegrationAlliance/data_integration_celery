@@ -10,7 +10,7 @@
 from collections import defaultdict
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from ibats_utils.db import with_db_session
-from ibats_utils.mess import get_folder_path, split_chunk
+from ibats_utils.mess import get_folder_path, split_chunk, decorator_timer
 import os
 import sqlite3
 import pandas as pd
@@ -57,6 +57,7 @@ def tushare_to_sqlite_pre_ts_code(file_name, table_name, field_pair_list):
     logger.info('mysql %s 导入到 sqlite %s 结束，导出数据 %d 条', table_name, file_name, data_count)
 
 
+@decorator_timer
 def tushare_to_sqlite_batch(file_name, table_name, field_pair_list, batch_size=500, **kwargs):
     """
     将Mysql数据导入到sqlite，全量读取然后导出
@@ -136,6 +137,7 @@ def tushare_to_sqlite_tot_select(file_name, table_name, field_pair_list):
     logger.info('mysql %s 导入到 sqlite %s 结束，导出数据 %d 条', table_name, file_name, data_count)
 
 
+@decorator_timer
 def transfer_mysql_to_sqlite():
     """
     mysql 转化为 sqlite
@@ -150,7 +152,7 @@ def transfer_mysql_to_sqlite():
                 ('trade_date', 'Date'),
                 ('adj_factor', 'adj_factor'),
             ],
-            "batch_size": 200,
+            "batch_size": 100,
         },
         {
             "doit": True,
@@ -223,11 +225,11 @@ def transfer_mysql_to_sqlite():
                 ('hfs_sales', 'hfs_sales'),
                 ('minority_int', 'minority_int'),
             ],
-            "batch_size": 200,
+            "batch_size": 100,
         },
         {
             "doit": True,
-            "file_name": 'DB_BlockTrade.db',
+            "file_name": 'eDB_BlockTrade.db',
             "table_name": 'tushare_block_trade',
             "field_pair_list": [
                 ('trade_date', 'Date'),
@@ -237,7 +239,7 @@ def transfer_mysql_to_sqlite():
                 ('buyer', 'Buyer'),
                 ('seller', 'Seller'),
             ],
-            "batch_size": 200,
+            "batch_size": 100,
         },
         {
             "doit": True,
@@ -252,7 +254,7 @@ def transfer_mysql_to_sqlite():
                 ('n_cashflow_act', 'n_cashflow_act'),
                 ('net_profit', 'net_profit'),
             ],
-            "batch_size": 200,
+            "batch_size": 100,
         },
         {
             "doit": True,
@@ -267,7 +269,7 @@ def transfer_mysql_to_sqlite():
                 ('vol', 'Volume'),
                 ('amount', 'Amount'),
             ],
-            "batch_size": 200,
+            "batch_size": 100,
         },
         {
             "doit": True,
@@ -285,11 +287,11 @@ def transfer_mysql_to_sqlite():
                 ('total_mv', 'Total_MV'),
                 ('circ_mv', 'Circ_MV'),
             ],
-            "batch_size": 200,
+            "batch_size": 100,
         },
         {
             "doit": True,
-            "file_name": 'DB_FinaIndicator.db',
+            "file_name": 'eDB_FinaIndicator.db',
             "table_name": 'tushare_stock_fin_indicator',
             "field_pair_list": [
                 ('ann_date', 'ann_date'),
@@ -392,11 +394,11 @@ def transfer_mysql_to_sqlite():
                 ('q_op_qoq', 'q_op_qoq'),
                 ('equity_yoy', 'equity_yoy'),
             ],
-            "batch_size": 200,
+            "batch_size": 100,
         },
         {
             "doit": True,
-            "file_name": 'DB_Income.db',
+            "file_name": 'eDB_Income.db',
             "table_name": 'tushare_stock_income',
             "field_pair_list": [
                 ('ann_date', 'ann_date'),
@@ -433,7 +435,7 @@ def transfer_mysql_to_sqlite():
                 ('undist_profit', 'undist_profit'),
                 ('distable_profit', 'distable_profit'),
             ],
-            "batch_size": 200,
+            "batch_size": 100,
         },
     ]
     # batch_size = 200
@@ -441,7 +443,7 @@ def transfer_mysql_to_sqlite():
     # tushare_to_sqlite_pre_ts_code(file_name, table_name, field_pair_list)
     # tushare_to_sqlite_tot_select(file_name, table_name, field_pair_list)
     transfer_param_list_len = len(transfer_param_list)
-    with ProcessPoolExecutor() as executor:
+    with ProcessPoolExecutor(4) as executor:
         futures = [executor.submit(tushare_to_sqlite_batch, **dic) for dic in transfer_param_list if dic['doit']]
         for num, future in enumerate(as_completed(futures)):
             try:
@@ -582,7 +584,7 @@ def check_table_4_match_cols():
         #        ('total_mv', 'Total_MV'),
         #        ('circ_mv', 'Circ_MV'),
         #    ],
-        #    "batch_size": 200,
+        #    "batch_size": 100,
         # },
 
         logger_str = f"""合成参数代码：
@@ -591,7 +593,7 @@ def check_table_4_match_cols():
    "file_name": '{file_name_sqlite}',
    "table_name": '{table_name_mysql}',
    "field_pair_list": {field_pair_list_str},
-   "batch_size": 200,
+   "batch_size": 100,
 }},
         """
         logger.debug(logger_str)
@@ -608,13 +610,23 @@ def check_table_4_match_cols():
             logger.debug("  mis_match_sqlite\n%s", mis_match_sqlite)
 
 
+@decorator_timer
+def drop_duplicate():
+    """
+    重建立主键，删除表中重复数据
+    :return:
+    """
+    from ibats_utils.db import drop_duplicate_data_from_table
+    drop_duplicate_data_from_table('tushare_stock_fin_mainbz', engine_md, ['ts_code', 'end_date', 'bz_item'])
+
+
 if __name__ == "__main__":
     pass
+    # logging.getLogger(__name__).setLevel(logging.INFO)
     # 对比王淳 sqlite 与 mysql 数据库字段差距并合成相应的参数供 transfer_mysql_to_sqlite 使用
     # check_table_4_match_cols()
     # mysql 转化为 sqlite
-    transfer_mysql_to_sqlite()
+    # transfer_mysql_to_sqlite()
 
     # 重建立主键，删除表中重复数据
-    # from ibats_utils.db import drop_duplicate_data_from_table
-    # drop_duplicate_data_from_table('tushare_stock_income', engine_md, ['ts_code', 'ann_date', 'end_date'])
+    drop_duplicate()
