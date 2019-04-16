@@ -75,7 +75,7 @@ DTYPE = {
         "deffered_tax_liability_increase": DOUBLE,
         "inventory_decrease": DOUBLE,
         "operate_receivables_decrease": DOUBLE,
-        "operate_operate_payable_increase": DOUBLE,
+        "operate_payable_increase": DOUBLE,
         "others": DOUBLE,
         "net_operate_cash_flow_indirect": DOUBLE,
         "debt_to_capital": DOUBLE,
