@@ -8,6 +8,7 @@
 @desc    : 
 """
 # from tasks.tushare.coin import import_coinbar, import_coin_info, import_coin_pair_info
+from ibats_utils.mess import decorator_timer
 from tasks.tushare.trade_cal import import_trade_date
 from tasks.tushare.tushare_stock_daily.stock import import_tushare_stock_daily, import_tushare_stock_info
 from tasks.tushare.tushare_stock_daily.adj_factor import import_tushare_adj_factor
@@ -39,7 +40,6 @@ from tasks.tushare.tushare_stock_daily.index_basic import import_tushare_index_b
 from tasks.tushare.tushare_stock_daily.block_trade import import_tushare_block_trade
 import logging
 
-
 logger = logging.getLogger(__name__)
 
 # 日级别加载的程序
@@ -58,7 +58,7 @@ tushare_daily_task = (
         import_tushare_top_list.s() |
         import_tushare_top_inst.s() |
         import_tushare_block_trade.s()
-        # import_coinbar.s()
+    # import_coinbar.s()
 )
 # 周级别加载的程序
 tushare_weekly_task = (
@@ -74,8 +74,8 @@ tushare_weekly_task = (
         import_tushare_stock_forecast.s() |
         import_tushare_stock_express.s() |
         import_tushare_dividend.s()
-        # import_coin_info.s() |
-        # import_coin_pair_info.s()
+    # import_coin_info.s() |
+    # import_coin_pair_info.s()
 )
 # 一次性加载的程序
 tushare_import_once = (
@@ -121,6 +121,7 @@ def run_daily_job_local():
     import_tushare_block_trade()
 
 
+@decorator_timer
 def run_job_on_pool():
     """
     采用线程池方式并行执行任务
