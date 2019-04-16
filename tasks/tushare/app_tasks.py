@@ -40,6 +40,8 @@ from tasks.tushare.tushare_stock_daily.index_basic import import_tushare_index_b
 from tasks.tushare.tushare_stock_daily.block_trade import import_tushare_block_trade
 import logging
 
+from tasks.utils.to_sqlite import transfer_mysql_to_sqlite
+
 logger = logging.getLogger(__name__)
 
 # 日级别加载的程序
@@ -165,13 +167,17 @@ def run_job_on_pool():
         for num, result in enumerate(as_completed(tasks_result)):
             try:
                 result.result()
+                logger.info("%s 执行完成", tasks[num].__name__)
             except:
                 logger.exception("%s 执行异常", tasks[num].__name__)
 
 
 if __name__ == "__main__":
     logger.info("本地执行 tushare 任务")
+    mysql_to_sqlite = True
     # run_once_job_local()
     # run_weekly_job_local()
     # run_daily_job_local()
     run_job_on_pool()
+    if mysql_to_sqlite:
+        transfer_mysql_to_sqlite()
