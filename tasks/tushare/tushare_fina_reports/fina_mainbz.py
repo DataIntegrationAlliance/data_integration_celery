@@ -168,7 +168,8 @@ def import_tushare_stock_fina_mainbz(chain_param=None, ts_code_set=None):
                     data_df_all = pd.concat(data_df_list)
                     bunch_insert_on_duplicate_update(
                         data_df_all, table_name, engine_md, DTYPE_TUSHARE_STOCK_FINA_MAINBZ,
-                        myisam_if_create_table=True, primary_keys=['ts_code', 'ann_date'], schema=config.DB_SCHEMA_MD)
+                        myisam_if_create_table=True,
+                        primary_keys=['ts_code', 'end_date', 'bz_item'], schema=config.DB_SCHEMA_MD)
                     all_data_count += data_count
                     data_df_list, data_count = [], 0
             # 仅调试使用
@@ -181,7 +182,8 @@ def import_tushare_stock_fina_mainbz(chain_param=None, ts_code_set=None):
             data_df_all = pd.concat(data_df_list)
             data_count = bunch_insert_on_duplicate_update(
                 data_df_all, table_name, engine_md, DTYPE_TUSHARE_STOCK_FINA_MAINBZ,
-                myisam_if_create_table=True, primary_keys=['ts_code', 'ann_date'], schema=config.DB_SCHEMA_MD)
+                myisam_if_create_table=True,
+                primary_keys=['ts_code', 'end_date', 'bz_item'], schema=config.DB_SCHEMA_MD)
             all_data_count = all_data_count + data_count
             if not has_table and engine_md.has_table(table_name):
                 alter_table_2_myisam(engine_md, [table_name])
