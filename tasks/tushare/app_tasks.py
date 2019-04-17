@@ -173,6 +173,24 @@ def run_job_on_pool():
                 logger.exception("%s 执行异常", tasks[num].__name__)
 
 
+def tushare_tasks_local(first_time=False):
+    if first_time:
+        logger.info('首次执行任务')
+        run_once_job_local()
+
+    logger.info('开始执行日常任务')
+    # run_weekly_job_local()
+    # run_daily_job_local()
+    mysql_to_sqlite = True
+    run_job_on_pool()
+    if mysql_to_sqlite:
+        transfer_mysql_to_sqlite()
+
+
+def tushare_tasks_local_first_time():
+    tushare_tasks_local(True)
+
+
 if __name__ == "__main__":
     logger.info("本地执行 tushare 任务")
     import sys

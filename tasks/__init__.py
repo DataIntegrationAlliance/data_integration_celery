@@ -10,6 +10,9 @@
 from celery import Celery, group
 from tasks.config import celery_config, config
 import logging
+import click
+
+from tasks.utils.to_sqlite import transfer_mysql_to_sqlite
 
 logger = logging.getLogger()
 app = Celery('tasks',
@@ -75,13 +78,14 @@ except AttributeError:
     logger.exception("加载 tushare token 设置失败，该异常不影响其他功能正常使用")
 
 try:
-    from tasks.tushare.app_tasks import tushare_daily_task, tushare_weekly_task, tushare_import_once
+    from tasks.tushare.app_tasks import tushare_daily_task, tushare_weekly_task, tushare_import_once, \
+    tushare_tasks_local_first_time, tushare_tasks_local
 except ImportError:
     logger.exception("加载 tasks.tushare 失败，该异常不影响其他功能正常使用")
     tushare_daily_task, tushare_weekly_task, tushare_import_once = None, None, None
 
 try:
-    from tasks.jqdata.app_tasks import jq_finance_task, jq_once_task, jq_weekly_task
+    from tasks.jqdata.app_tasks import jq_finance_task, jq_once_task, jq_weekly_task, jq_tasks_local_first_time, jq_tasks_local
 except ImportError:
     logger.exception("加载 tasks.tushare 失败，该异常不影响其他功能正常使用")
     jq_finance_task, jq_once_task, jq_weekly_task = None, None, None
@@ -141,3 +145,37 @@ def grouped_task_test():
         (test_task.s() | test_task_n.s()),
         (test_task.s() | test_task_n.s(n=2))
     ]).delay()
+
+
+func_list = [
+    (tushare_tasks_local_first_time, 'Tushare 首次执行+日常任务'),
+    (tushare_tasks_local, 'Tushare 日常任务'),
+    (transfer_mysql_to_sqlite, 'Tushare MySQL -> SQLite'),
+    (jq_tasks_local_first_time, 'JQData 首次执行+日常任务'),
+    (jq_tasks_local, 'JQData 日常任务'),
+]
+
+
+def main():
+    promt_str = '0) 退出  '
+    promt_str += '  '.join(['%d) %s' % (num, _[1]) for num, _ in enumerate(func_list, start=1)])
+
+    @click.command()
+    @click.option('--num', type=click.IntRange(0, len(func_list)), prompt=promt_str)
+    def task_choose(num, **kwargs):
+        if num is None:
+            logger.error('输入 num 参数无效')
+            return False
+        elif num == 0:
+            return True
+        else:
+            func_list[num - 1][0]()
+            return False
+
+    finished = False
+    while not finished:
+        finished = task_choose(standalone_mode=False)
+
+
+if __name__ == "__main__":
+    main()

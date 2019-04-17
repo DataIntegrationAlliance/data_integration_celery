@@ -57,6 +57,19 @@ def run_once_job_local():
     import_jq_stock_info()
 
 
+def jq_tasks_local_first_time():
+    jq_tasks_local(True)
+
+
+def jq_tasks_local(first_time=False):
+    if first_time:
+        run_once_job_local()
+
+    run_daily_job_local()
+    run_finance_job_local()
+    run_finance_2_daily_job_local()
+
+
 if __name__ == '__main__':
     run_once_job_local()
     run_daily_job_local()
