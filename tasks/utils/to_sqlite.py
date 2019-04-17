@@ -193,18 +193,18 @@ def transfer_mysql_to_sqlite(pool_job=True):
     """
     transfer_param_list = [
         {
-            "doit": False,
+            "doit": True,
             "file_name": 'eDB_adjfactor.db',
             "table_name": 'tushare_stock_daily_adj_factor',
             "field_pair_list": [
                 ('trade_date', 'Date'),
                 ('adj_factor', 'adj_factor'),
             ],
-            "batch_size": 100,
+            "batch_size": 1000,
             "sort_by": "trade_date",
         },
         {
-            "doit": False,
+            "doit": True,
             "file_name": 'eDB_Balancesheet.db',
             "table_name": 'tushare_stock_balancesheet',
             "field_pair_list": [
@@ -278,7 +278,7 @@ def transfer_mysql_to_sqlite(pool_job=True):
             "sort_by": "ann_date",
         },
         {
-            "doit": False,
+            "doit": True,
             "file_name": 'eDB_BlockTrade.db',
             "table_name": 'tushare_block_trade',
             "field_pair_list": [
@@ -289,11 +289,11 @@ def transfer_mysql_to_sqlite(pool_job=True):
                 ('buyer', 'Buyer'),
                 ('seller', 'Seller'),
             ],
-            "batch_size": 100,
+            "batch_size": 500,
             "sort_by": "trade_date",
         },
         {
-            "doit": False,
+            "doit": True,
             "file_name": 'eDB_CashFlow.db',
             "table_name": 'tushare_stock_cashflow',
             "field_pair_list": [
@@ -305,11 +305,11 @@ def transfer_mysql_to_sqlite(pool_job=True):
                 ('n_cashflow_act', 'n_cashflow_act'),
                 ('net_profit', 'net_profit'),
             ],
-            "batch_size": 100,
+            "batch_size": 500,
             "sort_by": "ann_date",
         },
         {
-            "doit": False,
+            "doit": True,
             "file_name": 'eDB_Dailybar.db',
             "table_name": 'tushare_stock_daily_md',
             "field_pair_list": [
@@ -321,11 +321,11 @@ def transfer_mysql_to_sqlite(pool_job=True):
                 ('vol', 'Volume'),
                 ('amount', 'Amount'),
             ],
-            "batch_size": 100,
+            "batch_size": 500,
             "sort_by": "trade_date",
         },
         {
-            "doit": False,
+            "doit": True,
             "file_name": 'eDB_Dailybasic.db',
             "table_name": 'tushare_stock_daily_basic',
             "field_pair_list": [
@@ -340,7 +340,7 @@ def transfer_mysql_to_sqlite(pool_job=True):
                 ('total_mv', 'Total_MV'),
                 ('circ_mv', 'Circ_MV'),
             ],
-            "batch_size": 100,
+            "batch_size": 500,
             "sort_by": "trade_date",
         },
         {
@@ -356,11 +356,11 @@ def transfer_mysql_to_sqlite(pool_job=True):
                 ('vol', 'Volume'),
                 ('amount', 'Amount'),
             ],
-            "batch_size": 100,
+            "batch_size": 500,
             "sort_by": "trade_date",
         },
         {
-            "doit": False,
+            "doit": True,
             "file_name": 'eDB_FinaIndicator.db',
             "table_name": 'tushare_stock_fin_indicator',
             "field_pair_list": [
@@ -468,7 +468,7 @@ def transfer_mysql_to_sqlite(pool_job=True):
             "sort_by": "ann_date",
         },
         {
-            "doit": False,
+            "doit": True,
             "file_name": 'eDB_Income.db',
             "table_name": 'tushare_stock_income',
             "field_pair_list": [
