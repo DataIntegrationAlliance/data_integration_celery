@@ -19,7 +19,8 @@ from tasks.tushare.tushare_stock_daily.margin import import_tushare_margin
 from tasks.tushare.tushare_stock_daily.margin_detail import import_tushare_margin_detail
 from tasks.tushare.tushare_stock_daily.moneyflow_hsgt import import_tushare_moneyflow_hsgt
 from tasks.tushare.tushare_stock_daily.suspend import import_tushare_suspend
-from tasks.tushare.tushare_stock_daily.index_daily import import_tushare_stock_index_daily
+from tasks.tushare.tushare_stock_daily.index_daily import import_tushare_stock_index_daily, \
+    import_tushare_stock_index_daily_mini
 from tasks.tushare.tushare_stock_daily.top_list import import_tushare_top_list
 from tasks.tushare.tushare_stock_daily.top_list_detail import import_tushare_top_inst
 from tasks.tushare.tushare_fina_reports.balancesheet import import_tushare_stock_balancesheet
@@ -56,7 +57,7 @@ tushare_daily_task = (
         import_tushare_stock_daily.s() |
         import_tushare_suspend.s() |
         import_tushare_index_basic.s() |
-        import_tushare_stock_index_daily.s() |
+        import_tushare_stock_index_daily_mini.s() |
         import_tushare_top_list.s() |
         import_tushare_top_inst.s() |
         import_tushare_block_trade.s()
@@ -89,6 +90,7 @@ tushare_import_once = (
 def run_once_job_local():
     import_trade_date()
     import_tushare_stock_info()
+    import_tushare_index_basic()
 
 
 def run_weekly_job_local():
@@ -117,7 +119,7 @@ def run_daily_job_local():
     import_tushare_stock_daily()
     import_tushare_suspend()
     import_tushare_index_basic()
-    import_tushare_stock_index_daily()
+    import_tushare_stock_index_daily_mini()
     import_tushare_top_list()
     import_tushare_top_inst()
     import_tushare_block_trade()
@@ -154,8 +156,7 @@ def run_job_on_pool():
         # import_tushare_moneyflow_hsgt,
         import_tushare_stock_daily,
         # import_tushare_suspend,
-        import_tushare_index_basic,
-        import_tushare_stock_index_daily,
+        import_tushare_stock_index_daily_mini,
         # import_tushare_top_list,
         # import_tushare_top_inst,
         import_tushare_block_trade,
@@ -174,10 +175,15 @@ def run_job_on_pool():
 
 if __name__ == "__main__":
     logger.info("本地执行 tushare 任务")
-    mysql_to_sqlite = True
-    # run_once_job_local()
+    import sys
+    if sys.argv[1] == 'first':
+        logger.info('首次执行任务')
+        run_once_job_local()
+
+    logger.info('开始执行日常任务')
     # run_weekly_job_local()
     # run_daily_job_local()
+    mysql_to_sqlite = True
     run_job_on_pool()
     if mysql_to_sqlite:
         transfer_mysql_to_sqlite()
