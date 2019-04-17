@@ -78,3 +78,8 @@ def get_all_trade_days(*args, **kwargs):
 @check_before_run(auth_once)
 def query(*args, **kwargs):
     return jqdatasdk.query(*args, **kwargs)
+
+
+@check_before_run(auth_once)
+def get_fundamentals(*args, **kwargs):
+    return jqdatasdk.get_fundamentals(*args, **kwargs)
