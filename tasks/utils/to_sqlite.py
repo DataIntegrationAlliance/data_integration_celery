@@ -79,16 +79,24 @@ def tushare_to_sqlite_batch(file_name, table_name, field_pair_list, batch_size=5
         table = session.execute(sql_str)
         code_list = list([row[0] for row in table.fetchall()])
 
+    # 对 fields 进行筛选及重命名
+    if field_pair_list is not None:
+        field_list = [_[0] for _ in field_pair_list]
+        field_list.append('ts_code')
+        field_pair_dic = dict(field_pair_list)
+        sort_by = field_pair_dic[sort_by] if sort_by is not None else None
+    else:
+        field_list = None
+        field_pair_dic = None
+
     code_count, data_count, num = len(code_list), 0, 0
     for code_sub_list in split_chunk(code_list, batch_size):
         in_clause = ", ".join([r'%s' for _ in code_sub_list])
         sql_str = f"select * from {table_name} where ts_code in ({in_clause})"
         df_tot = pd.read_sql(sql_str, engine_md, params=code_sub_list)
         # 对 fields 进行筛选及重命名
-        if field_pair_list is not None:
-            field_list = [_[0] for _ in field_pair_list]
-            field_list.append('ts_code')
-            df_tot = df_tot[field_list].rename(columns=dict(field_pair_list))
+        if field_pair_dic is not None:
+            df_tot = df_tot[field_list].rename(columns=field_pair_dic)
 
         dfg = df_tot.groupby('ts_code')
         for num, (ts_code, df) in enumerate(dfg, start=num + 1):
@@ -98,8 +106,12 @@ def tushare_to_sqlite_batch(file_name, table_name, field_pair_list, batch_size=5
             data_count += df_len
             logger.debug('%4d/%d) mysql %s -> sqlite %s %s %d 条记录',
                          num, code_count, table_name, file_name, sqlite_table_name, df_len)
-            df.drop('ts_code', axis=1, inplace=True)
-            df.sort_values(sort_by).to_sql(sqlite_table_name, conn, index=False, if_exists='replace')
+            df = df.drop('ts_code', axis=1)
+            # 排序
+            if sort_by is not None:
+                df = df.sort_values(sort_by)
+
+            df.to_sql(sqlite_table_name, conn, index=False, if_exists='replace')
 
     logger.info('mysql %s 导入到 sqlite %s 结束，导出数据 %d 条', table_name, file_name, data_count)
 
@@ -139,7 +151,7 @@ def tushare_to_sqlite_tot_select(file_name, table_name, field_pair_list):
 
 
 @decorator_timer
-def transfer_mysql_to_sqlite():
+def transfer_mysql_to_sqlite(pool_job=True):
     """
     mysql 转化为 sqlite
     :return:
@@ -452,17 +464,19 @@ def transfer_mysql_to_sqlite():
     # tushare_to_sqlite_pre_ts_code(file_name, table_name, field_pair_list)
     # tushare_to_sqlite_tot_select(file_name, table_name, field_pair_list)
     transfer_param_list_len = len(transfer_param_list)
-    with ProcessPoolExecutor(4) as executor:
-        futures = [executor.submit(tushare_to_sqlite_batch, **dic) for dic in transfer_param_list if dic['doit']]
-        for num, future in enumerate(as_completed(futures)):
-            try:
-                logger.info('tushare_to_sqlite_batch %s 完成', transfer_param_list[num])
-            except:
-                logger.exception('tushare_to_sqlite_batch %s 执行异常', transfer_param_list[num])
-    # for num, dic in enumerate(transfer_param_list, start=1):
-    #     if dic['doit']:
-    #         logger.info("%d/%d) 转化 %s -> %s", num, transfer_param_list_len, dic["table_name"], dic["file_name"])
-    #         tushare_to_sqlite_batch(**dic)
+    if pool_job:
+        with ProcessPoolExecutor(4) as executor:
+            futures = [executor.submit(tushare_to_sqlite_batch, **dic) for dic in transfer_param_list if dic['doit']]
+            for num, future in enumerate(as_completed(futures)):
+                try:
+                    logger.info('tushare_to_sqlite_batch %s 完成', transfer_param_list[num])
+                except:
+                    logger.exception('tushare_to_sqlite_batch %s 执行异常', transfer_param_list[num])
+    else:
+        for num, dic in enumerate(transfer_param_list, start=1):
+            if dic['doit']:
+                logger.info("%d/%d) 转化 %s -> %s", num, transfer_param_list_len, dic["table_name"], dic["file_name"])
+                tushare_to_sqlite_batch(**dic)
 
 
 def get_sqlite_conn(file_name):
@@ -637,7 +651,7 @@ if __name__ == "__main__":
     # 对比王淳 sqlite 与 mysql 数据库字段差距并合成相应的参数供 transfer_mysql_to_sqlite 使用
     # check_table_4_match_cols()
     # mysql 转化为 sqlite
-    # transfer_mysql_to_sqlite()
+    transfer_mysql_to_sqlite(pool_job=False)
 
     # 重建立主键，删除表中重复数据
-    drop_duplicate()
+    # drop_duplicate()
