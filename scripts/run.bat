@@ -12,7 +12,7 @@ if errorlevel 1 goto Active
 goto Begin
 
 :Active
-D:\WSPych\data_integration_celery\venv\Scripts\activate.bat
+.\venv\Scripts\activate.bat
 goto End
 
 :Worker
@@ -24,7 +24,7 @@ celery beat -A tasks
 goto End
 
 :LocalTasks
-.\venv\Scripts\Python.exe -m tasks.__init__
+Python.exe -m tasks.__init__
 goto End
 
 :End
