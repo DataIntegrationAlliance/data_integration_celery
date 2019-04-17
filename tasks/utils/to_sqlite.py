@@ -74,11 +74,6 @@ def tushare_to_sqlite_batch(file_name, table_name, field_pair_list, batch_size=5
     sqlite_db_folder_path = get_folder_path('sqlite_db', create_if_not_found=False)
     db_file_path = os.path.join(sqlite_db_folder_path, file_name)
     conn = sqlite3.connect(db_file_path)
-    sql_str = f"select ts_code from {table_name} group by ts_code"
-    with with_db_session(engine_md) as session:
-        table = session.execute(sql_str)
-        code_list = list([row[0] for row in table.fetchall()])
-
     # 对 fields 进行筛选及重命名
     if field_pair_list is not None:
         field_list = [_[0] for _ in field_pair_list]
@@ -89,22 +84,32 @@ def tushare_to_sqlite_batch(file_name, table_name, field_pair_list, batch_size=5
         field_list = None
         field_pair_dic = None
 
-    code_count, data_count, num = len(code_list), 0, 0
-    for code_sub_list in split_chunk(code_list, batch_size):
-        in_clause = ", ".join([r'%s' for _ in code_sub_list])
+    if table_name == 'tushare_stock_index_daily_md':
+        # tushare_stock_index_daily_md 表处理方式有些特殊
+        ts_code_sqlite_table_name_dic = {
+            # "": "CBIndex",  #
+            "h30024.CSI": "CYBZ",  # 中证800保险
+            "399300.SZ": "HS300",  # 沪深300
+            "000016.SH": "HS50",  # 上证50
+            "399905.SZ": "HS500",  # 中证500
+            "399678.SZ": "SCXG",  # 深次新股
+            "399101.SZ": "ZXBZ",  # 中小板综
+        }
+        code_list = [_ for _ in ts_code_sqlite_table_name_dic.keys()]
+        in_clause = ", ".join([r'%s' for _ in code_list])
         sql_str = f"select * from {table_name} where ts_code in ({in_clause})"
-        df_tot = pd.read_sql(sql_str, engine_md, params=code_sub_list)
+        df_tot = pd.read_sql(sql_str, engine_md, params=code_list)
         # 对 fields 进行筛选及重命名
         if field_pair_dic is not None:
             df_tot = df_tot[field_list].rename(columns=field_pair_dic)
 
         dfg = df_tot.groupby('ts_code')
-        for num, (ts_code, df) in enumerate(dfg, start=num + 1):
-            code_exchange = ts_code.split('.')
-            sqlite_table_name = f"{code_exchange[1]}{code_exchange[0]}"
+        code_count, data_count = len(code_list), 0
+        for num, (ts_code, df) in enumerate(dfg, start=1):
+            sqlite_table_name = ts_code_sqlite_table_name_dic[ts_code]
             df_len = df.shape[0]
             data_count += df_len
-            logger.debug('%4d/%d) mysql %s -> sqlite %s %s %d 条记录',
+            logger.debug('%2d/%d) mysql %s -> sqlite %s %s %d 条记录',
                          num, code_count, table_name, file_name, sqlite_table_name, df_len)
             df = df.drop('ts_code', axis=1)
             # 排序
@@ -112,6 +117,36 @@ def tushare_to_sqlite_batch(file_name, table_name, field_pair_list, batch_size=5
                 df = df.sort_values(sort_by)
 
             df.to_sql(sqlite_table_name, conn, index=False, if_exists='replace')
+    else:
+        # 非 tushare_stock_index_daily_md 表
+        sql_str = f"select ts_code from {table_name} group by ts_code"
+        with with_db_session(engine_md) as session:
+            table = session.execute(sql_str)
+            code_list = list([row[0] for row in table.fetchall()])
+
+        code_count, data_count, num = len(code_list), 0, 0
+        for code_sub_list in split_chunk(code_list, batch_size):
+            in_clause = ", ".join([r'%s' for _ in code_sub_list])
+            sql_str = f"select * from {table_name} where ts_code in ({in_clause})"
+            df_tot = pd.read_sql(sql_str, engine_md, params=code_sub_list)
+            # 对 fields 进行筛选及重命名
+            if field_pair_dic is not None:
+                df_tot = df_tot[field_list].rename(columns=field_pair_dic)
+
+            dfg = df_tot.groupby('ts_code')
+            for num, (ts_code, df) in enumerate(dfg, start=num + 1):
+                code_exchange = ts_code.split('.')
+                sqlite_table_name = f"{code_exchange[1]}{code_exchange[0]}"
+                df_len = df.shape[0]
+                data_count += df_len
+                logger.debug('%4d/%d) mysql %s -> sqlite %s %s %d 条记录',
+                             num, code_count, table_name, file_name, sqlite_table_name, df_len)
+                df = df.drop('ts_code', axis=1)
+                # 排序
+                if sort_by is not None:
+                    df = df.sort_values(sort_by)
+
+                df.to_sql(sqlite_table_name, conn, index=False, if_exists='replace')
 
     logger.info('mysql %s 导入到 sqlite %s 结束，导出数据 %d 条', table_name, file_name, data_count)
 
@@ -158,7 +193,7 @@ def transfer_mysql_to_sqlite(pool_job=True):
     """
     transfer_param_list = [
         {
-            "doit": True,
+            "doit": False,
             "file_name": 'eDB_adjfactor.db',
             "table_name": 'tushare_stock_daily_adj_factor',
             "field_pair_list": [
@@ -169,7 +204,7 @@ def transfer_mysql_to_sqlite(pool_job=True):
             "sort_by": "trade_date",
         },
         {
-            "doit": True,
+            "doit": False,
             "file_name": 'eDB_Balancesheet.db',
             "table_name": 'tushare_stock_balancesheet',
             "field_pair_list": [
@@ -243,7 +278,7 @@ def transfer_mysql_to_sqlite(pool_job=True):
             "sort_by": "ann_date",
         },
         {
-            "doit": True,
+            "doit": False,
             "file_name": 'eDB_BlockTrade.db',
             "table_name": 'tushare_block_trade',
             "field_pair_list": [
@@ -258,7 +293,7 @@ def transfer_mysql_to_sqlite(pool_job=True):
             "sort_by": "trade_date",
         },
         {
-            "doit": True,
+            "doit": False,
             "file_name": 'eDB_CashFlow.db',
             "table_name": 'tushare_stock_cashflow',
             "field_pair_list": [
@@ -274,7 +309,7 @@ def transfer_mysql_to_sqlite(pool_job=True):
             "sort_by": "ann_date",
         },
         {
-            "doit": True,
+            "doit": False,
             "file_name": 'eDB_Dailybar.db',
             "table_name": 'tushare_stock_daily_md',
             "field_pair_list": [
@@ -290,7 +325,7 @@ def transfer_mysql_to_sqlite(pool_job=True):
             "sort_by": "trade_date",
         },
         {
-            "doit": True,
+            "doit": False,
             "file_name": 'eDB_Dailybasic.db',
             "table_name": 'tushare_stock_daily_basic',
             "field_pair_list": [
@@ -310,6 +345,22 @@ def transfer_mysql_to_sqlite(pool_job=True):
         },
         {
             "doit": True,
+            "file_name": 'eDB_EquityIndex.db',
+            "table_name": 'tushare_stock_index_daily_md',
+            "field_pair_list": [
+                ('trade_date', 'Date'),
+                ('open', 'Open'),
+                ('high', 'High'),
+                ('low', 'Low'),
+                ('close', 'Close'),
+                ('vol', 'Volume'),
+                ('amount', 'Amount'),
+            ],
+            "batch_size": 100,
+            "sort_by": "trade_date",
+        },
+        {
+            "doit": False,
             "file_name": 'eDB_FinaIndicator.db',
             "table_name": 'tushare_stock_fin_indicator',
             "field_pair_list": [
@@ -417,7 +468,7 @@ def transfer_mysql_to_sqlite(pool_job=True):
             "sort_by": "ann_date",
         },
         {
-            "doit": True,
+            "doit": False,
             "file_name": 'eDB_Income.db',
             "table_name": 'tushare_stock_income',
             "field_pair_list": [
@@ -642,7 +693,7 @@ def drop_duplicate():
     :return:
     """
     from ibats_utils.db import drop_duplicate_data_from_table
-    drop_duplicate_data_from_table('tushare_stock_fin_mainbz', engine_md, ['ts_code', 'end_date', 'bz_item'])
+    drop_duplicate_data_from_table('tushare_stock_index_basic', engine_md, ['ts_code'])
 
 
 if __name__ == "__main__":
