@@ -105,7 +105,7 @@ class FundamentalTableSaver:
         self.table_name = table_name
         self.statement = statement
 
-    def get_df_iter(self, date_start, date_end, step, df_len_limit=3000, deep=0):
+    def get_df_iter(self, date_start, date_end, step, df_len_limit=10000, deep=0):
         """
         获取日期范围内的数据，当数据记录大于上限条数时，将日期范围进行二分法拆分，迭代进行查询
         :param date_start:
@@ -139,7 +139,7 @@ class FundamentalTableSaver:
         has_table = engine_md.has_table(self.table_name)
         # 判断表是否已经存在
         if has_table:
-            sql_str = f"""select max(pub_date) from {self.table_name}"""
+            sql_str = f"""select max(pubDate) from {self.table_name}"""
             date_start = execute_scalar(sql_str, engine_md)
             self.logger.info('查询 %s 数据使用起始日期 %s', self.table_name, date_2_str(date_start))
         else:
