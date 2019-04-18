@@ -15,6 +15,7 @@ from sqlalchemy.types import String, Date, Integer, SMALLINT
 from sqlalchemy.dialects.mysql import DOUBLE
 from tasks.backend import engine_md, bunch_insert, execute_sql_commit
 from ibats_utils.db import with_db_session, bunch_insert_on_duplicate_update
+from tasks.jqdata.available_check import get_bak_table_name
 from tasks.jqdata.stock_info import TABLE_NAME as TABLE_NAME_INFO
 from tasks.jqdata import get_price
 
@@ -104,6 +105,7 @@ def import_jq_stock_daily(chain_param=None, code_set=None):
     """
     table_name_info = TABLE_NAME_INFO
     table_name = TABLE_NAME
+    table_name_bak = get_bak_table_name(table_name)
     logging.info("更新 %s 开始", table_name)
 
     # 根据 info table 查询每只股票日期区间
@@ -119,6 +121,7 @@ def import_jq_stock_daily(chain_param=None, code_set=None):
         ORDER BY jq_code"""
 
     has_table = engine_md.has_table(table_name)
+    has_bak_table = engine_md.has_table(table_name_bak)
     # 进行表格判断，确定是否含有 jq_stock_daily_md
     if has_table:
         # 这里对原始的 sql语句进行了调整
@@ -206,8 +209,16 @@ def import_jq_stock_daily(chain_param=None, code_set=None):
                             sql_str = f"delete from {table_name} where jq_code=:jq_code"
                             row_count = execute_sql_commit(sql_str, params={'jq_code': key_code})
                             date_from_tmp, date_to_tmp = code_date_range_from_info_dic[key_code]
-                            logger.info('%d/%d) %s %d 条历史记录被清除，重新加载前复权历史数据 [%s - %s]',
-                                        num, data_len, key_code, row_count, date_from_tmp, date_to_tmp)
+                            if has_bak_table:
+                                sql_str = f"delete from {table_name_bak} where jq_code=:jq_code"
+                                row_count = execute_sql_commit(sql_str, params={'jq_code': key_code})
+                                date_from_tmp, date_to_tmp = code_date_range_from_info_dic[key_code]
+                                logger.info('%d/%d) %s %d 条历史记录被清除，重新加载前复权历史数据 [%s - %s] 同时清除bak表中相应记录',
+                                            num, data_len, key_code, row_count, date_from_tmp, date_to_tmp)
+                            else:
+                                logger.info('%d/%d) %s %d 条历史记录被清除，重新加载前复权历史数据 [%s - %s]',
+                                            num, data_len, key_code, row_count, date_from_tmp, date_to_tmp)
+
                             # 重新设置起止日期，进行第二次循环
                             continue
 

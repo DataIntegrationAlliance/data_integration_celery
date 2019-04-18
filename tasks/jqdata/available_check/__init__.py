@@ -16,6 +16,10 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+def get_bak_table_name(table_name):
+    return f'{table_name}_bak'
+
+
 def backup_table(table_name):
     """
     对数据库表 table_name 进行备份 新表名 f'{table_name}_bak'
@@ -26,7 +30,7 @@ def backup_table(table_name):
     if not has_table:
         return
 
-    table_name_backup = f'{table_name}_bak'
+    table_name_backup = get_bak_table_name(table_name)
     has_table = engine_md.has_table(table_name_backup)
     with with_db_session_p() as session:
         if has_table:
@@ -57,7 +61,7 @@ def check_diff(table_name, table_name_backup=None):
         return None
 
     if table_name_backup is None:
-        table_name_backup = f'{table_name}_bak'
+        table_name_backup = get_bak_table_name(table_name)
     has_table = engine_md.has_table(table_name_backup)
     if not has_table:
         logger.warning('%s 表不存在无需检查', table_name_backup)
