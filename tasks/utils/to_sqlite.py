@@ -58,7 +58,7 @@ def tushare_to_sqlite_pre_ts_code(file_name, table_name, field_pair_list):
 
 
 @decorator_timer
-def tushare_to_sqlite_batch(file_name, table_name, field_pair_list, batch_size=500, sort_by='trade_date', **kwargs):
+def tushare_to_sqlite_batch(file_name, table_name, field_pair_list, batch_size=500, sort_by='trade_date', clean_old_file_first=True, **kwargs):
     """
     将Mysql数据导入到sqlite，全量读取然后导出
     速度适中，可更加 batch_size 调剂对内存的需求
@@ -67,12 +67,17 @@ def tushare_to_sqlite_batch(file_name, table_name, field_pair_list, batch_size=5
     :param field_pair_list:
     :param batch_size:
     :param sort_by:
+    :param clean_old_file_first:
     :param kwargs:
     :return:
     """
     logger.info('mysql %s 导入到 sqlite %s 开始', table_name, file_name)
     sqlite_db_folder_path = get_folder_path('sqlite_db', create_if_not_found=False)
     db_file_path = os.path.join(sqlite_db_folder_path, file_name)
+    # 删除历史文件——可以提上导入文件速度
+    if clean_old_file_first and os.path.exists(db_file_path) and os.path.isfile(db_file_path):
+        os.remove(db_file_path)
+
     conn = sqlite3.connect(db_file_path)
     # 对 fields 进行筛选及重命名
     if field_pair_list is not None:
@@ -200,8 +205,9 @@ def transfer_mysql_to_sqlite(pool_job=True):
                 ('trade_date', 'Date'),
                 ('adj_factor', 'adj_factor'),
             ],
-            "batch_size": 1000,
+            "batch_size": 100,
             "sort_by": "trade_date",
+            "clean_old_file_first": "True",
         },
         {
             "doit": True,
@@ -289,7 +295,7 @@ def transfer_mysql_to_sqlite(pool_job=True):
                 ('buyer', 'Buyer'),
                 ('seller', 'Seller'),
             ],
-            "batch_size": 500,
+            "batch_size": 200,
             "sort_by": "trade_date",
         },
         {
@@ -305,11 +311,11 @@ def transfer_mysql_to_sqlite(pool_job=True):
                 ('n_cashflow_act', 'n_cashflow_act'),
                 ('net_profit', 'net_profit'),
             ],
-            "batch_size": 500,
+            "batch_size": 200,
             "sort_by": "ann_date",
         },
         {
-            "doit": True,
+            "doit": False,
             "file_name": 'eDB_Dailybar.db',
             "table_name": 'tushare_stock_daily_md',
             "field_pair_list": [
@@ -321,11 +327,11 @@ def transfer_mysql_to_sqlite(pool_job=True):
                 ('vol', 'Volume'),
                 ('amount', 'Amount'),
             ],
-            "batch_size": 500,
+            "batch_size": 200,
             "sort_by": "trade_date",
         },
         {
-            "doit": True,
+            "doit": False,
             "file_name": 'eDB_Dailybasic.db',
             "table_name": 'tushare_stock_daily_basic',
             "field_pair_list": [
@@ -340,11 +346,11 @@ def transfer_mysql_to_sqlite(pool_job=True):
                 ('total_mv', 'Total_MV'),
                 ('circ_mv', 'Circ_MV'),
             ],
-            "batch_size": 500,
+            "batch_size": 200,
             "sort_by": "trade_date",
         },
         {
-            "doit": True,
+            "doit": False,
             "file_name": 'eDB_EquityIndex.db',
             "table_name": 'tushare_stock_index_daily_md',
             "field_pair_list": [
@@ -356,11 +362,11 @@ def transfer_mysql_to_sqlite(pool_job=True):
                 ('vol', 'Volume'),
                 ('amount', 'Amount'),
             ],
-            "batch_size": 500,
+            "batch_size": 200,
             "sort_by": "trade_date",
         },
         {
-            "doit": True,
+            "doit": False,
             "file_name": 'eDB_FinaIndicator.db',
             "table_name": 'tushare_stock_fin_indicator',
             "field_pair_list": [
@@ -468,7 +474,7 @@ def transfer_mysql_to_sqlite(pool_job=True):
             "sort_by": "ann_date",
         },
         {
-            "doit": True,
+            "doit": False,
             "file_name": 'eDB_Income.db',
             "table_name": 'tushare_stock_income',
             "field_pair_list": [
@@ -516,6 +522,7 @@ def transfer_mysql_to_sqlite(pool_job=True):
     # tushare_to_sqlite_tot_select(file_name, table_name, field_pair_list)
     transfer_param_list_len = len(transfer_param_list)
     if pool_job:
+        logger.info('建立进程池进行SQLite导出')
         with ProcessPoolExecutor(4) as executor:
             futures = [executor.submit(tushare_to_sqlite_batch, **dic) for dic in transfer_param_list if dic['doit']]
             for num, future in enumerate(as_completed(futures)):
@@ -524,6 +531,7 @@ def transfer_mysql_to_sqlite(pool_job=True):
                 except:
                     logger.exception('tushare_to_sqlite_batch %s 执行异常', transfer_param_list[num])
     else:
+        logger.info('循环执行SQLite导出')
         for num, dic in enumerate(transfer_param_list, start=1):
             if dic['doit']:
                 logger.info("%d/%d) 转化 %s -> %s", num, transfer_param_list_len, dic["table_name"], dic["file_name"])
@@ -702,7 +710,7 @@ if __name__ == "__main__":
     # 对比王淳 sqlite 与 mysql 数据库字段差距并合成相应的参数供 transfer_mysql_to_sqlite 使用
     # check_table_4_match_cols()
     # mysql 转化为 sqlite
-    transfer_mysql_to_sqlite(pool_job=False)
+    transfer_mysql_to_sqlite(pool_job=True)
 
     # 重建立主键，删除表中重复数据
     # drop_duplicate()
