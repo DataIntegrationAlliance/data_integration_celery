@@ -140,7 +140,7 @@ def import_tushare_stock_top10_holders(ts_code_set=None, chain_param=None):
             if data_df is None:
                 logger.warning('%d/%d) %s has no data during %s %s', num, data_len, ts_code, date_from, date_to)
             elif data_df is not None:
-                logger.info('整体进度：%d/%d)， %d 条 %s 前10股东被提取，起止时间为 %s 和 %s', num, data_len, data_df.shape[0], ts_code,
+                logger.info('%d/%d)， %d 条 %s 前10股东被提取，起止时间为 %s 和 %s', num, data_len, data_df.shape[0], ts_code,
                             date_from, date_to)
             # 把数据攒起来
             if data_df is not None and data_df.shape[0] > 0:

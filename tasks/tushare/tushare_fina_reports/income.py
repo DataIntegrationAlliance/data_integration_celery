@@ -187,7 +187,7 @@ def import_tushare_stock_income(chain_param=None, ts_code_set=None):
                 logger.warning('%d/%d) %s has no data during %s %s', num, data_len, ts_code, date_from, date_to)
                 continue
             elif data_df is not None:
-                logger.info('整体进度：%d/%d)， %d 条 %s 的利润表数据被提取，起止时间为 %s 和 %s',
+                logger.info('%d/%d)， %d 条 %s 的利润表数据被提取，起止时间为 %s 和 %s',
                             num, data_len, data_df.shape[0], ts_code, date_from, date_to)
                 # # 数据插入数据库
                 # data_df_all = data_df
