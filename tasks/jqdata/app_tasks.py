@@ -7,9 +7,14 @@
 @contact : mmmaaaggg@163.com
 @desc    : 
 """
+from tasks.jqdata.fund.fund_info import import_jq_fund_info
+from tasks.jqdata.future.future_info import import_jq_future_info
+from tasks.jqdata.index.index_info import import_jq_index_info
 from tasks.jqdata.stock.finance_report.balance_2_daily import save_2_daily_balance
 from tasks.jqdata.stock.finance_report.cashflow_2_daily import save_2_daily_cashflow
 from tasks.jqdata.stock.finance_report.income_2_daily import save_2_daily_income
+from tasks.jqdata.stock.finance_report.indicator import import_jq_stock_indicator
+from tasks.jqdata.stock.finance_report.valuation import import_jq_stock_valuation
 from tasks.jqdata.stock.stock_daily import import_jq_stock_daily
 from tasks.jqdata.stock.stock_info import import_jq_stock_info
 from tasks.jqdata.stock.finance_report.balance import import_jq_stock_balance
@@ -31,7 +36,9 @@ jq_finance_task = (
     check_all.s()
 )
 jq_daily_task = (
-    import_jq_stock_daily.s()
+    import_jq_stock_daily.s() |
+    import_jq_stock_valuation.s() |
+    import_jq_stock_indicator.s()
 )
 
 
@@ -51,10 +58,15 @@ def run_finance_2_daily_job_local():
 
 def run_daily_job_local():
     import_jq_stock_daily()
+    import_jq_stock_valuation()
+    import_jq_stock_indicator()
 
 
 def run_once_job_local():
     import_jq_stock_info()
+    import_jq_future_info()
+    import_jq_fund_info()
+    import_jq_index_info()
 
 
 def jq_tasks_local_first_time():

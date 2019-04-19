@@ -9,6 +9,7 @@
 """
 # from tasks.tushare.coin import import_coinbar, import_coin_info, import_coin_pair_info
 from ibats_utils.mess import decorator_timer
+from tasks import app
 from tasks.tushare.trade_cal import import_trade_date
 from tasks.tushare.tushare_stock_daily.stock import import_tushare_stock_daily, import_tushare_stock_info
 from tasks.tushare.tushare_stock_daily.adj_factor import import_tushare_adj_factor
@@ -126,6 +127,7 @@ def run_daily_job_local():
 
 
 @decorator_timer
+@app.task
 def run_job_on_pool():
     """
     采用线程池方式并行执行任务
@@ -173,7 +175,8 @@ def run_job_on_pool():
                 logger.exception("%s 执行异常", tasks[num].__name__)
 
 
-def tushare_tasks_local(first_time=False):
+@app.task
+def tushare_tasks_local(first_time=False, mysql_to_sqlite=True):
     if first_time:
         logger.info('首次执行任务')
         run_once_job_local()
@@ -181,7 +184,7 @@ def tushare_tasks_local(first_time=False):
     logger.info('开始执行日常任务')
     # run_weekly_job_local()
     # run_daily_job_local()
-    mysql_to_sqlite = True
+
     run_job_on_pool()
     if mysql_to_sqlite:
         transfer_mysql_to_sqlite()
