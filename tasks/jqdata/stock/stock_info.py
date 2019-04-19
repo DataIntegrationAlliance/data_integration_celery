@@ -30,7 +30,7 @@ def import_jq_stock_info(chain_param=None, refresh=False):
     table_name = TABLE_NAME
     logging.info("更新 %s 开始", table_name)
     # has_table = engine_md.has_table(table_name)
-    tushare_indicator_param_list = [
+    param_list = [
         ('jq_code', String(20)),
         ('display_name', String(20)),
         ('name', String(20)),
@@ -38,7 +38,7 @@ def import_jq_stock_info(chain_param=None, refresh=False):
         ('end_date', Date),
     ]
     # 设置 dtype
-    dtype = {key: val for key, val in tushare_indicator_param_list}
+    dtype = {key: val for key, val in param_list}
 
     # 数据提取
     # types: list: 用来过滤securities的类型, list元素可选:
