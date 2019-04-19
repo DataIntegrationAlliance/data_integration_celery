@@ -7,7 +7,7 @@
 @contact : mmmaaaggg@163.com
 @desc    : 
 """
-from tasks.jqdata.finance_report import FinanceReportSaver
+from tasks.jqdata.stock.finance_report import FinanceReportSaver
 from tasks.jqdata import finance
 from tasks import app
 from sqlalchemy.types import String, Date, Integer

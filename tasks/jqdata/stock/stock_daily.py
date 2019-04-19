@@ -9,14 +9,14 @@
 """
 import pandas as pd
 import logging
-from ibats_utils.mess import try_2_date, datetime_2_str, split_chunk, try_n_times, get_first, get_last, date_2_str
+from ibats_utils.mess import get_first, get_last, date_2_str
 from tasks import app
-from sqlalchemy.types import String, Date, Integer, SMALLINT
+from sqlalchemy.types import String, Date, SMALLINT
 from sqlalchemy.dialects.mysql import DOUBLE
 from tasks.backend import engine_md, bunch_insert, execute_sql_commit
-from ibats_utils.db import with_db_session, bunch_insert_on_duplicate_update
-from tasks.jqdata.available_check import get_bak_table_name
-from tasks.jqdata.stock_info import TABLE_NAME as TABLE_NAME_INFO
+from ibats_utils.db import with_db_session
+from tasks.jqdata.stock.available_check import get_bak_table_name
+from tasks.jqdata.stock.stock_info import TABLE_NAME as TABLE_NAME_INFO
 from tasks.jqdata import get_price
 
 DEBUG = False

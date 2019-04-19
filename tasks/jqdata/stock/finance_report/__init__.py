@@ -182,7 +182,7 @@ class FundamentalTableDailySaver:
         # 判断表是否已经存在
         if has_table:
             with with_db_session(engine_md) as session:
-                sql_str = f"""select trade_date from jq_trade_date where trade_date>select max(day) from {self.table_name} order by trade_date"""
+                sql_str = f"""select trade_date from jq_trade_date where trade_date>(select max(day) from {self.table_name}) order by trade_date"""
                 table = session.execute(sql_str, params={"trade_date": self.BASE_DATE})
                 trade_date_list = [_[0] for _ in table.fetchall()]
             date_start = execute_scalar(sql_str, engine_md)
@@ -209,6 +209,8 @@ class FundamentalTableDailySaver:
                     dtype=self.dtype, myisam_if_create_table=True,
                     primary_keys=['id'], schema=config.DB_SCHEMA_MD)
                 data_count_tot += data_count
+        except:
+            logger.exception("更新 %s 异常", self.table_name)
         finally:
             # 导入数据库
             logging.info("更新 %s 结束 %d 条信息被更新", self.table_name, data_count_tot)
@@ -439,11 +441,11 @@ def get_accumulation_col_names_for(report):
     :return:
     """
     if report == 'income':
-        from tasks.jqdata.finance_report.income import TABLE_NAME, DTYPE
+        from tasks.jqdata.stock.finance_report.income import TABLE_NAME, DTYPE
     elif report == 'cashflow':
-        from tasks.jqdata.finance_report.cashflow import TABLE_NAME, DTYPE
+        from tasks.jqdata.stock.finance_report.cashflow import TABLE_NAME, DTYPE
     elif report == 'balance':
-        from tasks.jqdata.finance_report.balance import TABLE_NAME, DTYPE
+        from tasks.jqdata.stock.finance_report.balance import TABLE_NAME, DTYPE
     else:
         raise KeyError(f"report '{report}' 无效")
 

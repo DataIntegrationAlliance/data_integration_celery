@@ -24,7 +24,7 @@ pcf_ratio	市现率(PCF, 现金净流量TTM)	每股市价为每股现金净流�
 """
 from ibats_utils.mess import decorator_timer
 from jqdatasdk import valuation
-from tasks.jqdata.finance_report import FundamentalTableDailySaver
+from tasks.jqdata.stock.finance_report import FundamentalTableDailySaver
 from tasks import app
 from sqlalchemy.types import String, Date, Integer
 from sqlalchemy.dialects.mysql import DOUBLE

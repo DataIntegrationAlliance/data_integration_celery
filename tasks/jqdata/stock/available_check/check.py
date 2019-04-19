@@ -9,7 +9,7 @@
 主要方法，将历史的有效表进行备份，并与当日更新后的数据进行比较，查看是否存在历史数据不一致的问题
 """
 from tasks import app
-from tasks.jqdata.available_check import check_diff, backup_table
+from tasks.jqdata.stock.available_check import check_diff, backup_table
 import logging
 
 
@@ -18,10 +18,10 @@ logger = logging.getLogger(__name__)
 
 @app.task
 def check_all(chain_param=None):
-    from tasks.jqdata.stock_daily import TABLE_NAME as TABLE_NAME_STOCK_MD
-    from tasks.jqdata.finance_report.balance import TABLE_NAME as TABLE_NAME_BALANCE
-    from tasks.jqdata.finance_report.cashflow import TABLE_NAME as TABLE_NAME_CASHFLOW
-    from tasks.jqdata.finance_report.income import TABLE_NAME as TABLE_NAME_INCOME
+    from tasks.jqdata.stock.stock_daily import TABLE_NAME as TABLE_NAME_STOCK_MD
+    from tasks.jqdata.stock.finance_report.balance import TABLE_NAME as TABLE_NAME_BALANCE
+    from tasks.jqdata.stock.finance_report.cashflow import TABLE_NAME as TABLE_NAME_CASHFLOW
+    from tasks.jqdata.stock.finance_report.income import TABLE_NAME as TABLE_NAME_INCOME
     table_name_list = [
         TABLE_NAME_STOCK_MD,
         TABLE_NAME_BALANCE,

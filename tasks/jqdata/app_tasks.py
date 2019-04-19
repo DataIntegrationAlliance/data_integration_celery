@@ -7,15 +7,15 @@
 @contact : mmmaaaggg@163.com
 @desc    : 
 """
-from tasks.jqdata.finance_report.balance_2_daily import save_2_daily_balance
-from tasks.jqdata.finance_report.cashflow_2_daily import save_2_daily_cashflow
-from tasks.jqdata.finance_report.income_2_daily import save_2_daily_income
-from tasks.jqdata.stock_daily import import_jq_stock_daily
-from tasks.jqdata.stock_info import import_jq_stock_info
-from tasks.jqdata.finance_report.balance import import_jq_stock_balance
-from tasks.jqdata.finance_report.cashflow import import_jq_stock_cashflow
-from tasks.jqdata.finance_report.income import import_jq_stock_income
-from tasks.jqdata.available_check.check import check_all
+from tasks.jqdata.stock.finance_report.balance_2_daily import save_2_daily_balance
+from tasks.jqdata.stock.finance_report.cashflow_2_daily import save_2_daily_cashflow
+from tasks.jqdata.stock.finance_report.income_2_daily import save_2_daily_income
+from tasks.jqdata.stock.stock_daily import import_jq_stock_daily
+from tasks.jqdata.stock.stock_info import import_jq_stock_info
+from tasks.jqdata.stock.finance_report.balance import import_jq_stock_balance
+from tasks.jqdata.stock.finance_report.cashflow import import_jq_stock_cashflow
+from tasks.jqdata.stock.finance_report.income import import_jq_stock_income
+from tasks.jqdata.stock.available_check.check import check_all
 
 
 jq_once_task = (
@@ -71,7 +71,7 @@ def jq_tasks_local(first_time=False):
 
 
 if __name__ == '__main__':
-    run_once_job_local()
+    # run_once_job_local()
     run_daily_job_local()
     run_finance_job_local()
-    run_finance_2_daily_job_local()
+    # run_finance_2_daily_job_local()

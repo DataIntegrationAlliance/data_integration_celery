@@ -8,7 +8,7 @@
 @desc    : 
 """
 from jqdatasdk import indicator
-from tasks.jqdata.finance_report import FundamentalTableSaver
+from tasks.jqdata.stock.finance_report import FundamentalTableSaver
 from tasks import app
 from sqlalchemy.types import String, Date, Integer
 from sqlalchemy.dialects.mysql import DOUBLE

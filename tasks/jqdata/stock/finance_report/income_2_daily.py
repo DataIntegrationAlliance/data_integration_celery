@@ -7,8 +7,8 @@
 @contact : mmmaaaggg@163.com
 @desc    : 将 income 表从季度数据转换为日级别数据
 """
-from tasks.jqdata.finance_report import transfer_report_2_daily
-from tasks.jqdata.finance_report.income import DTYPE as DTYPE_INCOME, TABLE_NAME as TABLE_NAME_FIN_REPORT
+from tasks.jqdata.stock.finance_report import transfer_report_2_daily
+from tasks.jqdata.stock.finance_report.income import DTYPE as DTYPE_INCOME, TABLE_NAME as TABLE_NAME_FIN_REPORT
 from tasks.jqdata.trade_date import TABLE_NAME as TABLE_NAME_TRADE_DATE
 from tasks import app
 import logging
