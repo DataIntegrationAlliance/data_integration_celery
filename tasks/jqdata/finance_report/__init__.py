@@ -166,6 +166,54 @@ class FundamentalTableSaver:
             logging.info("更新 %s 结束 %d 条信息被更新", self.table_name, data_count_tot)
 
 
+class FundamentalTableDailySaver:
+
+    def __init__(self, table_name, dtype, statement):
+        self.logger = logging.getLogger(__name__)
+        self.BASE_DATE = str_2_date('1989-12-01')
+        self.loop_step = 20
+        self.dtype = dtype
+        self.table_name = table_name
+        self.statement = statement
+
+    def save(self):
+        self.logger.info("更新 %s 开始", self.table_name)
+        has_table = engine_md.has_table(self.table_name)
+        # 判断表是否已经存在
+        if has_table:
+            with with_db_session(engine_md) as session:
+                sql_str = f"""select trade_date from jq_trade_date where trade_date>select max(day) from {self.table_name} order by trade_date"""
+                table = session.execute(sql_str, params={"trade_date": self.BASE_DATE})
+                trade_date_list = [_[0] for _ in table.fetchall()]
+            date_start = execute_scalar(sql_str, engine_md)
+            self.logger.info('查询 %s 数据使用起始日期 %s', self.table_name, date_2_str(date_start))
+        else:
+            with with_db_session(engine_md) as session:
+                sql_str = "select trade_date from jq_trade_date where trade_date>=:trade_date order by trade_date"
+                table = session.execute(sql_str, params={"trade_date": self.BASE_DATE})
+                trade_date_list = [_[0] for _ in table.fetchall()]
+            self.logger.warning('%s 不存在，使用基础日期 %s', self.table_name, self.BASE_DATE)
+
+        # 查询最新的
+        trade_date_list.sort()
+        data_count_tot, for_count = 0, len(trade_date_list)
+        try:
+            for num, trade_date in enumerate(trade_date_list):
+                q = query(self.statement)
+                df = get_fundamentals(q, date=date_2_str(trade_date))
+                if df is None or df.shape[0] == 0:
+                    continue
+                logger.debug('%d/%d) %s 包含 %d 条数据', num, for_count, trade_date, df.shape[0])
+                data_count = bunch_insert_on_duplicate_update(
+                    df, self.table_name, engine_md,
+                    dtype=self.dtype, myisam_if_create_table=True,
+                    primary_keys=['id'], schema=config.DB_SCHEMA_MD)
+                data_count_tot += data_count
+        finally:
+            # 导入数据库
+            logging.info("更新 %s 结束 %d 条信息被更新", self.table_name, data_count_tot)
+
+
 def check_accumulation_cols(df: pd.DataFrame):
     """
     检查当期 DataFrame 哪些 column 是周期性累加的

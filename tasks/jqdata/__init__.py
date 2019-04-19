@@ -53,6 +53,7 @@ def auth_once():
 
 
 finance = jqdatasdk.finance
+valuation = jqdatasdk.valuation
 
 
 @check_before_run(auth_once)
