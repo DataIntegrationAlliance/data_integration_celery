@@ -47,8 +47,8 @@ DTYPE = {
 TABLE_NAME = 'jq_stock_valuation'
 
 
-@decorator_timer
 @app.task
+@decorator_timer
 def import_jq_stock_valuation(chain_param=None):
     """
     插入股票日线数据到最近一个工作日-1。
