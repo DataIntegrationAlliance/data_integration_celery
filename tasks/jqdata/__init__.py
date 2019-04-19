@@ -7,10 +7,11 @@
 @contact : mmmaaaggg@163.com
 @desc    : 
 """
+from tasks.backend import bunch_insert
 from tasks.config import config
 import jqdatasdk
 import logging
-
+from sqlalchemy.types import String, Date
 
 logger = logging.getLogger(__name__)
 HAS_AUTHORIZED = False
@@ -84,3 +85,37 @@ def query(*args, **kwargs):
 @check_before_run(auth_once)
 def get_fundamentals(*args, **kwargs):
     return jqdatasdk.get_fundamentals(*args, **kwargs)
+
+
+def import_info_table(type_name):
+    """
+    调用 get_all_securities 获取指定 type 的信息
+    type: 'stock', 'fund', 'index', 'futures', 'etf', 'lof', 'fja', 'fjb'。types为空时返回所有股票, 不包括基金,指数和期货
+    :param type_name:
+    :return:
+    """
+    table_name = f'jq_{type_name}_info'
+    logging.info("更新 %s 开始", table_name)
+    # has_table = engine_md.has_table(table_name)
+    param_list = [
+        ('jq_code', String(20)),
+        ('display_name', String(20)),
+        ('name', String(20)),
+        ('start_date', Date),
+        ('end_date', Date),
+    ]
+    # 设置 dtype
+    dtype = {key: val for key, val in param_list}
+
+    # 数据提取
+    # types: list: 用来过滤securities的类型, list元素可选:
+    # 'stock', 'fund', 'index', 'futures', 'etf', 'lof', 'fja', 'fjb'。types为空时返回所有股票, 不包括基金,指数和期货
+    # date: 日期, 一个字符串或者 [datetime.datetime]/[datetime.date] 对象,
+    # 用于获取某日期还在上市的股票信息. 默认值为 None, 表示获取所有日期的股票信息
+    stock_info_all_df = get_all_securities(types=type_name)
+    stock_info_all_df.index.rename('jq_code', inplace=True)
+    stock_info_all_df.reset_index(inplace=True)
+
+    logging.info('%s 数据将被导入', stock_info_all_df.shape[0])
+    data_count = bunch_insert(stock_info_all_df, table_name=table_name, dtype=dtype, primary_keys=['jq_code'])
+    logging.info("更新 %s 完成 存量数据 %d 条", table_name, data_count)
