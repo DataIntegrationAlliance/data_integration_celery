@@ -15,7 +15,7 @@ from tasks import app
 def import_jq_fund_info(chain_param=None, refresh=False):
     """ 获取全市场股票代码及名称
     """
-    import_info_table('index')
+    import_info_table('fund')
 
 
 if __name__ == "__main__":
