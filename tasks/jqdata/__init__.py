@@ -12,6 +12,8 @@ from tasks.config import config
 import jqdatasdk
 import logging
 from sqlalchemy.types import String, Date
+import pandas as pd
+import functools
 
 logger = logging.getLogger(__name__)
 HAS_AUTHORIZED = False
@@ -19,8 +21,6 @@ AUTHORIZED_SUCC = False
 
 
 def check_before_run(check_func):
-
-    import functools
 
     def func_wrapper(target_func):
 
@@ -57,37 +57,49 @@ finance = jqdatasdk.finance
 valuation = jqdatasdk.valuation
 
 
+@functools.wraps(jqdatasdk.get_trade_days)
 @check_before_run(auth_once)
 def get_trade_days(*args, **kwargs):
     return jqdatasdk.get_trade_days(*args, **kwargs)
 
 
+@functools.wraps(jqdatasdk.get_all_securities)
 @check_before_run(auth_once)
 def get_all_securities(*args, **kwargs):
     return jqdatasdk.get_all_securities(*args, **kwargs)
 
 
+@functools.wraps(jqdatasdk.get_price)
 @check_before_run(auth_once)
 def get_price(*args, **kwargs):
     return jqdatasdk.get_price(*args, **kwargs)
 
 
+@functools.wraps(jqdatasdk.get_all_trade_days)
 @check_before_run(auth_once)
 def get_all_trade_days(*args, **kwargs):
     return jqdatasdk.get_all_trade_days(*args, **kwargs)
 
 
+@functools.wraps(jqdatasdk.query)
 @check_before_run(auth_once)
 def query(*args, **kwargs):
     return jqdatasdk.query(*args, **kwargs)
 
 
+@functools.wraps(jqdatasdk.get_fundamentals)
 @check_before_run(auth_once)
 def get_fundamentals(*args, **kwargs):
     return jqdatasdk.get_fundamentals(*args, **kwargs)
 
 
-def import_info_table(type_name):
+@functools.wraps(jqdatasdk.get_dominant_future)
+@check_before_run(auth_once)
+def get_dominant_future(*args, **kwargs):
+    return jqdatasdk.get_dominant_future(*args, **kwargs)
+
+
+def import_info_table(type_name, insert_db=True) -> pd.DataFrame:
     """
     调用 get_all_securities 获取指定 type 的信息
     type: 'stock', 'fund', 'index', 'futures', 'etf', 'lof', 'fja', 'fjb'。types为空时返回所有股票, 不包括基金,指数和期货
@@ -95,7 +107,7 @@ def import_info_table(type_name):
     :return:
     """
     table_name = f'jq_{type_name}_info'
-    logging.info("更新 %s 开始", table_name)
+    logger.info("更新 %s 开始", table_name)
     # has_table = engine_md.has_table(table_name)
     param_list = [
         ('jq_code', String(20)),
@@ -116,6 +128,10 @@ def import_info_table(type_name):
     stock_info_all_df.index.rename('jq_code', inplace=True)
     stock_info_all_df.reset_index(inplace=True)
 
-    logging.info('%s 数据将被导入', stock_info_all_df.shape[0])
-    data_count = bunch_insert(stock_info_all_df, table_name=table_name, dtype=dtype, primary_keys=['jq_code'])
-    logging.info("更新 %s 完成 存量数据 %d 条", table_name, data_count)
+    if insert_db:
+        logger.info('%s 数据将被导入', stock_info_all_df.shape[0])
+        data_count = bunch_insert(stock_info_all_df, table_name=table_name, dtype=dtype, primary_keys=['jq_code'])
+        logger.info("更新 %s 完成 存量数据 %d 条", table_name, data_count)
+
+    return stock_info_all_df
+
