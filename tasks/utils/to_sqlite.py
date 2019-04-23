@@ -58,7 +58,8 @@ def tushare_to_sqlite_pre_ts_code(file_name, table_name, field_pair_list):
 
 
 @decorator_timer
-def tushare_to_sqlite_batch(file_name, table_name, field_pair_list, batch_size=500, sort_by='trade_date', clean_old_file_first=True, **kwargs):
+def tushare_to_sqlite_batch(file_name, table_name, field_pair_list, batch_size=500, sort_by='trade_date',
+                            clean_old_file_first=True, **kwargs):
     """
     将Mysql数据导入到sqlite，全量读取然后导出
     速度适中，可更加 batch_size 调剂对内存的需求
@@ -315,7 +316,7 @@ def transfer_mysql_to_sqlite(pool_job=True):
             "sort_by": "ann_date",
         },
         {
-            "doit": False,
+            "doit": True,
             "file_name": 'eDB_Dailybar.db',
             "table_name": 'tushare_stock_daily_md',
             "field_pair_list": [
@@ -331,7 +332,7 @@ def transfer_mysql_to_sqlite(pool_job=True):
             "sort_by": "trade_date",
         },
         {
-            "doit": False,
+            "doit": True,
             "file_name": 'eDB_Dailybasic.db',
             "table_name": 'tushare_stock_daily_basic',
             "field_pair_list": [
@@ -350,7 +351,7 @@ def transfer_mysql_to_sqlite(pool_job=True):
             "sort_by": "trade_date",
         },
         {
-            "doit": False,
+            "doit": True,
             "file_name": 'eDB_EquityIndex.db',
             "table_name": 'tushare_stock_index_daily_md',
             "field_pair_list": [
@@ -366,7 +367,7 @@ def transfer_mysql_to_sqlite(pool_job=True):
             "sort_by": "trade_date",
         },
         {
-            "doit": False,
+            "doit": True,
             "file_name": 'eDB_FinaIndicator.db',
             "table_name": 'tushare_stock_fin_indicator',
             "field_pair_list": [
@@ -474,7 +475,7 @@ def transfer_mysql_to_sqlite(pool_job=True):
             "sort_by": "ann_date",
         },
         {
-            "doit": False,
+            "doit": True,
             "file_name": 'eDB_Income.db',
             "table_name": 'tushare_stock_income',
             "field_pair_list": [
@@ -524,12 +525,20 @@ def transfer_mysql_to_sqlite(pool_job=True):
     if pool_job:
         logger.info('建立进程池进行SQLite导出')
         with ProcessPoolExecutor(4) as executor:
-            futures = [executor.submit(tushare_to_sqlite_batch, **dic) for dic in transfer_param_list if dic['doit']]
-            for num, future in enumerate(as_completed(futures)):
+            futures_dic = {executor.submit(tushare_to_sqlite_batch, **dic): num
+                           for num, dic in enumerate(transfer_param_list) if dic['doit']}
+            for future in enumerate(as_completed(futures_dic)):
+                num = futures_dic[future]
                 try:
-                    logger.info('tushare_to_sqlite_batch %s 完成', transfer_param_list[num])
+                    exp = future.exception()
+                    if exp is None:
+                        logger.info('tushare_to_sqlite_batch %s -> %s 完成',
+                                    transfer_param_list[num]['table_name'], transfer_param_list[num]['file_name'])
+                    else:
+                        raise exp from exp
                 except:
-                    logger.exception('tushare_to_sqlite_batch %s 执行异常', transfer_param_list[num])
+                    logger.exception('tushare_to_sqlite_batch %s -> %s 执行异常',
+                                     transfer_param_list[num]['table_name'], transfer_param_list[num]['file_name'])
     else:
         logger.info('循环执行SQLite导出')
         for num, dic in enumerate(transfer_param_list, start=1):
