@@ -527,18 +527,17 @@ def transfer_mysql_to_sqlite(pool_job=True):
         with ProcessPoolExecutor(4) as executor:
             futures_dic = {executor.submit(tushare_to_sqlite_batch, **dic): num
                            for num, dic in enumerate(transfer_param_list) if dic['doit']}
-            for future in enumerate(as_completed(futures_dic)):
+            for future in as_completed(futures_dic):
                 num = futures_dic[future]
-                try:
-                    exp = future.exception()
-                    if exp is None:
-                        logger.info('tushare_to_sqlite_batch %s -> %s 完成',
-                                    transfer_param_list[num]['table_name'], transfer_param_list[num]['file_name'])
-                    else:
-                        raise exp from exp
-                except:
+                exp = future.exception()
+                if exp is None:
+                    logger.info('tushare_to_sqlite_batch %s -> %s 完成',
+                                transfer_param_list[num]['table_name'], transfer_param_list[num]['file_name'])
+                else:
                     logger.exception('tushare_to_sqlite_batch %s -> %s 执行异常',
-                                     transfer_param_list[num]['table_name'], transfer_param_list[num]['file_name'])
+                                     transfer_param_list[num]['table_name'], transfer_param_list[num]['file_name'],
+                                     exc_info=exp)
+
     else:
         logger.info('循环执行SQLite导出')
         for num, dic in enumerate(transfer_param_list, start=1):
