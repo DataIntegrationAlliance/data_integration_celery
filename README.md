@@ -36,10 +36,12 @@ rabbitmq-plugins enable rabbitmq_management
 ## 启动 celery
 ### 1. 启动 worker
 ```commandline
-celery -A tasks worker --loglevel=info -c 4 -P eventlet
+celery -A tasks worker --loglevel=info -c 1 -P eventlet
 ```
-> -P 命令只要是为了在win10 下可以正常运行 [issue](https://github.com/celery/celery/issues/4081) 其他环境下可以去除
--c 命令后面的数字表示平行运行的 worker 数量，建议不要超过CPU核数
+> -P 命令只要是为了在win10 下可以正常运行 [详见 issue](https://github.com/celery/celery/issues/4081)，其他环境下可以去除 \
+-P, --pool Pool implementation: prefork (default), eventlet, gevent or solo. \
+-c 命令后面的数字表示平行运行的 worker 数量，建议不要超过CPU核数 \
+-l, --loglevel Logging level, choose between DEBUG, INFO, WARNING, ERROR, CRITICAL, or FATAL. 
 
 ### 2. 启动 beat
 
