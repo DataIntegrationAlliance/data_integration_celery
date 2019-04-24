@@ -3,16 +3,17 @@ Created on 2018/8/14
 @author: yby
 @desc    : 2018-08-21 已经正式运行测试完成，可以正常使用
 """
-from tasks.tushare.ts_pro_api import pro
+from tasks.tushare.ts_pro_api import pro, check_sqlite_db_primary_keys
 import pandas as pd
 import logging
 from datetime import date, datetime, timedelta
 from ibats_utils.mess import try_2_date, STR_FORMAT_DATE, datetime_2_str, split_chunk, try_n_times
-from tasks import app
+from tasks import app, config
 from sqlalchemy.types import String, Date, Integer
 from sqlalchemy.dialects.mysql import DOUBLE
 from tasks.backend import engine_md, bunch_insert
 from ibats_utils.db import with_db_session, bunch_insert_on_duplicate_update
+from tasks.utils.to_sqlite import bunch_insert_sqlite
 
 DEBUG = False
 logger = logging.getLogger()
@@ -67,8 +68,9 @@ def import_tushare_stock_index_daily(chain_param=None, ts_code_set=None):
     :return:
     """
     table_name = 'tushare_stock_index_daily_md'
+    primary_keys = ["ts_code", "trade_date"]
     logging.info("更新 %s 开始", table_name)
-
+    check_sqlite_db_primary_keys(table_name, primary_keys)
     has_table = engine_md.has_table(table_name)
     # 进行表格判断，确定是否含有tushare_stock_daily
     if has_table:
@@ -154,8 +156,12 @@ def import_tushare_stock_index_daily(chain_param=None, ts_code_set=None):
             # 大于阀值有开始插入
             if data_count >= 500:
                 data_df_all = pd.concat(data_df_list)
-                bunch_insert(data_df_all, table_name=table_name, dtype=DTYPE_TUSHARE_STOCK_INDEX_DAILY_MD,
-                             primary_keys=["ts_code", "trade_date"])
+                data_count = bunch_insert(
+                    data_df_all, table_name=table_name, dtype=DTYPE_TUSHARE_STOCK_INDEX_DAILY_MD,
+                    primary_keys=primary_keys)
+                if config.ENABLE_EXPORT_2_SQLITE:
+                    bunch_insert_sqlite(data_df_all, mysql_table_name=table_name, primary_keys=primary_keys)
+
                 all_data_count += data_count
                 data_df_list, data_count = [], 0
 
@@ -163,12 +169,17 @@ def import_tushare_stock_index_daily(chain_param=None, ts_code_set=None):
         # 导入数据库
         if len(data_df_list) > 0:
             data_df_all = pd.concat(data_df_list)
-            data_count = bunch_insert(data_df_all, table_name=table_name, dtype=DTYPE_TUSHARE_STOCK_INDEX_DAILY_MD,
-                                      primary_keys=["ts_code", "trade_date"])
+            data_count = bunch_insert(
+                data_df_all, table_name=table_name, dtype=DTYPE_TUSHARE_STOCK_INDEX_DAILY_MD,
+                primary_keys=primary_keys)
+            if config.ENABLE_EXPORT_2_SQLITE:
+                bunch_insert_sqlite(data_df_all, mysql_table_name=table_name, primary_keys=primary_keys)
+
             all_data_count += data_count
             logging.info("更新 %s 结束 %d 条信息被更新", table_name, all_data_count)
 
 
 if __name__ == "__main__":
     # DEBUG = True
-    import_tushare_stock_index_daily(ts_code_set=None)
+    # import_tushare_stock_index_daily(ts_code_set=None)
+    import_tushare_stock_index_daily_mini()

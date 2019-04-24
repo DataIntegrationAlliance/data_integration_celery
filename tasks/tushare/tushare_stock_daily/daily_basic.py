@@ -7,13 +7,14 @@ contact author:ybychem@gmail.com
 import logging
 from datetime import date, datetime, timedelta
 from ibats_utils.mess import try_2_date, STR_FORMAT_DATE, datetime_2_str, split_chunk, try_n_times
-from tasks import app
+from tasks import app, config
 from sqlalchemy.types import String, Date, Integer
 from sqlalchemy.dialects.mysql import DOUBLE
 from tasks.backend import engine_md
 from ibats_utils.db import with_db_session
 from tasks.backend import bunch_insert
-from tasks.tushare.ts_pro_api import pro
+from tasks.tushare.ts_pro_api import pro, check_sqlite_db_primary_keys
+from tasks.utils.to_sqlite import bunch_insert_sqlite
 
 DEBUG = False
 logger = logging.getLogger()
@@ -59,8 +60,9 @@ def import_tushare_daily_basic(chain_param=None):
     :return:
     """
     table_name = 'tushare_stock_daily_basic'
+    primary_keys = ["ts_code", "trade_date"]
     logging.info("更新 %s 开始", table_name)
-
+    check_sqlite_db_primary_keys(table_name, primary_keys)
     has_table = engine_md.has_table(table_name)
     # 下面一定要注意引用表的来源，否则可能是串，提取混乱！！！
     # 比如本表是 tushare_daily_basic，所以引用的也是这个，如果引用错误，就全部乱了
@@ -95,7 +97,10 @@ def import_tushare_daily_basic(chain_param=None):
             if data_df is not None and data_df.shape[0] > 0:
                 data_count = bunch_insert(
                     data_df, table_name=table_name, dtype=DTYPE_TUSHARE_STOCK_DAILY_BASIC,
-                    primary_keys=["ts_code", "trade_date"])
+                    primary_keys=primary_keys)
+                if config.ENABLE_EXPORT_2_SQLITE:
+                    bunch_insert_sqlite(data_df, mysql_table_name=table_name, primary_keys=primary_keys)
+
                 logging.info("%d/%d) %s 更新 %s 结束 %d 条信息被更新", num, for_count, trade_date, table_name, data_count)
             else:
                 logging.info("%d/%d) %s 无数据信息可被更新",  num, for_count, trade_date)

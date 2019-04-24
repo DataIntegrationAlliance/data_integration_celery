@@ -4,19 +4,16 @@ Created on 2018/9/3
 @desc    : 2018-09-3
 contact author:ybychem@gmail.com
 """
-import pandas as pd
 import logging
-from tasks.backend.orm import build_primary_key
 from datetime import date, datetime, timedelta
 from ibats_utils.mess import try_2_date, STR_FORMAT_DATE, datetime_2_str, split_chunk
-from tasks import app
+from tasks import app, config
 from sqlalchemy.types import String, Date, Integer
 from sqlalchemy.dialects.mysql import DOUBLE
-from tasks.backend import engine_md
-from tasks.merge.code_mapping import update_from_info_table
-from ibats_utils.db import with_db_session, add_col_2_table, alter_table_2_myisam, \
-    bunch_insert_on_duplicate_update
-from tasks.tushare.ts_pro_api import pro
+from tasks.backend import engine_md, bunch_insert
+from ibats_utils.db import with_db_session
+from tasks.tushare.ts_pro_api import pro, check_sqlite_db_primary_keys
+from tasks.utils.to_sqlite import bunch_insert_sqlite
 
 DEBUG = False
 logger = logging.getLogger()
@@ -43,25 +40,27 @@ def import_tushare_adj_factor(chain_param=None, ):
     :return:
     """
     table_name = 'tushare_stock_daily_adj_factor'
+    primary_keys = ["ts_code", "trade_date"]
     logging.info("更新 %s 开始", table_name)
+    # 进行表格判断，确定是否含有 table_name
     has_table = engine_md.has_table(table_name)
-    # 进行表格判断，确定是否含有tushare_stock_daily
+    # sqlite_file_name = 'eDB_adjfactor.db'
+    check_sqlite_db_primary_keys(table_name, primary_keys)
 
-    # 下面一定要注意引用表的来源，否则可能是串，提取混乱！！！比如本表是tushare_daily_basic，所以引用的也是这个，如果引用错误，就全部乱了l
     if has_table:
         sql_str = """
-               select cal_date            
-               FROM
-                (
-                 select * from tushare_trade_date trddate 
-                 where( cal_date>(SELECT max(trade_date) FROM  {table_name}))
-               )tt
-               where (is_open=1 
-                      and cal_date <= if(hour(now())<16, subdate(curdate(),1), curdate()) 
-                      and exchange='SSE') """.format(table_name=table_name)
+           select cal_date            
+           FROM
+            (
+             select * from tushare_trade_date trddate 
+             where( cal_date>(SELECT max(trade_date) FROM  {table_name}))
+           )tt
+           where (is_open=1 
+                  and cal_date <= if(hour(now())<16, subdate(curdate(),1), curdate()) 
+                  and exchange='SSE') """.format(table_name=table_name)
     else:
         sql_str = """
-               SELECT cal_date FROM tushare_trade_date trddate WHERE (trddate.is_open=1 
+           SELECT cal_date FROM tushare_trade_date trddate WHERE (trddate.is_open=1 
             AND cal_date <= if(hour(now())<16, subdate(curdate(),1), curdate()) 
             AND exchange='SSE') ORDER BY cal_date"""
         logger.warning('%s 不存在，仅使用 tushare_stock_info 表进行计算日期范围', table_name)
@@ -69,28 +68,27 @@ def import_tushare_adj_factor(chain_param=None, ):
     with with_db_session(engine_md) as session:
         # 获取交易日数据
         table = session.execute(sql_str)
-        trddate = list(row[0] for row in table.fetchall())
+        trade_date_list = [row[0] for row in table.fetchall()]
 
+    trade_date_count, data_count_tot = len(trade_date_list), 0
     try:
-        for i in range(len(trddate)):
-            trade_date = datetime_2_str(trddate[i], STR_FORMAT_DATE_TS)
+        for num, trade_date in enumerate(trade_date_list, start=1):
+            trade_date = datetime_2_str(trade_date, STR_FORMAT_DATE_TS)
             data_df = pro.adj_factor(ts_code='', trade_date=trade_date)
-            if len(data_df) > 0:
-                data_count = bunch_insert_on_duplicate_update(data_df, table_name, engine_md, DTYPE_TUSHARE_STOCK_DAILY_ADJ_FACTOR)
-                logging.info(" %s 表自 %s 日起的 %d 条信息被更新", table_name, trade_date, data_count)
+            if data_df is not None and data_df.shape[0] > 0:
+                data_count = bunch_insert(data_df, table_name=table_name, dtype=DTYPE_TUSHARE_STOCK_DAILY_ADJ_FACTOR,
+                                          primary_keys=primary_keys)
+                data_count_tot += data_count
+                if config.ENABLE_EXPORT_2_SQLITE:
+                    bunch_insert_sqlite(data_df, mysql_table_name=table_name, primary_keys=primary_keys)
+
+                logging.info("%d/%d) %s 表 %s %d 条信息被更新", num, trade_date_count, table_name, trade_date, data_count)
             else:
-                logging.info("无数据信息可被更新")
+                logging.info("%d/%d) %s 表 %s 数据信息可被更新", num, trade_date_count, table_name, trade_date)
+    except:
+        logger.exception("更新 %s 异常", table_name)
     finally:
-        if not has_table and engine_md.has_table(table_name):
-            alter_table_2_myisam(engine_md, [table_name])
-            # build_primary_key([table_name])
-            create_pk_str = """ALTER TABLE {table_name}
-                CHANGE COLUMN `ts_code` `ts_code` VARCHAR(20) NOT NULL FIRST,
-                CHANGE COLUMN `trade_date` `trade_date` DATE NOT NULL AFTER `ts_code`,
-                ADD PRIMARY KEY (`ts_code`, `trade_date`)""".format(table_name=table_name)
-            with with_db_session(engine_md) as session:
-                session.execute(create_pk_str)
-            logger.info('%s 表 `ts_code`, `trade_date` 主键设置完成', table_name)
+        logging.info("%s 表 %d 条记录更新完成", table_name, data_count_tot)
 
 
 if __name__ == "__main__":
