@@ -176,7 +176,7 @@ def run_job_on_pool():
 
 
 @app.task
-def tushare_tasks_local(first_time=False, mysql_to_sqlite=True):
+def tushare_tasks_local(first_time=False, mysql_to_sqlite=False):
     if first_time:
         logger.info('首次执行任务')
         run_once_job_local()
@@ -191,7 +191,7 @@ def tushare_tasks_local(first_time=False, mysql_to_sqlite=True):
 
 
 def tushare_tasks_local_first_time():
-    tushare_tasks_local(True)
+    tushare_tasks_local(first_time=True)
 
 
 if __name__ == "__main__":
@@ -204,7 +204,7 @@ if __name__ == "__main__":
     logger.info('开始执行日常任务')
     # run_weekly_job_local()
     # run_daily_job_local()
-    mysql_to_sqlite = True
+    mysql_to_sqlite = False
     run_job_on_pool()
     if mysql_to_sqlite:
         transfer_mysql_to_sqlite()
