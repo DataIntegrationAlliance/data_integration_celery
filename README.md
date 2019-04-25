@@ -36,7 +36,7 @@ rabbitmq-plugins enable rabbitmq_management
 ## 启动 celery
 ### 1. 启动 worker
 ```commandline
-celery -A tasks worker --loglevel=info -c 1 -P eventlet
+celery -A tasks worker --loglevel=debug -c 1 -P eventlet
 ```
 > -P 命令只要是为了在win10 下可以正常运行 [详见 issue](https://github.com/celery/celery/issues/4081)，其他环境下可以去除 \
 -P, --pool Pool implementation: prefork (default), eventlet, gevent or solo. \
