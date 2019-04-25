@@ -189,7 +189,7 @@ def tushare_tasks_local(first_time=False, mysql_to_sqlite=False):
     if mysql_to_sqlite:
         transfer_mysql_to_sqlite()
 
-
+@app.task
 def tushare_tasks_local_first_time():
     tushare_tasks_local(first_time=True)
 

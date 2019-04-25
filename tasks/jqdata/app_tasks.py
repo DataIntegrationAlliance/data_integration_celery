@@ -7,6 +7,7 @@
 @contact : mmmaaaggg@163.com
 @desc    : 
 """
+from tasks import app
 from tasks.jqdata.fund.fund_info import import_jq_fund_info
 from tasks.jqdata.future.future_info import import_jq_future_info
 from tasks.jqdata.index.index_info import import_jq_index_info
@@ -69,10 +70,12 @@ def run_once_job_local():
     import_jq_index_info()
 
 
+@app.task
 def jq_tasks_local_first_time():
     jq_tasks_local(True)
 
 
+@app.task
 def jq_tasks_local(first_time=False):
     if first_time:
         run_once_job_local()
