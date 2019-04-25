@@ -13,7 +13,6 @@ from sqlalchemy.dialects.mysql import DOUBLE
 from tasks.backend import engine_md, bunch_insert
 from ibats_utils.db import with_db_session
 from tasks.tushare.ts_pro_api import pro, check_sqlite_db_primary_keys
-from tasks.utils.to_sqlite import bunch_insert_sqlite
 
 DEBUG = False
 logger = logging.getLogger()
@@ -79,8 +78,6 @@ def import_tushare_adj_factor(chain_param=None, ):
                 data_count = bunch_insert(data_df, table_name=table_name, dtype=DTYPE_TUSHARE_STOCK_DAILY_ADJ_FACTOR,
                                           primary_keys=primary_keys)
                 data_count_tot += data_count
-                if config.ENABLE_EXPORT_2_SQLITE:
-                    bunch_insert_sqlite(data_df, mysql_table_name=table_name, primary_keys=primary_keys)
 
                 logging.info("%d/%d) %s 表 %s %d 条信息被更新", num, trade_date_count, table_name, trade_date, data_count)
             else:

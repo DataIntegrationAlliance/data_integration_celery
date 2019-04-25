@@ -5,19 +5,14 @@ Created on 2018/8/31
 """
 import pandas as pd
 import logging
-from tasks.backend.orm import build_primary_key
 from datetime import date, datetime, timedelta
 from ibats_utils.mess import try_2_date, STR_FORMAT_DATE, datetime_2_str, split_chunk, try_n_times
 from tasks import app
 from sqlalchemy.types import String, Date, Integer
 from sqlalchemy.dialects.mysql import DOUBLE
 from tasks.backend import engine_md, bunch_insert
-from tasks.merge.code_mapping import update_from_info_table
-from ibats_utils.db import with_db_session, add_col_2_table, alter_table_2_myisam, \
-    bunch_insert_on_duplicate_update
+from ibats_utils.db import with_db_session, bunch_insert_on_duplicate_update
 from tasks.tushare.ts_pro_api import pro, check_sqlite_db_primary_keys
-from tasks.config import config
-from tasks.utils.to_sqlite import bunch_insert_sqlite
 
 DEBUG = False
 logger = logging.getLogger()
@@ -188,7 +183,7 @@ def import_tushare_stock_income(chain_param=None, ts_code_set=None):
                 logger.warning('%d/%d) %s has no data during %s %s', num, data_len, ts_code, date_from, date_to)
                 continue
             elif data_df is not None:
-                logger.info('%d/%d)， %d 条 %s 的利润表数据被提取，起止时间为 %s 和 %s',
+                logger.info('%d/%d) %d 条 %s 的利润表数据被提取，起止时间为 %s 和 %s',
                             num, data_len, data_df.shape[0], ts_code, date_from, date_to)
                 # # 数据插入数据库
                 # data_df_all = data_df
@@ -206,8 +201,6 @@ def import_tushare_stock_income(chain_param=None, ts_code_set=None):
                 data_count = bunch_insert(
                     data_df_all, table_name=table_name, dtype=DTYPE_TUSHARE_STOCK_INCOME,
                     primary_keys=primary_keys)
-                if config.ENABLE_EXPORT_2_SQLITE:
-                    bunch_insert_sqlite(data_df_all, mysql_table_name=table_name, primary_keys=primary_keys)
 
                 all_data_count += data_count
                 logger.info('%d 条财务指标将数据插入 %s 表', data_count, table_name)
@@ -223,8 +216,6 @@ def import_tushare_stock_income(chain_param=None, ts_code_set=None):
             data_count = bunch_insert(
                 data_df_all, table_name=table_name, dtype=DTYPE_TUSHARE_STOCK_INCOME,
                 primary_keys=primary_keys)
-            if config.ENABLE_EXPORT_2_SQLITE:
-                bunch_insert_sqlite(data_df_all, mysql_table_name=table_name, primary_keys=primary_keys)
 
             all_data_count += data_count
             logging.info("更新 %s 结束 %d 条信息被更新", table_name, all_data_count)

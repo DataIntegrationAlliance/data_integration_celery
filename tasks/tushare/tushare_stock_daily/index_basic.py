@@ -10,7 +10,7 @@ from ibats_utils.mess import try_2_date, STR_FORMAT_DATE, datetime_2_str, split_
 from tasks import app
 from sqlalchemy.types import String, Date, Text
 from sqlalchemy.dialects.mysql import DOUBLE
-from tasks.backend import engine_md, bunch_insert
+from tasks.backend import engine_md, bunch_insert_p
 from tasks.tushare.ts_pro_api import pro
 
 DEBUG = False
@@ -66,8 +66,8 @@ def import_tushare_index_basic(chain_param=None):
         # trade_date = datetime_2_str(trddate[i], STR_FORMAT_DATE_TS)
         data_df = invoke_index_basic(market=mkt, fields=fields)
         if len(data_df) > 0:
-            data_count = bunch_insert(data_df, table_name=table_name, dtype=DTYPE_TUSHARE_STOCK_INDEX_BASIC,
-                                      primary_keys=['ts_code'])
+            data_count = bunch_insert_p(data_df, table_name=table_name, dtype=DTYPE_TUSHARE_STOCK_INDEX_BASIC,
+                                        primary_keys=['ts_code'])
             logging.info("%s 更新 %s 结束 %d 条信息被更新", mkt, table_name, data_count)
         else:
             logging.info("%s 无数据信息可被更新", mkt)

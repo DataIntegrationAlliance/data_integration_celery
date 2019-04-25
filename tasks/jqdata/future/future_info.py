@@ -9,7 +9,7 @@
 """
 from sqlalchemy import String, Date
 
-from tasks.backend import bunch_insert
+from tasks.backend import bunch_insert_p
 from tasks.jqdata import import_info_table
 from tasks import app
 import logging
@@ -39,7 +39,7 @@ def import_jq_future_info(chain_param=None, refresh=False):
     ]
     # 设置 dtype
     dtype = {key: val for key, val in param_list}
-    data_count = bunch_insert(df, table_name=TABLE_NAME, dtype=dtype, primary_keys=['jq_code'])
+    data_count = bunch_insert_p(df, table_name=TABLE_NAME, dtype=dtype, primary_keys=['jq_code'])
     logging.info("更新 %s 完成 存量数据 %d 条", TABLE_NAME, data_count)
 
 

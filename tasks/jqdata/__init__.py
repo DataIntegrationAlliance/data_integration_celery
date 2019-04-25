@@ -7,7 +7,7 @@
 @contact : mmmaaaggg@163.com
 @desc    : 
 """
-from tasks.backend import bunch_insert
+from tasks.backend import bunch_insert_p
 from tasks.config import config
 import jqdatasdk
 import logging
@@ -130,7 +130,7 @@ def import_info_table(type_name, insert_db=True) -> pd.DataFrame:
 
     if insert_db:
         logger.info('%s 数据将被导入', stock_info_all_df.shape[0])
-        data_count = bunch_insert(stock_info_all_df, table_name=table_name, dtype=dtype, primary_keys=['jq_code'])
+        data_count = bunch_insert_p(stock_info_all_df, table_name=table_name, dtype=dtype, primary_keys=['jq_code'])
         logger.info("更新 %s 完成 存量数据 %d 条", table_name, data_count)
 
     return stock_info_all_df

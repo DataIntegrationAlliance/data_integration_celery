@@ -10,7 +10,7 @@ from ibats_utils.mess import try_2_date, STR_FORMAT_DATE, datetime_2_str, split_
 from tasks import app
 from sqlalchemy.types import String, Date, Integer
 from sqlalchemy.dialects.mysql import DOUBLE
-from tasks.backend import engine_md, bunch_insert
+from tasks.backend import engine_md, bunch_insert_p
 from ibats_utils.db import with_db_session, bunch_insert_on_duplicate_update
 from tasks.tushare.ts_pro_api import pro
 
@@ -84,7 +84,7 @@ def import_tushare_moneyflow_hsgt(chain_param=None):
             trade_date = datetime_2_str(trade_date, STR_FORMAT_DATE_TS)
             data_df = invoke_moneyflow_hsgt(trade_date=trade_date)
             if len(data_df) > 0:
-                data_count = bunch_insert(
+                data_count = bunch_insert_p(
                     data_df, table_name=table_name, dtype=dtype, primary_keys=['trade_date'])
                 logging.info("%d/%d) %s 更新 %s 结束 %d 条信息被更新",
                              num, trade_date_list_len, trade_date, table_name, data_count)

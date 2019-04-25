@@ -153,7 +153,7 @@ def import_tushare_stock_fina_mainbz(chain_param=None, ts_code_set=None):
                                    date_to)
                     continue
                 elif data_df is not None:
-                    logger.info('%d/%d)， 提取出%d 条 %s 的主营业务数据，类型为%s,起止时间为 %s 和 %s',
+                    logger.info('%d/%d) 提取出%d 条 %s 的主营业务数据，类型为%s,起止时间为 %s 和 %s',
                                 num, data_len, data_df.shape[0], ts_code, mainbz_type, date_from, date_to)
 
                     # # 数据插入数据库

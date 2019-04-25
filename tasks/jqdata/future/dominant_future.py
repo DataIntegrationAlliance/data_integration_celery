@@ -12,8 +12,7 @@ import logging
 from ibats_utils.mess import get_first, get_last, date_2_str, str_2_date, get_first_idx, get_last_idx
 from tasks import app
 from sqlalchemy.types import String, Date, SMALLINT
-from sqlalchemy.dialects.mysql import DOUBLE
-from tasks.backend import engine_md, bunch_insert, execute_sql_commit
+from tasks.backend import engine_md, bunch_insert_p
 from ibats_utils.db import with_db_session
 from tasks.jqdata.future.future_info import TABLE_NAME as TABLE_NAME_INFO
 from tasks.jqdata import get_price, get_dominant_future
@@ -168,7 +167,7 @@ def import_jq_dominant_future_daily(chain_param=None, code_set=None):
             # 大于阀值有开始插入
             if data_count >= 500:
                 data_df_all = pd.concat(data_df_list)
-                bunch_insert(data_df_all, table_name, dtype=DTYPE,
+                bunch_insert_p(data_df_all, table_name, dtype=DTYPE,
                              primary_keys=['underlying_symbol', 'trade_date'])
                 all_data_count += data_count
                 data_df_list, data_count = [], 0
@@ -180,7 +179,7 @@ def import_jq_dominant_future_daily(chain_param=None, code_set=None):
         # 导入数据库
         if len(data_df_list) > 0:
             data_df_all = pd.concat(data_df_list)
-            data_count = bunch_insert(data_df_all, table_name, dtype=DTYPE,
+            data_count = bunch_insert_p(data_df_all, table_name, dtype=DTYPE,
                                       primary_keys=['underlying_symbol', 'trade_date'])
             all_data_count = all_data_count + data_count
             logging.info("更新 %s 结束 %d 条信息被更新", table_name, all_data_count)

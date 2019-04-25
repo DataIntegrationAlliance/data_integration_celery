@@ -17,7 +17,6 @@ from tasks.backend import engine_md
 from ibats_utils.db import with_db_session, bunch_insert_on_duplicate_update
 from tasks.backend import bunch_insert
 from tasks.tushare.ts_pro_api import pro
-from tasks.utils.to_sqlite import bunch_insert_sqlite
 
 DEBUG = False
 logger = logging.getLogger()
@@ -90,8 +89,6 @@ def import_tushare_block_trade(chain_param=None):
                 # 例如：002325.SZ 2014-11-17 华泰证券股份有限公司沈阳光荣街证券营业部 两笔完全相同的大宗交易
                 data_count = bunch_insert(
                     data_df, table_name=table_name, dtype=dtype)
-                if config.ENABLE_EXPORT_2_SQLITE:
-                    bunch_insert_sqlite(data_df, mysql_table_name=table_name)
                 logging.info("%d/%d) %s更新 %s 结束 %d 条信息被更新",
                              num, trade_date_list_len, trade_date, table_name, data_count)
             else:

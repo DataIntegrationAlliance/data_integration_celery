@@ -13,7 +13,6 @@ from sqlalchemy.types import String, Date, Integer
 from sqlalchemy.dialects.mysql import DOUBLE
 from tasks.backend import engine_md, bunch_insert
 from ibats_utils.db import with_db_session, bunch_insert_on_duplicate_update
-from tasks.utils.to_sqlite import bunch_insert_sqlite
 
 DEBUG = False
 logger = logging.getLogger()
@@ -159,8 +158,6 @@ def import_tushare_stock_index_daily(chain_param=None, ts_code_set=None):
                 data_count = bunch_insert(
                     data_df_all, table_name=table_name, dtype=DTYPE_TUSHARE_STOCK_INDEX_DAILY_MD,
                     primary_keys=primary_keys)
-                if config.ENABLE_EXPORT_2_SQLITE:
-                    bunch_insert_sqlite(data_df_all, mysql_table_name=table_name, primary_keys=primary_keys)
 
                 all_data_count += data_count
                 data_df_list, data_count = [], 0
@@ -172,8 +169,6 @@ def import_tushare_stock_index_daily(chain_param=None, ts_code_set=None):
             data_count = bunch_insert(
                 data_df_all, table_name=table_name, dtype=DTYPE_TUSHARE_STOCK_INDEX_DAILY_MD,
                 primary_keys=primary_keys)
-            if config.ENABLE_EXPORT_2_SQLITE:
-                bunch_insert_sqlite(data_df_all, mysql_table_name=table_name, primary_keys=primary_keys)
 
             all_data_count += data_count
             logging.info("更新 %s 结束 %d 条信息被更新", table_name, all_data_count)

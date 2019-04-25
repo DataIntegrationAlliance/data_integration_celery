@@ -7,16 +7,13 @@ contact author:ybychem@gmail.com
 
 import pandas as pd
 import logging
-from tasks.backend.orm import build_primary_key
 from datetime import date, datetime, timedelta
 from ibats_utils.mess import try_2_date, STR_FORMAT_DATE, datetime_2_str, split_chunk, try_n_times
 from tasks import app
 from sqlalchemy.types import String, Date, Text
 from sqlalchemy.dialects.mysql import DOUBLE
-from tasks.backend import engine_md, bunch_insert
-from tasks.merge.code_mapping import update_from_info_table
-from ibats_utils.db import with_db_session, add_col_2_table, alter_table_2_myisam, \
-    bunch_insert_on_duplicate_update
+from tasks.backend import engine_md, bunch_insert_p
+from ibats_utils.db import with_db_session, bunch_insert_on_duplicate_update
 from tasks.tushare.ts_pro_api import pro
 
 DEBUG = False
@@ -103,7 +100,7 @@ def import_tushare_top_list(chain_param=None):
             # 大于阀值有开始插入
             if data_count >= 2000:
                 data_df_all = pd.concat(data_df_list)
-                data_count = bunch_insert(
+                data_count = bunch_insert_p(
                     data_df_all, table_name=table_name, dtype=DTYPE_TUSHARE_STOCK_TOP_LIST,
                     primary_keys=['ts_code', 'trade_date', 'reason'])
                 logging.info("%d/%d) 更新 %s 结束 ,截至%s日 %d 条信息被更新",
@@ -115,7 +112,7 @@ def import_tushare_top_list(chain_param=None):
     finally:
         if len(data_df_list) > 0:
             data_df_all = pd.concat(data_df_list)
-            data_count = bunch_insert(
+            data_count = bunch_insert_p(
                 data_df_all, table_name=table_name, dtype=DTYPE_TUSHARE_STOCK_TOP_LIST,
                 primary_keys=['ts_code', 'trade_date', 'reason'])
             all_data_count = all_data_count + data_count

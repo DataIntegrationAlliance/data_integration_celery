@@ -14,7 +14,6 @@ from tasks.backend import engine_md
 from ibats_utils.db import with_db_session
 from tasks.backend import bunch_insert
 from tasks.tushare.ts_pro_api import pro, check_sqlite_db_primary_keys
-from tasks.utils.to_sqlite import bunch_insert_sqlite
 
 DEBUG = False
 logger = logging.getLogger()
@@ -98,8 +97,6 @@ def import_tushare_daily_basic(chain_param=None):
                 data_count = bunch_insert(
                     data_df, table_name=table_name, dtype=DTYPE_TUSHARE_STOCK_DAILY_BASIC,
                     primary_keys=primary_keys)
-                if config.ENABLE_EXPORT_2_SQLITE:
-                    bunch_insert_sqlite(data_df, mysql_table_name=table_name, primary_keys=primary_keys)
 
                 logging.info("%d/%d) %s 更新 %s 结束 %d 条信息被更新", num, for_count, trade_date, table_name, data_count)
             else:

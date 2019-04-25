@@ -12,7 +12,7 @@ from tasks.jqdata import finance, query, get_fundamentals
 import logging
 from datetime import date
 from ibats_utils.mess import str_2_date, date_2_str, iter_2_range, range_date, get_first_idx, get_last_idx
-from tasks.backend import engine_md, bunch_insert
+from tasks.backend import engine_md, bunch_insert_p
 from ibats_utils.db import bunch_insert_on_duplicate_update, execute_scalar, with_db_session
 import pandas as pd
 import numpy as np
@@ -567,7 +567,7 @@ def transfer_report_2_daily(table_name_report: str, table_name_daily: str, table
 
 def save_data_2_daily_table(data_new_s_list: list, table_name, dtype: dict):
     df = pd.DataFrame(data_new_s_list)
-    data_count = bunch_insert(df, table_name, dtype=dtype, primary_keys=['id', 'trade_date'])
+    data_count = bunch_insert_p(df, table_name, dtype=dtype, primary_keys=['id', 'trade_date'])
     return data_count
 
 

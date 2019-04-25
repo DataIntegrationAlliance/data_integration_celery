@@ -12,7 +12,7 @@ from ibats_utils.mess import try_2_date, STR_FORMAT_DATE, datetime_2_str, split_
 from tasks import app
 from sqlalchemy.types import String, Date, Text
 from sqlalchemy.dialects.mysql import DOUBLE
-from tasks.backend import engine_md, bunch_insert
+from tasks.backend import engine_md, bunch_insert_p
 from ibats_utils.db import with_db_session, bunch_insert_on_duplicate_update
 from tasks.tushare.ts_pro_api import pro
 
@@ -94,7 +94,7 @@ def import_tushare_top_inst(chain_param=None):
             if data_count >= 10000:
                 data_df_all = pd.concat(data_df_list)
                 # bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md, DTYPE_TUSHARE_STOCK_TOP_INST)
-                data_count = bunch_insert(
+                data_count = bunch_insert_p(
                     data_df_all, table_name=table_name, dtype=DTYPE_TUSHARE_STOCK_TOP_INST,
                     primary_keys=['ts_code', 'trade_date', 'exalter', 'buy', 'sell'])
                 logging.info("更新 %s 结束 ,截至%s日 %d 条信息被更新", table_name, trade_date, all_data_count)
@@ -103,7 +103,7 @@ def import_tushare_top_inst(chain_param=None):
     finally:
         if len(data_df_list) > 0:
             data_df_all = pd.concat(data_df_list)
-            data_count = bunch_insert(
+            data_count = bunch_insert_p(
                 data_df_all, table_name=table_name, dtype=DTYPE_TUSHARE_STOCK_TOP_INST,
                 primary_keys=['ts_code', 'trade_date', 'exalter', 'buy', 'sell'])
             all_data_count = all_data_count + data_count

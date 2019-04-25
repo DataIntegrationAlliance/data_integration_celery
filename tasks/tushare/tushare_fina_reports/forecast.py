@@ -126,7 +126,7 @@ def import_tushare_stock_forecast(chain_param=None, ts_code_set=None):
                 logger.warning('%d/%d) %s has no data during %s %s', num, data_len, ts_code, date_from, date_to)
                 continue
             elif data_df is not None:
-                logger.info('%d/%d)， %d 条 %s 业绩预告数据被提取，起止时间为 %s 和 %s',
+                logger.info('%d/%d) %d 条 %s 业绩预告数据被提取，起止时间为 %s 和 %s',
                             num, data_len, data_df.shape[0], ts_code, date_from, date_to)
 
             # 把数据攒起来

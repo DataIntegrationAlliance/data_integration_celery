@@ -7,16 +7,13 @@ contact author:ybychem@gmail.com
 
 import pandas as pd
 import logging
-from tasks.backend.orm import build_primary_key
 from datetime import date, datetime, timedelta
 from ibats_utils.mess import try_2_date, STR_FORMAT_DATE, datetime_2_str, split_chunk, try_n_times
 from tasks import app
 from sqlalchemy.types import String, Date, Integer, Text
 from sqlalchemy.dialects.mysql import TINYINT, DOUBLE
 from tasks.backend import engine_md
-from tasks.merge.code_mapping import update_from_info_table
-from ibats_utils.db import with_db_session, add_col_2_table, alter_table_2_myisam, \
-    bunch_insert_on_duplicate_update
+from ibats_utils.db import with_db_session, bunch_insert_on_duplicate_update
 from tasks.tushare.ts_pro_api import pro
 from tasks.config import config
 
@@ -139,7 +136,7 @@ def import_tushare_stock_express(chain_param=None, ts_code_set=None):
                 logger.warning('%d/%d) %s has no data during %s %s', num, data_len, ts_code, date_from, date_to)
                 continue
             elif data_df is not None:
-                logger.info('%d/%d)， %d 条 %s 业绩快报数据被提取，起止时间为 %s 和 %s',
+                logger.info('%d/%d) %d 条 %s 业绩快报数据被提取，起止时间为 %s 和 %s',
                             num, data_len, data_df.shape[0], ts_code, date_from, date_to)
 
             # 把数据攒起来

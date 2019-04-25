@@ -4,18 +4,14 @@ Created on 2018/9/7
 @desc    : 2018-09-7
 contact author:ybychem@gmail.com
 """
-import pandas as pd
 import logging
-from tasks.backend.orm import build_primary_key
 from datetime import date, datetime, timedelta
 from ibats_utils.mess import try_2_date, STR_FORMAT_DATE, datetime_2_str, split_chunk, try_n_times
 from tasks import app
 from sqlalchemy.types import String, Date, Integer
 from sqlalchemy.dialects.mysql import DOUBLE
-from tasks.backend import engine_md, bunch_insert
-from tasks.merge.code_mapping import update_from_info_table
-from ibats_utils.db import with_db_session, add_col_2_table, alter_table_2_myisam, \
-    bunch_insert_on_duplicate_update
+from tasks.backend import engine_md, bunch_insert_p
+from ibats_utils.db import with_db_session, bunch_insert_on_duplicate_update
 from tasks.tushare.ts_pro_api import pro
 
 DEBUG = False
@@ -91,7 +87,7 @@ def import_tushare_margin(chain_param=None):
                 if len(data_df) > 0:
                     # data_count = bunch_insert_on_duplicate_update(data_df, table_name, engine_md, dtype)
                     # logging.info("%s更新 %s %s 结束 %d 条信息被更新", trade_date, table_name, exchange_id, data_count)
-                    data_count = bunch_insert(
+                    data_count = bunch_insert_p(
                         data_df, table_name=table_name, dtype=dtype, primary_keys=['exchange_id', 'trade_date'])
                     logging.info("%d/%d) %s %s 更新 %s 结束 %d 条信息被更新",
                                  num, trade_date_list_len, exchange_id, trade_date, table_name, data_count)
