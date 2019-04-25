@@ -606,13 +606,25 @@ def bunch_insert_sqlite(df: pd.DataFrame, mysql_table_name, table_name_key='ts_c
     :param primary_keys: 如果数据库表为新建，则设置主键为对应list中的key
     :return:
     """
+    if mysql_table_name not in TABLE_NAME_SQLITE_FILE_NAME_DIC:
+        return
+    # 文件名称
     file_name = TABLE_NAME_SQLITE_FILE_NAME_DIC[mysql_table_name]
-    sqlite_df = df.rename(
-        columns=dict(TABLE_NAME_MYSQL_COL_2_SQLITE_COL_DIC[mysql_table_name])
-    )
+    # mysql sqlite 列名称对应关系
+    mysql_col_2_sqlite_col_pairs = TABLE_NAME_MYSQL_COL_2_SQLITE_COL_DIC[mysql_table_name]
+    mysql_col_2_sqlite_col_dic = dict(mysql_col_2_sqlite_col_pairs)
+    # sqlite 主键名称
+    sqlite_primary_keys = [mysql_col_2_sqlite_col_dic[_] for _ in primary_keys if _ in mysql_col_2_sqlite_col_dic]
+    # sqlite 数据
+    df_cols = [table_name_key]
+    df_cols.extend([_[0] for _ in mysql_col_2_sqlite_col_pairs])
+    sqlite_df = df[df_cols].rename(columns=mysql_col_2_sqlite_col_dic)
+    # 构建 sql
     col_name_list = [_ for _ in sqlite_df.columns if _ != table_name_key]
     col_names = "`" + "`,`".join(col_name_list) + "`"
+    # 分组处理
     dfg = sqlite_df.groupby(table_name_key)
+    # 该代码不是必须的，删去
     # .astype(
     #         {trade_date_key: str}
     #     )
@@ -623,12 +635,10 @@ def bunch_insert_sqlite(df: pd.DataFrame, mysql_table_name, table_name_key='ts_c
             if has_table(table_name, conn):
                 params = ', '.join(['?' for _ in col_name_list])
                 sql_str = f"""replace into {table_name}({col_names}) VALUES({params})"""
-                conn.executemany(sql_str, sub_df.drop(table_name_key, axis=1).to_numpy())  # .astype({trade_date_key: str})
+                conn.executemany(sql_str, sub_df.drop(table_name_key, axis=1).to_numpy())
             else:
                 sub_df.drop(table_name_key, axis=1).to_sql(table_name, conn, index=False)
-                mysql_col_2_sqlite_col_dic = dict(TABLE_NAME_MYSQL_COL_2_SQLITE_COL_DIC[mysql_table_name])
-                sqlite_primary_keys = [mysql_col_2_sqlite_col_dic[_]
-                                       for _ in primary_keys if _ in mysql_col_2_sqlite_col_dic]
+
                 add_table_primary_keys(table_name, sqlite_primary_keys, conn)
 
             logger.debug("%d/%d) %s %s 插入数据 %d",
