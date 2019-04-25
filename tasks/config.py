@@ -14,19 +14,20 @@ from celery.schedules import crontab
 
 class CeleryConfig:
     # Celery settings
-    broker_url = 'amqp://mg:***@localhost:5672/celery_tasks',
-    result_backend = 'amqp://mg:***@localhost:5672/backend'
+    broker_url = 'amqp://m*:***@localhost:5672/celery_tasks',
+    result_backend = 'amqp://m*:***@localhost:5672/backend'
     accept_content = ['json']  # , 'pickle'
     timezone = 'Asia/Shanghai'
-    imports = ('tasks', )
+    imports = ('tasks',)
     beat_schedule = {
-        'daily_task': {
-            'task': 'tasks.grouped_task_daily',
-            'schedule': crontab(hour='17', minute=15, day_of_week='1-5'),
+        # 可根据实际情况进行设置
+        'daily_task_tushare': {
+            'task': 'tasks.tushare.app_tasks.tushare_tasks_local',
+            'schedule': crontab(hour='17', minute=3, day_of_week='1-5'),
         },
-        'weekly_task': {
-            'task': 'tasks.grouped_task_weekly',
-            'schedule': crontab(hour='9', minute=50,day_of_week='6'),
+        'daily_task_jq': {
+            'task': 'tasks.jqdata.app_tasks.jq_tasks_local',
+            'schedule': crontab(hour='16', minute=46),  # , day_of_week='1-5'
         },
     }
     broker_heartbeat = 0
@@ -38,7 +39,7 @@ class ConfigClass(object):
     # Sql Alchemy settings
     DB_SCHEMA_MD = 'md_integration'
     DB_URL_DIC = {
-        DB_SCHEMA_MD: "mysql://mg:***@localhost/{DB_SCHEMA_MD}?charset=utf8".format(
+        DB_SCHEMA_MD: "mysql://m*:****@localhost/{DB_SCHEMA_MD}?charset=utf8".format(
             DB_SCHEMA_MD=DB_SCHEMA_MD)
     }
 
@@ -49,8 +50,15 @@ class ConfigClass(object):
 
     # Tushare settings
     TUSHARE_TOKEN = "***"
+    TUSHARE_THREADPOOL_WORKERS = None  # 代表无限制
     # CMC settings
     CMC_PRO_API_KEY = "***"
+
+    JQ_USERNAME = "***"
+    JQ_PASSWORD = "***"
+
+    ENABLE_EXPORT_2_SQLITE = False
+    SQLITE_FOLDER_PATH = r"/home/mg/github/data_integration_celery/sqlite_db"
 
     # log settings
     logging_config = dict(
@@ -85,6 +93,8 @@ class ConfigClass(object):
     )
     logging.getLogger('sqlalchemy.engine').setLevel(logging.WARN)
     logging.getLogger('urllib3.connectionpool').setLevel(logging.INFO)
+    from ibats_utils.mess import logger as logger_mass
+    logger_mass.setLevel(logging.DEBUG)
     dictConfig(logging_config)
 
 
