@@ -5,15 +5,30 @@
 [![GitHub stars](https://img.shields.io/github/stars/DataIntegrationAlliance/data_integration_celery.svg)](https://github.com/DataIntegrationAlliance/data_integration_celery/stargazers) 
 [![GitHub license](https://img.shields.io/github/license/DataIntegrationAlliance/data_integration_celery.svg)](https://github.com/DataIntegrationAlliance/data_integration_celery/blob/master/LICENSE) 
 [![HitCount](http://hits.dwyl.io/DataIntegrationAlliance/https://github.com/DataIntegrationAlliance/data_integration_celery.svg)](http://hits.dwyl.io/DataIntegrationAlliance/https://github.com/DataIntegrationAlliance/data_integration_celery)
-[![Twitter](https://img.shields.io/twitter/url/https/github.com/DataIntegrationAlliance/data_integration_celery.svg?style=social)](https://twitter.com/intent/tweet?text=Wow:&url=https%3A%2F%2Fgithub.com%2FDataIntegrationAlliance%2Fdata_integration_celery) 
+[//]: # [![Twitter](https://img.shields.io/twitter/url/https/github.com/DataIntegrationAlliance/data_integration_celery.svg?style=social)](https://twitter.com/intent/tweet?text=Wow:&url=https%3A%2F%2Fgithub.com%2FDataIntegrationAlliance%2Fdata_integration_celery) 
 
 通过celery定期执行更相关任务，将万得wind，同花顺ifind，东方财富choice等数据终端的数据进行整合，清洗，一致化，供其他系统数据分析使用
 
-## 环境依赖及安装配置
-+ windows
-+ rabbitmq
+为了满足不同环境需要，也支持不使用celery，直接运行
 
-为了支持独立运行在windows环境下，celery 的 broker 选择 rabbitmq 而非 redis（仅支持linux）
+## 环境依赖及安装配置
++ windows，ubuntu均可
++ rabbitmq
++ python 3.6 及相关包
++ mysql 5.7
+
+> 如果需要下载 windy、ifind、choice 等数据，需要安装对应的组建
+
+> 为了支持独立运行在windows环境下，celery 的 broker 选择 rabbitmq 而非 redis（仅支持linux）
+
+## 首次运行前环境配置
+项目全部的配置信息存放在 ./tasks/config.py 文件中
+包括： 
++ Celery 配置信息
++ 数据库配置信息
++ IFind、Wind、Tushare、JQDataSDK、CMC等用户名密码配置信息
++ 是否支持 SQLite导出功能及路经配置信息
++ 日志输出格式及级别配置信息
 
 ## RabbitMQ 系统配置
 ### 1. 用户创建及权限配置
@@ -33,7 +48,8 @@ rabbitmq-plugins enable rabbitmq_management
 
 [RabbitMQ 管理界面](http://localhost:15672/#/connections)
 
-## 启动 celery
+## celery 启动方法 
+以下命令均才 data_integration_celery 根目录下运行
 ### 1. 启动 worker
 ```commandline
 celery -A tasks worker --loglevel=debug -c 1 -P eventlet
