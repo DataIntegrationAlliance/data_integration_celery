@@ -99,6 +99,48 @@ def get_dominant_future(*args, **kwargs):
     return jqdatasdk.get_dominant_future(*args, **kwargs)
 
 
+@functools.wraps(jqdatasdk.get_index_stocks)
+@check_before_run(auth_once)
+def get_index_stocks(*args, **kwargs):
+    return jqdatasdk.get_index_stocks(*args, **kwargs)
+
+
+@functools.wraps(jqdatasdk.get_margincash_stocks)
+@check_before_run(auth_once)
+def get_margincash_stocks(*args, **kwargs):
+    return jqdatasdk.get_margincash_stocks(*args, **kwargs)
+
+
+@functools.wraps(jqdatasdk.get_marginsec_stocks)
+@check_before_run(auth_once)
+def get_marginsec_stocks(*args, **kwargs):
+    return jqdatasdk.get_marginsec_stocks(*args, **kwargs)
+
+
+@functools.wraps(jqdatasdk.get_extras)
+@check_before_run(auth_once)
+def get_extras(*args, **kwargs):
+    return jqdatasdk.get_extras(*args, **kwargs)
+
+
+@functools.wraps(jqdatasdk.get_locked_shares)
+@check_before_run(auth_once)
+def get_locked_shares(*args, **kwargs):
+    return jqdatasdk.get_locked_shares(*args, **kwargs)
+
+
+@functools.wraps(jqdatasdk.get_index_weights)
+@check_before_run(auth_once)
+def get_index_weights(*args, **kwargs):
+    return jqdatasdk.get_index_weights(*args, **kwargs)
+
+
+@functools.wraps(jqdatasdk.get_industries)
+@check_before_run(auth_once)
+def get_industries(*args, **kwargs):
+    return jqdatasdk.get_industries(*args, **kwargs)
+
+
 def import_info_table(type_name, insert_db=True) -> pd.DataFrame:
     """
     调用 get_all_securities 获取指定 type 的信息
