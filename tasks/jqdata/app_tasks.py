@@ -11,6 +11,7 @@ from tasks import app
 from tasks.jqdata.fund.fund_info import import_jq_fund_info
 from tasks.jqdata.future.future_info import import_jq_future_info
 from tasks.jqdata.index.index_info import import_jq_index_info
+from tasks.jqdata.index.index_stocks import import_jq_index_stocks
 from tasks.jqdata.stock.finance_report.balance_2_daily import save_2_daily_balance
 from tasks.jqdata.stock.finance_report.cashflow_2_daily import save_2_daily_cashflow
 from tasks.jqdata.stock.finance_report.income_2_daily import save_2_daily_income
@@ -61,6 +62,7 @@ def run_daily_job_local():
     import_jq_stock_daily()
     import_jq_stock_valuation()
     import_jq_stock_indicator()
+    import_jq_index_stocks()
 
 
 def run_once_job_local():
