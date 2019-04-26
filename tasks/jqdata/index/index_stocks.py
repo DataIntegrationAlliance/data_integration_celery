@@ -94,7 +94,6 @@ def import_jq_index_stocks(chain_param=None, ts_code_set=None):
         trade_date_list.sort()
         # 获取每只股票需要获取日线数据的日期区间
         table = session.execute(sql_str)
-        # 计算每只股票需要获取日线数据的日期区间
         begin_time = None
         # 获取date_from,date_to，将date_from,date_to做为value值
         code_date_range_dic = {
@@ -117,7 +116,9 @@ def import_jq_index_stocks(chain_param=None, ts_code_set=None):
                              trade_date_list[date_to_idx] if date_to_idx is not None else None)
                 continue
             date_from, date_to = trade_date_list[date_from_idx], trade_date_list[date_to_idx]
-            logger.debug('%d/%d) %s [%s - %s]', num, data_len, index_symbol, date_from, date_to)
+            trade_date_count = date_to_idx - date_from_idx + 1
+            logger.debug('%d/%d) 开始导入 %s [%s - %s] %d 个交易日的数据',
+                         num, data_len, index_symbol, date_from, date_to, trade_date_count)
             for trade_date in trade_date_list[date_from_idx: (date_to_idx + 1)]:
                 data_df = invoke_api(index_symbol=index_symbol, trade_date=trade_date)
 
