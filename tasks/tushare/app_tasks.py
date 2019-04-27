@@ -178,6 +178,8 @@ def run_job_on_pool():
 @app.task
 def tushare_tasks_local(first_time=False, mysql_to_sqlite=False):
     if first_time:
+        from tasks.backend.orm import init
+        init()
         logger.info('首次执行任务')
         run_once_job_local()
 
