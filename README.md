@@ -46,6 +46,12 @@ rabbitmq-plugins enable rabbitmq_management
 
 [RabbitMQ 管理界面](http://localhost:15672/#/connections)
 
+##  Window CMD 启动
+以下命令均才 data_integration_celery 根目录下运行
+```commandline
+scripts\run.bat
+```
+
 ## celery 启动方法 
 以下命令均才 data_integration_celery 根目录下运行
 ### 1. 启动 worker
@@ -153,4 +159,5 @@ class CeleryConfig:
     
     flush privileges; #刷新系统权限表
     ```
+ 
  
