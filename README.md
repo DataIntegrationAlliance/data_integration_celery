@@ -37,9 +37,12 @@
 + 日志输出格式及级别配置信息
 
 ## <span id="3">三、RabbitMQ 系统配置</span>
+下载页面                                                                     | windows安装版地址
+-----------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------
+RabbitMQ：[下载地址](https://www.rabbitmq.com/download.html)；               |[rabbitmq-server-3.7.14.exe](https://dl.bintray.com/rabbitmq/all/rabbitmq-server/3.7.14/rabbitmq-server-3.7.14.exe)
+RabbitMQ 运行依赖于 Erlang：[下载地址](http://www.erlang.org/downloads)；    |[OTP 21.3 Windows 64-bit Binary File (92618042)](http://erlang.org/download/otp_win64_21.3.exe)
 
-> [RabbitMQ 下载地址](https://www.rabbitmq.com/download.html)\
-Ubuntu 系统可直接 apt 方式安装
+> Ubuntu 系统可直接 apt 方式安装
 
 ### 1. 用户创建及权限配置
 创建用户，host，及访问权限
