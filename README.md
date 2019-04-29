@@ -52,6 +52,19 @@ rabbitmq-plugins enable rabbitmq_management
 scripts\run.bat
 ```
 
+输出界面如下：
+
+> run: Active Env[A] Worker[W] Beat[B] Local Tasks[L] Cancel[C] [A,W,B,L,C]?
+
+A：激活虚拟环境（如果有的话）
+W：启动 worker
+B：启动 beat
+L：启动本地运行
+C：退出
+
+> 其中，“L：启动本地运行”，将启动python程序进入选择界面，相关运行代码在 tasks\__init__.py 文件 main() 方法中
+> 如果有进一步希望进行自己的定制，可以根据需要，增加 func_list 中的函数列表
+
 ## celery 启动方法 
 以下命令均才 data_integration_celery 根目录下运行
 ### 1. 启动 worker
