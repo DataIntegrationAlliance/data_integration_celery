@@ -10,14 +10,14 @@
 为了满足不同环境需要，也支持不使用celery，直接运行
 
 # 目录：
-+ [环境依赖及安装配置](#1)
-+ [首次运行前环境配置](#2)
-+ [RabbitMQ 系统配置](#3)
-+ [Window CMD 启动](#4)
-+ [celery 启动方法](#5)
-+ [MySQL 配置方法](#6)
++ [一、环境依赖及安装配置](#1)
++ [二、首次运行前环境配置](#2)
++ [三、RabbitMQ 系统配置](#3)
++ [四、Window CMD 启动](#4)
++ [五、celery 启动方法](#5)
++ [六、MySQL 配置方法](#6)
 
-## <span id="1">环境依赖及安装配置</span>
+## <span id="1">一、环境依赖及安装配置</span>
 + windows，ubuntu均可
 + rabbitmq
 + python 3.6 及相关包
@@ -27,7 +27,7 @@
 
 > 为了支持独立运行在windows环境下，celery 的 broker 选择 rabbitmq 而非 redis（仅支持linux）
 
-## <span id="2">首次运行前环境配置</span>
+## <span id="2">二、首次运行前环境配置</span>
 项目全部的配置信息存放在 ./tasks/config.py 文件中
 包括： 
 + Celery 配置信息
@@ -36,7 +36,7 @@
 + 是否支持 SQLite导出功能及路经配置信息
 + 日志输出格式及级别配置信息
 
-## <span id="3">RabbitMQ 系统配置</span>
+## <span id="3">三、RabbitMQ 系统配置</span>
 
 > [RabbitMQ 下载地址](https://www.rabbitmq.com/download.html)\
 Ubuntu 系统可直接 apt 方式安装
@@ -58,7 +58,7 @@ rabbitmq-plugins enable rabbitmq_management
 
 [RabbitMQ 管理界面](http://localhost:15672/#/connections)
 
-##  <span id="4">Window CMD 启动</span>
+##  <span id="4">四、Window CMD 启动</span>
 以下命令均才 data_integration_celery 根目录下运行
 ```commandline
 scripts\run.bat
@@ -77,7 +77,7 @@ C：退出
 > 其中，“L：启动本地运行”，将启动python程序进入选择界面，相关运行代码在 tasks\__init__.py 文件 main() 方法中。
 如果有进一步希望进行自己的定制，可以根据需要，增加 func_list 中的函数列表
 
-## <span id="5">celery 启动方法 </span>
+## <span id="5">五、celery 启动方法 </span>
 以下命令均才 data_integration_celery 根目录下运行
 ### 1. 启动 worker
 ```commandline
@@ -123,7 +123,7 @@ class CeleryConfig:
 
 > 具体命令及执行时间可根据需要进行配置
 
-## <span id="6">MySQL 配置方法</span>
+## <span id="6">六、MySQL 配置方法</span>
  > [MySQL 5.7 下载地址](https://dev.mysql.com/downloads/mysql/5.7.html#downloads)\
  Ubuntu 系统可直接 apt 方式安装
 
