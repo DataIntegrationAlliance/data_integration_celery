@@ -56,7 +56,7 @@ scripts\run.bat
 以下命令均才 data_integration_celery 根目录下运行
 ### 1. 启动 worker
 ```commandline
-celery -A tasks worker --loglevel=debug -c 1 -P eventlet
+celery -A tasks worker --loglevel=debug -c 2 -P eventlet
 ```
 > -P 命令只要是为了在win10 下可以正常运行 [详见 issue](https://github.com/celery/celery/issues/4081)，其他环境下可以去除 \
 -P, --pool Pool implementation: prefork (default), eventlet, gevent or solo. \
@@ -95,6 +95,8 @@ class CeleryConfig:
     }
     broker_heartbeat = 0
 ```
+
+> 具体命令及执行时间可根据需要进行配置
 
 ## MySQL 配置方法
 
