@@ -9,7 +9,15 @@
 
 为了满足不同环境需要，也支持不使用celery，直接运行
 
-## 环境依赖及安装配置
+# 目录：
++ [环境依赖及安装配置](#1)
++ [首次运行前环境配置](#2)
++ [RabbitMQ 系统配置](#3)
++ [Window CMD 启动](#4)
++ [celery 启动方法](#5)
++ [MySQL 配置方法](#6)
+
+## <span id="1">环境依赖及安装配置</span>
 + windows，ubuntu均可
 + rabbitmq
 + python 3.6 及相关包
@@ -19,7 +27,7 @@
 
 > 为了支持独立运行在windows环境下，celery 的 broker 选择 rabbitmq 而非 redis（仅支持linux）
 
-## 首次运行前环境配置
+## <span id="2">首次运行前环境配置</span>
 项目全部的配置信息存放在 ./tasks/config.py 文件中
 包括： 
 + Celery 配置信息
@@ -28,7 +36,7 @@
 + 是否支持 SQLite导出功能及路经配置信息
 + 日志输出格式及级别配置信息
 
-## RabbitMQ 系统配置
+## <span id="3">RabbitMQ 系统配置</span>
 ### 1. 用户创建及权限配置
 创建用户，host，及访问权限
 ```commandline
@@ -46,7 +54,7 @@ rabbitmq-plugins enable rabbitmq_management
 
 [RabbitMQ 管理界面](http://localhost:15672/#/connections)
 
-##  Window CMD 启动
+##  <span id="4">Window CMD 启动</span>
 以下命令均才 data_integration_celery 根目录下运行
 ```commandline
 scripts\run.bat
@@ -56,16 +64,16 @@ scripts\run.bat
 
 > run: Active Env[A] Worker[W] Beat[B] Local Tasks[L] Cancel[C] [A,W,B,L,C]?
 
-A：激活虚拟环境（如果有的话）
-W：启动 worker
-B：启动 beat
-L：启动本地运行
+A：激活虚拟环境（如果有的话） \
+W：启动 worker \
+B：启动 beat \
+L：启动本地运行 \
 C：退出
 
-> 其中，“L：启动本地运行”，将启动python程序进入选择界面，相关运行代码在 tasks\__init__.py 文件 main() 方法中
-> 如果有进一步希望进行自己的定制，可以根据需要，增加 func_list 中的函数列表
+> 其中，“L：启动本地运行”，将启动python程序进入选择界面，相关运行代码在 tasks\__init__.py 文件 main() 方法中。
+如果有进一步希望进行自己的定制，可以根据需要，增加 func_list 中的函数列表
 
-## celery 启动方法 
+## <span id="5">celery 启动方法 </span>
 以下命令均才 data_integration_celery 根目录下运行
 ### 1. 启动 worker
 ```commandline
@@ -111,7 +119,7 @@ class CeleryConfig:
 
 > 具体命令及执行时间可根据需要进行配置
 
-## MySQL 配置方法
+## <span id="6">MySQL 配置方法</span>
 
  1. Ubuntu 18.04 环境下安装 MySQL，5.7
  
