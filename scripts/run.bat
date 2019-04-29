@@ -1,6 +1,6 @@
 echo off
 
-cd D:\WSPych\data_integration_celery
+CD %~p0..
 :Begin
 choice /C:AWBLC /M:"run: Active Env[A] Worker[W] Beat[B] Local Tasks[L] Cancel[C]"
 echo "input is :" %errorlevel%
