@@ -37,6 +37,10 @@
 + 日志输出格式及级别配置信息
 
 ## <span id="3">RabbitMQ 系统配置</span>
+
+> [RabbitMQ 下载地址](https://www.rabbitmq.com/download.html)\
+Ubuntu 系统可直接 apt 方式安装
+
 ### 1. 用户创建及权限配置
 创建用户，host，及访问权限
 ```commandline
@@ -120,6 +124,8 @@ class CeleryConfig:
 > 具体命令及执行时间可根据需要进行配置
 
 ## <span id="6">MySQL 配置方法</span>
+ > [MySQL 5.7 下载地址](https://dev.mysql.com/downloads/mysql/5.7.html#downloads)\
+ Ubuntu 系统可直接 apt 方式安装
 
  1. Ubuntu 18.04 环境下安装 MySQL，5.7
  
