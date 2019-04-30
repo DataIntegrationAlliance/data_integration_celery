@@ -57,6 +57,12 @@ finance = jqdatasdk.finance
 valuation = jqdatasdk.valuation
 
 
+@functools.wraps(jqdatasdk.finance.run_query)
+@check_before_run(auth_once)
+def finance_run_query(*args, **kwargs):
+    return jqdatasdk.finance.run_query(*args, **kwargs)
+
+
 @functools.wraps(jqdatasdk.get_trade_days)
 @check_before_run(auth_once)
 def get_trade_days(*args, **kwargs):
