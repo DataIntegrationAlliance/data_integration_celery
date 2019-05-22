@@ -9,7 +9,7 @@
 """
 from functools import lru_cache
 import pandas as pd
-from tasks.backend import with_db_session_p
+from tasks.backend import with_db_session_p, engine_md
 from tasks.wind.future_reorg.reorg_md_2_db import wind_future_continuous_md
 from ibats_utils.mess import get_folder_path, date_2_str
 import os
@@ -39,6 +39,14 @@ def trade_date_list(file_path=None):
         ret_list = [date_2_str(_[0]) for _ in table.fetchall()]
 
     pd.DataFrame({'trade_date': ret_list}).to_csv(file_path, index=False)
+
+
+def future_info(file_path=None):
+    if file_path is None:
+        file_path = get_export_path('future_info.csv')
+
+    sql_str = "select * from tushare_future_basic"
+    pd.read_sql(sql_str, engine_md).to_csv(file_path, index=False)
 
 
 if __name__ == "__main__":
