@@ -38,3 +38,7 @@ def check_sqlite_db_primary_keys(table_name, primary_keys, ignore_if_exist=True)
             sqlite_primary_keys = [mysql_col_2_sqlite_col_dic[_]
                                    for _ in primary_keys if _ in mysql_col_2_sqlite_col_dic]
             add_all_table_primary_keys(sqlite_primary_keys, file_name=sqlite_file_name, ignore_if_exist=ignore_if_exist)
+
+
+def symbol_2_ts_code(symbol):
+    return f"{symbol}.SH" if symbol[0] == '6' else f"{symbol}.SZ"
