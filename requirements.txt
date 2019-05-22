@@ -14,5 +14,5 @@ cryptocmd
 pytdx
 matplotlib>=3.0.3
 jqdatasdk>=1.6.1
-IBATS-Utils>=1.1.10
+ibats_utils>=1.1.16
 Click>=7.0
