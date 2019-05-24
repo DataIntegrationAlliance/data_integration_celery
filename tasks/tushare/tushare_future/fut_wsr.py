@@ -11,21 +11,18 @@ Created on 2018/9/3
 @desc    : 2018-09-3
 contact author:ybychem@gmail.com
 """
-
-
-from tasks.tushare.ts_pro_api import pro
-import pandas as pd
 import logging
-from tasks.backend.orm import build_primary_key
-from datetime import date, datetime, timedelta
-from ibats_utils.mess import try_2_date, STR_FORMAT_DATE, datetime_2_str, split_chunk, try_n_times
-from tasks import app
-from sqlalchemy.types import String, Date, Integer
+from datetime import datetime, timedelta
+
+import pandas as pd
+from ibats_utils.db import with_db_session
+from ibats_utils.mess import STR_FORMAT_DATE, datetime_2_str, try_n_times
 from sqlalchemy.dialects.mysql import DOUBLE
-from tasks.backend import engine_md
-from tasks.merge.code_mapping import update_from_info_table
-from ibats_utils.db import with_db_session, add_col_2_table, alter_table_2_myisam, \
-    bunch_insert_on_duplicate_update
+from sqlalchemy.types import String, Date
+
+from tasks import app
+from tasks.backend import engine_md, bunch_insert
+from tasks.tushare.ts_pro_api import pro
 
 DEBUG = False
 logger = logging.getLogger()
@@ -60,8 +57,8 @@ DTYPE_TUSHARE_FUTURE_WSR = {key: val for key, val in INDICATOR_PARAM_LIST_TUSHAR
 
 # df=pro.fut_wsr(trade_date='20181113')
 @try_n_times(times=5, sleep_time=1, logger=logger, exception_sleep_time=60)
-def invoke_fut_wsr(trade_date,fields):
-    invoke_fut_wsr = pro.fut_wsr(trade_date=trade_date,fields=fields)
+def invoke_fut_wsr(trade_date, fields):
+    invoke_fut_wsr = pro.fut_wsr(trade_date=trade_date, fields=fields)
     return invoke_fut_wsr
 
 
@@ -104,11 +101,11 @@ def import_tushare_fut_wsr(chain_param=None, ts_code_set=None):
     data_df_list, data_count, all_data_count, data_len = [], 0, 0, len(trddate)
     logger.info('%d 日的期货仓单数据将被导入数据库', data_len)
     # 将data_df数据，添加到data_df_list
-    fields='trade_date,symbol,fut_name,warehouse,wh_id,pre_vol,vol,vol_chg,area,year,grade,brand,place,pd,is_ct,unit,exchange'
+    fields = 'trade_date,symbol,fut_name,warehouse,wh_id,pre_vol,vol,vol_chg,area,year,grade,brand,place,pd,is_ct,unit,exchange'
     try:
         for i in range(len(trddate)):
             trade_date = datetime_2_str(trddate[i], STR_FORMAT_DATE_TS)
-            data_df = invoke_fut_wsr(trade_date=trade_date,fields=fields)
+            data_df = invoke_fut_wsr(trade_date=trade_date, fields=fields)
             logging.info(" 提取 %s 日 %d 条期货仓单数据", trade_date, data_df.shape[0])
 
             # 把数据攒起来
@@ -119,23 +116,21 @@ def import_tushare_fut_wsr(chain_param=None, ts_code_set=None):
             # 大于阀值有开始插入
             if data_count >= 1000:
                 data_df_all = pd.concat(data_df_list)
-                bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md, DTYPE_TUSHARE_FUTURE_WSR)
+                bunch_insert(data_df_all, table_name=table_name, dtype=DTYPE_TUSHARE_FUTURE_WSR,
+                             primary_keys=['symbol', 'trade_date'])
                 logging.info(" 更新%s表%d条期货仓单数据", table_name, data_count)
                 all_data_count += data_count
                 data_df_list, data_count = [], 0
-
 
     finally:
         # 导入数据库
         if len(data_df_list) > 0:
             data_df_all = pd.concat(data_df_list)
-            data_count = bunch_insert_on_duplicate_update(data_df_all, table_name, engine_md,
-                                                          DTYPE_TUSHARE_FUTURE_WSR)
+            data_count = bunch_insert(data_df_all, table_name=table_name, dtype=DTYPE_TUSHARE_FUTURE_WSR,
+                                      primary_keys=['symbol', 'trade_date'])
             all_data_count = all_data_count + data_count
             logging.info("更新 %s 结束 %d 条仓单信息被更新", table_name, all_data_count)
 
 
-
 if __name__ == "__main__":
     import_tushare_fut_wsr(ts_code_set=None)
-
