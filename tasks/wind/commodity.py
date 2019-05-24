@@ -360,7 +360,7 @@ def import_edb(wind_code_set=None):
 
     data_df_list = []
     data_len = len(code_date_range_dic)
-    logger.info('%d stocks will been import into wind_commodity_edb', data_len)
+    logger.info('%d data will been import into %s', data_len, table_name)
     # 将data_df数据，添加到data_df_list
     try:
         for num, (key_code, (date_from, date_to)) in enumerate(code_date_range_dic.items(), start=1):

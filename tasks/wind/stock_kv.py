@@ -171,7 +171,7 @@ def import_wind_code_kv(keys: list, chain_param=None, wind_code_list=None):
 
         data_df_list = []
         data_len = len(stock_date_dic)
-        logger.info('%d stocks will been import into wind_code_kv', data_len)
+        logger.info('%d data will been import into %s', data_len, table_name)
         try:
             for data_num, (wind_code, (date_from, date_to)) in enumerate(stock_date_dic.items(), start=1):
                 # if wind_code_set is not None and wind_code not in wind_code_set:

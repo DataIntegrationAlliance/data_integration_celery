@@ -198,7 +198,7 @@ def import_stock_daily(chain_param=None, wind_code_set=None):
 
     data_df_list = []
     data_len = len(code_date_range_dic)
-    logger.info('%d stocks will been import into wind_stock_daily', data_len)
+    logger.info('%d data will been import into %s', data_len, table_name)
     # 将data_df数据，添加到data_df_list
     try:
         for num, (wind_code, (date_from, date_to)) in enumerate(code_date_range_dic.items(), start=1):
@@ -598,7 +598,7 @@ def import_stock_quertarly(chain_param=None, wind_code_set=None):
     dtype['trade_date'] = Date
 
     data_df_list = []
-    logger.info('%d stocks will been import into wind_stock_quertarly', len(stock_date_dic))
+    logger.info('%d data will been import into %s', len(stock_date_dic), table_name)
 
     try:
         for stock_num, (wind_code, (date_from, date_to)) in enumerate(stock_date_dic.items()):

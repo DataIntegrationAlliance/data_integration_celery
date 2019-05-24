@@ -98,7 +98,7 @@ def import_tushare_stock_fina_audit(chain_param=None, ts_code_set=None):
     dtype = {key: val for key, val in param_list}
 
     data_len = len(code_date_range_dic)
-    logger.info('%d stocks will been import into wind_stock_daily', data_len)
+    logger.info('%d data will been import into %s', data_len, table_name)
 
     data_df = pd.DataFrame()
     Cycles = 1

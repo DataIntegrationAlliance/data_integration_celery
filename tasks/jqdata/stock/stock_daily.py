@@ -179,7 +179,7 @@ def import_jq_stock_daily(chain_param=None, code_set=None):
 
     # data_len = len(code_date_range_dic)
     data_df_list, data_count, all_data_count, data_len = [], 0, 0, len(code_date_range_dic)
-    logger.info('%d stocks will been import into %s', data_len, table_name)
+    logger.info('%d data will been import into %s', data_len, table_name)
     # 将data_df数据，添加到data_df_list
 
     try:

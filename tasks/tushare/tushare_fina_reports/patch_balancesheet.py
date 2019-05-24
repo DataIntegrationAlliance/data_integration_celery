@@ -202,7 +202,7 @@ def import_tushare_stock_balancesheet(ts_code_set=None):
     # dtype['trade_date'] = Date
 
     data_len = len(code_date_range_dic)
-    logger.info('%d stocks will been import into wind_stock_daily', data_len)
+    logger.info('%d data will been import into %s', data_len, table_name)
     # 将data_df数据，添加到data_df_list
 
     Cycles = 1

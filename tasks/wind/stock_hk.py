@@ -208,7 +208,7 @@ def import_stock_daily_hk(chain_param=None, wind_code_set=None, begin_time=None)
     data_df_list = []
     data_len = len(stock_date_dic)
     # 获取接口数据
-    logger.info('%d stocks will been import into wind_stock_daily_hk', data_len)
+    logger.info('%d data will been import into %s', data_len, table_name)
     try:
         for data_num, (wind_code, (date_from, date_to)) in enumerate(stock_date_dic.items()):
             logger.debug('%d/%d) %s [%s - %s]', data_num, data_len, wind_code, date_from, date_to)
@@ -302,7 +302,7 @@ def import_stock_quertarly_hk(chain_param=None, wind_code_set=None, begin_time=N
             for wind_code, date_from, date_to in table.fetchall() if
             wind_code_set is None or wind_code in wind_code_set}
     data_df_list = []
-    logger.info('%d stocks will been import into wind_stock_quertarly_hk', len(stock_date_dic))
+    logger.info('%d data will been import into %s', len(stock_date_dic), table_name)
     # 获取股票量价等行情数据
     field_col_name_list = [
         ('roic_ttm', String(20)),

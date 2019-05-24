@@ -154,7 +154,7 @@ def import_tushare_stock_income(chain_param=None, ts_code_set=None):
             ts_code_set is None or ts_code in ts_code_set}
 
     data_df_list, data_count, all_data_count, data_len = [], 0, 0, len(code_date_range_dic)
-    logger.info('%d stocks will been import into wind_stock_daily', data_len)
+    logger.info('%d data will been import into %s', data_len, table_name)
     # 将data_df数据，添加到data_df_list
 
     Cycles = 1

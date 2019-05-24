@@ -342,7 +342,7 @@ def import_tdx_tick():
             code_date_range_dic.setdefault(ts_code, []).append(trade_date_list)
 
     data_df_list, data_count, all_data_count, data_len = [], 0, 0, len(code_date_range_dic)
-    logger.info('%d stocks will been import into pytdx_stock_tick', data_len)
+    logger.info('%d data will been import into %s', data_len, table_name)
     # 将data_df数据，添加到data_df_list
     Cycles = 1
     try:
