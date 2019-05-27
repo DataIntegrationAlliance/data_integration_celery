@@ -20,6 +20,9 @@ bunch_insert_p = partial(bunch_insert_on_duplicate_update,
 with_db_session_p = partial(with_db_session, engine=engine_md)
 execute_scalar_p = partial(execute_scalar, engine=engine_md)
 execute_sql_commit = partial(execute_sql, engine=engine_md, commit=True)
+pd.set_option('display.width', 240)
+pd.set_option('display.max_columns', 20)
+pd.set_option('display.float_format', '{:,.4f}'.format)
 
 
 def bunch_insert(df, table_name, dtype, primary_keys):
