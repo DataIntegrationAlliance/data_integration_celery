@@ -392,7 +392,7 @@ def tushare_future_continuous_md():
     # instrument_type_list = ["RU", "AG", "AU", "RB", "HC", "J", "JM", "I", "CU",
     #                         "AL", "ZN", "PB", "NI", "SN",
     #                         "SR", "CF"]
-    instrument_type_list = ["RU"]  # , "RB"
+    # instrument_type_list = ["RU"]  # , "RB"
     for instrument_type in instrument_type_list:
         logger.info("开始导出 %s 相关数据", instrument_type)
         data_no_adj_df, data_adj_df = reorg_2_continuous_md(instrument_type, update_table=True, export_2_csv=True)
