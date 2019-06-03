@@ -263,21 +263,28 @@ def reorg_2_continuous_md(instrument_type, update_table=True, export_2_csv=False
             # 主力合约切换，则计算调整因子
             close_cur_contract = date_instrument_close_df.loc[trade_date, main_contract]
             close_last_contract = date_instrument_close_df.loc[trade_date, main_contract_last]
-            adj_chg_main = close_cur_contract / close_last_contract
-        else:
-            adj_chg_main = 1
-
-        # 调整连续次主力合约调整因子
-        if main_contract_last is not None and main_contract_last != main_contract:
-            # 次主力合约切换，则计算调整因子
-            close_cur_contract = date_instrument_close_df.loc[trade_date, main_contract]
-            close_last_contract = date_instrument_close_df.loc[trade_date, main_contract_last]
             # 2019-06-03
             # RU 2004-04-23 切换合约时，上一主力合约已经没有交易数据，造成复权数据计算结果 nan
             # 对于此情况，开始使用前一交易日相关数据进行对比
             if pd.isna(close_last_contract):
                 close_cur_contract = date_instrument_close_df.loc[trade_date_last, main_contract]
                 close_last_contract = date_instrument_close_df.loc[trade_date_last, main_contract_last]
+
+            adj_chg_main = close_cur_contract / close_last_contract
+        else:
+            adj_chg_main = 1
+
+        # 调整连续次主力合约调整因子
+        if sec_contract is not None and sec_contract_last is not None and sec_contract_last != sec_contract:
+            # 次主力合约切换，则计算调整因子
+            close_cur_contract = date_instrument_close_df.loc[trade_date, sec_contract]
+            close_last_contract = date_instrument_close_df.loc[trade_date, sec_contract_last]
+            # 2019-06-03
+            # RU 2004-04-23 切换合约时，上一主力合约已经没有交易数据，造成复权数据计算结果 nan
+            # 对于此情况，开始使用前一交易日相关数据进行对比
+            if pd.isna(close_last_contract):
+                close_cur_contract = date_instrument_close_df.loc[trade_date_last, sec_contract]
+                close_last_contract = date_instrument_close_df.loc[trade_date_last, sec_contract_last]
 
             adj_chg_secondary = close_cur_contract / close_last_contract
         else:
@@ -399,7 +406,7 @@ def tushare_future_continuous_md():
     # instrument_type_list = ["RU", "AG", "AU", "RB", "HC", "J", "JM", "I", "CU",
     #                         "AL", "ZN", "PB", "NI", "SN",
     #                         "SR", "CF"]
-    # instrument_type_list = ["RU"]  # , "RB"
+    instrument_type_list = ["RU"]  # , "RB"
     for instrument_type in instrument_type_list:
         logger.info("开始导出 %s 相关数据", instrument_type)
         data_no_adj_df, data_adj_df = reorg_2_continuous_md(instrument_type, update_table=True, export_2_csv=True)
