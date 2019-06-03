@@ -272,6 +272,13 @@ def reorg_2_continuous_md(instrument_type, update_table=True, export_2_csv=False
             # 次主力合约切换，则计算调整因子
             close_cur_contract = date_instrument_close_df.loc[trade_date, main_contract]
             close_last_contract = date_instrument_close_df.loc[trade_date, main_contract_last]
+            # 2019-06-03
+            # RU 2004-04-23 切换合约时，上一主力合约已经没有交易数据，造成复权数据计算结果 nan
+            # 对于此情况，开始使用前一交易日相关数据进行对比
+            if pd.isna(close_last_contract):
+                close_cur_contract = date_instrument_close_df.loc[trade_date_last, main_contract]
+                close_last_contract = date_instrument_close_df.loc[trade_date_last, main_contract_last]
+
             adj_chg_secondary = close_cur_contract / close_last_contract
         else:
             adj_chg_secondary = 1
