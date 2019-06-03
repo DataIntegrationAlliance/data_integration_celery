@@ -29,12 +29,16 @@ def get_export_path(file_name, create_folder_if_no_exist=True):
     return os.path.join(folder_path, file_name)
 
 
-def trade_date_list(file_path=None):
+def trade_date_list(file_path=None, future_or_stock='future'):
     if file_path is None:
         file_path = get_export_path('trade_date.csv')
 
     with with_db_session_p() as session:
-        sql_str = "select cal_date from tushare_trade_date where exchange='SSE' and is_open=1"
+        if future_or_stock is 'future':
+            sql_str = f"select cal_date from tushare_future_trade_cal where exchange='DCE' and is_open=1"
+        else:
+            sql_str = f"select cal_date from tushare_trade_date where exchange='SSE' and is_open=1"
+
         table = session.execute(sql_str)
         ret_list = [date_2_str(_[0]) for _ in table.fetchall()]
 
@@ -50,4 +54,4 @@ def future_info(file_path=None):
 
 
 if __name__ == "__main__":
-    pass
+    trade_date_list()
