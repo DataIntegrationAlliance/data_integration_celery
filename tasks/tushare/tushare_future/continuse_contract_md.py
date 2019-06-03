@@ -9,18 +9,19 @@ Created on 2018/2/12
 将期货行情数据进行整理，相同批准不同合约的行情合并成为连续行情，并进行复权处理，然后保存到数据库
 """
 
-import math, os
+import logging
+import math
+import os
+import re
 from collections import defaultdict
 
 import pandas as pd
-import logging
-import re
-from sqlalchemy.dialects.mysql import DOUBLE
-from sqlalchemy.types import String, Date, Time, DateTime, Integer
-from tasks.backend import engine_md, bunch_insert
-from ibats_utils.db import with_db_session, bunch_insert_on_duplicate_update
+from ibats_utils.db import with_db_session
 from ibats_utils.mess import str_2_float
-from tasks.config import config
+from sqlalchemy.dialects.mysql import DOUBLE
+from sqlalchemy.types import String, Date
+
+from tasks.backend import engine_md, bunch_insert
 
 logger = logging.getLogger()
 # 对于郑商所部分合约需要进行特殊的名称匹配规则
@@ -228,7 +229,7 @@ def reorg_2_continuous_md(instrument_type, update_table=True, export_2_csv=False
     :param export_2_csv: 是否导出csv
     :return:
     """
-    sql_str = r"""select ts_code, trade_date, open, high, low, close, vol, oi, amount
+    sql_str = r"""select ts_code, trade_date, open, high, low, close, vol, oi, ifnull(amount, close * vol) amount
         from tushare_future_daily_md 
         where ts_code in (
             select ts_code from tushare_future_basic 
@@ -370,11 +371,16 @@ def reorg_2_continuous_md(instrument_type, update_table=True, export_2_csv=False
         file_name = f"{instrument_type} original.csv"
         file_path = os.path.join(folder_path, file_name)
         logger.info(file_path)
-        data_adj_df.to_csv(file_path, index=False)
+        # 2019-06-03
+        # 当前处于策略研发需要，仅输出主力合约中的量价相关数据
+        data_no_adj_df.to_csv(file_path, index=False)
 
         file_name = f"{instrument_type}.csv"
         file_path = os.path.join(folder_path, file_name)
-        data_no_adj_df.to_csv(file_path, index=False)
+        output_df = data_adj_df[[
+            "trade_date", "instrument_type", "Open", "High", "Low", "Close", "Volume", "OI", "Amount"
+        ]].dropna()
+        output_df.rename(columns={_: _.lower() for _ in output_df.columns}).to_csv(file_path, index=False)
         logger.info(file_path)
 
     return data_no_adj_df, data_adj_df
@@ -386,14 +392,17 @@ def tushare_future_continuous_md():
     # instrument_type_list = ["RU", "AG", "AU", "RB", "HC", "J", "JM", "I", "CU",
     #                         "AL", "ZN", "PB", "NI", "SN",
     #                         "SR", "CF"]
-    # instrument_type_list = ["RU"]
+    instrument_type_list = ["RU"]  # , "RB"
     for instrument_type in instrument_type_list:
         logger.info("开始导出 %s 相关数据", instrument_type)
         data_no_adj_df, data_adj_df = reorg_2_continuous_md(instrument_type, update_table=True, export_2_csv=True)
         import matplotlib.pyplot as plt
         data_no_adj_df.Close.plot(legend=True)
+        # data_no_adj_df.CloseNext.rename('Close Sec').plot(legend=True)
         data_adj_df.Close.rename('Close Adj').plot(legend=True)
+        # data_adj_df.CloseNext.rename('Close Sec Adj').plot(legend=True)
         plt.suptitle(instrument_type)
+        plt.grid(True)
         plt.show()
 
 
