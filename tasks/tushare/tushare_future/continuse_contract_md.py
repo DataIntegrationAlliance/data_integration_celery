@@ -220,13 +220,14 @@ def get_main_sec_contract_iter(data_df, instrument_type, max_mean_n_for_secondar
         yield trade_date, main_contract, sec_contract
 
 
-def reorg_2_continuous_md(instrument_type, update_table=True, export_2_csv=False) -> (pd.DataFrame, pd.DataFrame):
+def reorg_2_continuous_md(instrument_type, update_table=True, export_2_csv=False, export_folder=None) -> (pd.DataFrame, pd.DataFrame):
     """
     将每一个交易日主次合约行情信息进行展示
     adj_chg_main, adj_chg_secondary 为前复权调整因子
     :param instrument_type:
     :param update_table: 是否更新数据库
     :param export_2_csv: 是否导出csv
+    :param export_folder: 导出 csv 目录
     :return:
     """
     sql_str = r"""select ts_code, trade_date, open, high, low, close, vol, oi, ifnull(amount, close * vol) amount
@@ -272,7 +273,7 @@ def reorg_2_continuous_md(instrument_type, update_table=True, export_2_csv=False
 
             adj_chg_main = close_cur_contract / close_last_contract
             if pd.isna(adj_chg_main):
-                logger.warning('交易日 %s 上一交易日 %s 主力合约 %s 上一主力合约 %s 复权因子计算错误 %s',
+                logger.warning('交易日 %s 上一交易日 %s 主力合约 %s 上一主力合约 %s 复权因子计算错误',
                                trade_date, trade_date_last, main_contract, main_contract_last)
         else:
             adj_chg_main = 1
@@ -381,7 +382,11 @@ def reorg_2_continuous_md(instrument_type, update_table=True, export_2_csv=False
         update_df_2_db(instrument_type, table_name, data_no_adj_df)
 
     if export_2_csv and data_adj_df is not None:
-        folder_path = os.path.join(os.path.abspath('.'), 'output', 'commodity')
+        if export_folder is None:
+            folder_path = os.path.join(os.path.abspath('.'), 'output', 'commodity')
+        else:
+            folder_path = export_folder
+
         if not os.path.exists(folder_path):
             os.makedirs(folder_path)
 
@@ -403,16 +408,18 @@ def reorg_2_continuous_md(instrument_type, update_table=True, export_2_csv=False
     return data_no_adj_df, data_adj_df
 
 
-def tushare_future_continuous_md():
+def tushare_future_continuous_md(instrument_type_list=None, export_2_csv=True, export_folder=None):
     """将期货合约数据合并成为连续合约数据，并保存数据库"""
-    instrument_type_list = get_all_instrument_type()
+    if instrument_type_list is None:
+        instrument_type_list = get_all_instrument_type()
     # instrument_type_list = ["RU", "AG", "AU", "RB", "HC", "J", "JM", "I", "CU",
     #                         "AL", "ZN", "PB", "NI", "SN",
     #                         "SR", "CF"]
-    instrument_type_list = ["RU"]  # , "RB"
+    # instrument_type_list = ["RU"]  # , "RB"
     for instrument_type in instrument_type_list:
         logger.info("开始导出 %s 相关数据", instrument_type)
-        data_no_adj_df, data_adj_df = reorg_2_continuous_md(instrument_type, update_table=True, export_2_csv=True)
+        data_no_adj_df, data_adj_df = reorg_2_continuous_md(
+            instrument_type, update_table=True, export_2_csv=export_2_csv, export_folder=export_folder)
         import matplotlib.pyplot as plt
         data_no_adj_df.Close.plot(legend=True)
         # data_no_adj_df.CloseNext.rename('Close Sec').plot(legend=True)
@@ -479,6 +486,6 @@ def _test_check_contract_has_no_missing():
 
 if __name__ == "__main__":
     # 将期货合约数据合并成为连续合约数据，并保存数据库
-    # tushare_future_continuous_md()
+    tushare_future_continuous_md()
     # _test_get_main_sec_contract_iter()
-    _test_check_contract_has_no_missing()
+    # _test_check_contract_has_no_missing()
