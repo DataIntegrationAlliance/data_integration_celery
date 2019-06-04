@@ -271,6 +271,9 @@ def reorg_2_continuous_md(instrument_type, update_table=True, export_2_csv=False
                 close_last_contract = date_instrument_close_df.loc[trade_date_last, main_contract_last]
 
             adj_chg_main = close_cur_contract / close_last_contract
+            if pd.isna(adj_chg_main):
+                logger.warning('交易日 %s 上一交易日 %s 主力合约 %s 上一主力合约 %s 复权因子计算错误 %s',
+                               trade_date, trade_date_last, main_contract, main_contract_last)
         else:
             adj_chg_main = 1
 
@@ -349,8 +352,8 @@ def reorg_2_continuous_md(instrument_type, update_table=True, export_2_csv=False
     else:
         new_df = pd.DataFrame(date_reorg_data_dic).T.sort_index(ascending=False)
         new_df['instrument_type'] = instrument_type
-        new_df['adj_factor_main'] = new_df['adj_chg_main'].cumprod().shift(1).fillna(1)
-        new_df['adj_factor_secondary'] = new_df['adj_chg_secondary'].cumprod().shift(1).fillna(1)
+        new_df['adj_factor_main'] = new_df['adj_chg_main'].fillna(1).cumprod().shift(1).fillna(1)
+        new_df['adj_factor_secondary'] = new_df['adj_chg_secondary'].fillna(1).cumprod().shift(1).fillna(1)
         new_df = new_df.sort_index()
         col_list = ["trade_date", "Contract", "ContractNext", "Open", "OpenNext", "High", "HighNext",
                     "Low", "LowNext", "Close", "CloseNext", "Volume", "VolumeNext", "OI", "OINext",
@@ -436,7 +439,46 @@ def _test_get_main_sec_contract_iter():
         logger.info('%4d) %s %s %s', nday, trade_date, main_contract, sec_contract)
 
 
+def check_contract_has_no_missing(instrument_type):
+    """
+    检查期货品种历史合约数据是否齐全，tushare_future_basic 表中所列合约，tushare_future_daily_md 是否存在对应的数据
+    :param instrument_type:
+    :return:
+    """
+    sql_str = r"""select t1.ts_code, t1.delist_date
+from
+  (
+    select ts_code, delist_date from tushare_future_basic where fut_code = :fut_code and delist_date is not null
+  ) t1
+  left join
+  (
+    select distinct ts_code
+    from tushare_future_daily_md
+    where ts_code in (
+        select ts_code from tushare_future_basic
+        where fut_code=:fut_code and delist_date is not null)
+  ) t2
+on t1.ts_code=t2.ts_code
+where t2.ts_code is null
+order by delist_date"""
+    miss_data_dic = {}
+    with with_db_session(engine_md) as session:
+        table = session.execute(sql_str, params={"fut_code": instrument_type})
+        for ts_code, delist_date in table.fetchall():
+            logger.info('缺少 %s 合约数据，交割日 %s', ts_code, delist_date)
+            miss_data_dic[ts_code] = delist_date
+
+    return miss_data_dic
+
+
+def _test_check_contract_has_no_missing():
+    instrument_type = "RU"
+    miss_data_dic = check_contract_has_no_missing(instrument_type)
+    logger.info('%s', miss_data_dic)
+
+
 if __name__ == "__main__":
     # 将期货合约数据合并成为连续合约数据，并保存数据库
-    tushare_future_continuous_md()
+    # tushare_future_continuous_md()
     # _test_get_main_sec_contract_iter()
+    _test_check_contract_has_no_missing()
