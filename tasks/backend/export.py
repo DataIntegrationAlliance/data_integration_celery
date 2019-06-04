@@ -53,5 +53,20 @@ def future_info(file_path=None):
     pd.read_sql(sql_str, engine_md).to_csv(file_path, index=False)
 
 
+def future_continuous_md(instrument_type_list=None, export_2_csv=True) -> (pd.DataFrame, pd.DataFrame):
+    """
+    将每一个交易日主次合约行情信息进行展示
+    adj_chg_main, adj_chg_secondary 为前复权调整因子
+    :param instrument_type_list:
+    :param export_2_csv: 是否导出csv
+    :return:
+    """
+    from tasks.tushare.tushare_future.continuse_contract_md import tushare_future_continuous_md
+    folder_path = os.path.join(root_parent_path, 'export_files', 'future_md')
+    tushare_future_continuous_md(
+        instrument_type_list=instrument_type_list, export_2_csv=export_2_csv, export_folder=folder_path)
+
+
 if __name__ == "__main__":
-    trade_date_list()
+    # trade_date_list()
+    future_continuous_md()
