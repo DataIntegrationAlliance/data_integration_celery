@@ -199,7 +199,7 @@ def tushare_tasks_local_first_time():
 if __name__ == "__main__":
     logger.info("本地执行 tushare 任务")
     import sys
-    if sys.argv[1] == 'first':
+    if len(sys.argv) > 1 and sys.argv[1] == 'first':
         logger.info('首次执行任务')
         run_once_job_local()
 
