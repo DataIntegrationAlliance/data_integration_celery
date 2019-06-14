@@ -7,18 +7,21 @@
 @contact : mmmaaaggg@163.com
 @desc    :
 """
-from sqlalchemy import MetaData, Column, Integer, String, UniqueConstraint, TIMESTAMP, Table
-from sqlalchemy.dialects.mysql import DOUBLE
-from sqlalchemy.ext.declarative import declarative_base
+import logging
+from datetime import datetime
+
+from ibats_utils.db import alter_table_2_myisam
 from ibats_utils.db import with_db_session
+from sqlalchemy import Column, String, Table, DateTime
+from sqlalchemy.ext.declarative import declarative_base
+
 from tasks.backend import engine_md
 from tasks.config import config
-import logging
-from ibats_utils.db import alter_table_2_myisam
 
 logger = logging.getLogger()
 Base = declarative_base(bind=engine_md)
 TABLE_MODEL_DIC = {}
+_HEART_BEAT_THREAD = None
 
 
 class CodeMapping(Base):
@@ -30,6 +33,62 @@ class CodeMapping(Base):
     jq_code = Column(String(20), comment='聚宽code')
     market = Column(String(20), comment='所在市场：SH, SZ, HK, ')
     type = Column(String(20), comment='资产类型：stock, fund, index, future, option')
+
+
+class HeartBeat(Base):
+    """心跳信息表"""
+
+    __tablename__ = 'heart_beat'
+    update_dt = Column(DateTime, primary_key=True)
+
+
+def init_data():
+    from sqlalchemy.sql import func
+    with with_db_session(engine_md) as session:
+        count = session.query(func.count(HeartBeat.update_dt)).scalar()
+        if count == 0:
+            logger.debug('初始化 HeartBeat 数据')
+            session.add(HeartBeat(update_dt=datetime.now()))
+            session.commit()
+        else:
+            session.query(HeartBeat).update({HeartBeat.update_dt: datetime.now()})
+            session.commit()
+
+
+def strat_heart_beat_thread():
+    import time
+    global _HEART_BEAT_THREAD
+    if _HEART_BEAT_THREAD is not None and _HEART_BEAT_THREAD.is_alive():
+        logger.info('timer_heart_beat thread is running')
+        return
+
+    def timer_heart_beat():
+        logging.debug('timer_heart_beat thread start')
+        is_debug, n = False, 10
+        while True:
+            if is_debug:
+                if n <= 0:
+                    break
+                else:
+                    n -= 1
+
+            time.sleep(300)
+            try:
+                with with_db_session(engine_md) as session:
+                    update_dt = datetime.now()
+                    session.query(HeartBeat).update({HeartBeat.update_dt: update_dt})
+                    session.commit()
+                logger.debug('heart beat at %s', update_dt)
+            except:
+                logger.exception('heart beat exception')
+                break
+
+        logging.debug('timer_heart_beat thread finished')
+
+    import threading
+    _HEART_BEAT_THREAD = threading.Thread(target=timer_heart_beat)
+    _HEART_BEAT_THREAD.daemon = True
+    _HEART_BEAT_THREAD.start()
 
 
 def init(alter_table=False):
@@ -48,6 +107,7 @@ def init(alter_table=False):
         TABLE_MODEL_DIC[table_name] = Table(table_name, Base.metadata, autoload=True)
 
     logger.info("所有表Model动态加载完成")
+    init_data()
 
 
 def build_primary_key(table_name_list):
@@ -180,6 +240,8 @@ def build_primary_key(table_name_list):
                 else:
                     logger.debug('%d/%d) %s 无需操作', num, table_count, table_name)
 
+
+strat_heart_beat_thread()
 
 if __name__ == "__main__":
     init()

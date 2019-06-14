@@ -14,7 +14,7 @@ with open("README.md", "r", encoding='utf-8') as rm:
     long_description = rm.read()
 
 setup(name='data_integration_celery',
-      version='0.1.0',
+      version='0.1.1',
       description="""通过celery定期执行更相关任务，
       将万得wind，同花顺ifind，东方财富choice、Tushrae、JQDataSDK、pytdx、CMC等数据终端的数据进行整合，清洗，一致化，
       供其他系统数据分析使用""",
