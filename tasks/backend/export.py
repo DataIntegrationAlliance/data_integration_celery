@@ -67,6 +67,13 @@ def future_continuous_md(instrument_type_list=None, export_2_csv=True) -> (pd.Da
         instrument_type_list=instrument_type_list, export_2_csv=export_2_csv, export_folder=folder_path)
 
 
+def tushare_stock_index_daily(index_code="000300.SH"):
+    from tasks.tushare.tushare_stock_daily.index_daily import export_tushare_stock_index_daily
+    file_path = get_export_path(f"{index_code}.csv")
+    export_tushare_stock_index_daily(index_code, file_path)
+
+
 if __name__ == "__main__":
     # trade_date_list()
-    future_continuous_md()
+    # future_continuous_md()
+    tushare_stock_index_daily("000300.SH")

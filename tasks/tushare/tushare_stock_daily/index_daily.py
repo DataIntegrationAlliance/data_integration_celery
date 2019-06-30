@@ -50,7 +50,7 @@ def invoke_index_daily(ts_code, start_date, end_date):
 @app.task
 def import_tushare_stock_index_daily_mini(
         chain_param=None,
-        ts_code_set=["h30024.CSI", "399300.SZ", "000016.SH", "399905.SZ", "399678.SZ", "399101.SZ"]):
+        ts_code_set=["h30024.CSI", "399300.SZ", "000016.SH", "399905.SZ", "399678.SZ", "399101.SZ", "000300.SH"]):
     """
     插入股票日线数据到最近一个工作日-1。
     如果超过 BASE_LINE_HOUR 时间，则获取当日的数据
@@ -172,6 +172,25 @@ def import_tushare_stock_index_daily(chain_param=None, ts_code_set=None):
 
             all_data_count += data_count
             logging.info("更新 %s 结束 %d 条信息被更新", table_name, all_data_count)
+
+
+def export_tushare_stock_index_daily(index_code='000300.SH', file_path=None):
+    import os
+    sql_str = """SELECT * from tushare_stock_index_daily_md
+        where ts_code = %s
+        ORDER BY trade_date"""
+    df = pd.read_sql(sql_str, engine_md, params=[index_code])
+    if file_path is None:
+        folder_path = os.path.join(os.path.abspath('.'), 'output', 'commodity')
+        file_name = f"{index_code}.csv"
+        file_path = os.path.join(folder_path, file_name)
+    else:
+        folder_path, file_name = os.path.split(file_path)
+
+    if not os.path.exists(folder_path):
+        os.makedirs(folder_path)
+
+    df.to_csv(file_path, index=False)
 
 
 if __name__ == "__main__":
