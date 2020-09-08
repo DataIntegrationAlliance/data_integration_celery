@@ -297,7 +297,9 @@ def import_future_info(chain_param=None):
             data_count = 0 if future_info_df is None else future_info_df.shape[0]
             logger.info("subject_name=%s[%s] %s 返回 %d 条数据",
                         subject_name, sector_id, date_since_str, data_count)
-            wind_code_set |= set(future_info_df['wind_code'])
+            if data_count > 0:
+                wind_code_set |= set(future_info_df['wind_code'])
+
             if date_since >= date_yestoday:
                 break
             else:
