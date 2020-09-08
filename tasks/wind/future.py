@@ -283,6 +283,7 @@ def import_future_info(chain_param=None):
     dtype = {key: val for key, val in col_name_param_list}
     dtype['wind_code'] = String(20)
     # 获取历史期货合约列表信息
+    logger.info("获取历史期货合约列表信息")
     for future_sectorid_dic in future_sectorid_dic_list:
         subject_name = future_sectorid_dic['subject_name']
         sector_id = future_sectorid_dic['sectorid']
@@ -293,6 +294,8 @@ def import_future_info(chain_param=None):
         while date_since <= date_yestoday:
             date_since_str = date_since.strftime(STR_FORMAT_DATE)
             future_info_df = invoker.wset("sectorconstituent", "date=%s;sectorid=%s" % (date_since_str, sector_id))
+            logger.info("subject_name=%s[%s] %s 返回 %d 条数据",
+                        subject_name, sector_id, date_since_str, future_info_df.shape[0])
             wind_code_set |= set(future_info_df['wind_code'])
             if date_since >= date_yestoday:
                 break
@@ -515,6 +518,6 @@ if __name__ == "__main__":
     # DEBUG = True
     wind_code_set = None
     # import_future_info_hk(chain_param=None)
-    # import_future_info(chain_param=None)
-    import_future_daily(None, wind_code_set)
+    import_future_info(chain_param=None)
+    # import_future_daily(None, wind_code_set)
     # update_future_info_hk(chain_param=None)
