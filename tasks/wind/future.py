@@ -294,8 +294,9 @@ def import_future_info(chain_param=None):
         while date_since <= date_yestoday:
             date_since_str = date_since.strftime(STR_FORMAT_DATE)
             future_info_df = invoker.wset("sectorconstituent", "date=%s;sectorid=%s" % (date_since_str, sector_id))
+            data_count = 0 if future_info_df is None else future_info_df.shape[0]
             logger.info("subject_name=%s[%s] %s 返回 %d 条数据",
-                        subject_name, sector_id, date_since_str, future_info_df.shape[0])
+                        subject_name, sector_id, date_since_str, data_count)
             wind_code_set |= set(future_info_df['wind_code'])
             if date_since >= date_yestoday:
                 break
