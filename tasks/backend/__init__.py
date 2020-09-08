@@ -13,7 +13,7 @@ from ibats_utils.db import bunch_insert_on_duplicate_update, with_db_session, ex
 from functools import partial
 import pandas as pd
 
-engine_dic = {key: create_engine(url) for key, url in config.DB_URL_DIC.items()}
+engine_dic = {key: create_engine(url, pool_pre_ping=True) for key, url in config.DB_URL_DIC.items()}
 engine_md = engine_dic[config.DB_SCHEMA_MD]
 bunch_insert_p = partial(bunch_insert_on_duplicate_update,
                          engine=engine_md, myisam_if_create_table=True, schema=config.DB_SCHEMA_MD)
