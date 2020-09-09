@@ -291,6 +291,7 @@ def import_future_info(chain_param=None):
         date_establish = datetime.strptime(future_sectorid_dic['date_establish'], STR_FORMAT_DATE).date()
         date_since = get_date_since(wind_code_ipo_date_dic, regex_str, date_establish)
         date_yestoday = date.today() - timedelta(days=1)
+        logger.info("%s[%s] %s ~ %s", subject_name, sector_id, date_since, date_yestoday)
         while date_since <= date_yestoday:
             date_since_str = date_since.strftime(STR_FORMAT_DATE)
             future_info_df = invoker.wset("sectorconstituent", "date=%s;sectorid=%s" % (date_since_str, sector_id))
@@ -312,6 +313,8 @@ def import_future_info(chain_param=None):
     # 获取合约基本信息
     # w.wss("AU1706.SHF,AG1612.SHF,AU0806.SHF", "ipo_date,sec_name,sec_englishname,exch_eng,lasttrade_date,lastdelivery_date,dlmonth,lprice,sccode,margin,punit,changelt,mfprice,contractmultiplier,ftmargins,trade_code")
     if len(wind_code_list) > 0:
+        logger.info("%d wind_code will be invoked by wss, wind_code_list=%s",
+                    len(wind_code_list), wind_code_list)
         future_info_df = invoker.wss(wind_code_list, wind_indictor_str)
         future_info_df['MFPRICE'] = future_info_df['MFPRICE'].apply(mfprice_2_num)
         future_info_count = future_info_df.shape[0]
