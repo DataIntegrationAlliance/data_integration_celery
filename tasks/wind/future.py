@@ -454,7 +454,7 @@ def import_future_daily(chain_param=None, wind_code_set=None, begin_time=None):
             logger.info("更新 %s 结束 %d 条记录被更新", table_name, data_count)
             if not has_table and engine_md.has_table(table_name):
                 alter_table_2_myisam(engine_md, [table_name])
-                build_primary_key(table_name)
+                build_primary_key([table_name])
         else:
             logger.info("更新 %s 结束 0 条记录被更新", table_name)
 
@@ -524,6 +524,6 @@ if __name__ == "__main__":
     # DEBUG = True
     wind_code_set = None
     # import_future_info_hk(chain_param=None)
-    import_future_info(chain_param=None)
-    # import_future_daily(None, wind_code_set)
+    # import_future_info(chain_param=None)
+    import_future_daily(None, wind_code_set)
     # update_future_info_hk(chain_param=None)
