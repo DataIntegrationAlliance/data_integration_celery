@@ -445,7 +445,6 @@ def load_by_wind_code_desc(instrument_types):
             # 获取date_from,date_to，将date_from,date_to做为value值
             for row in table.fetchall():
                 wind_code = row[0]
-                print(wind_code)
                 match = pattern.search(wind_code)
                 if match is None:
                     continue
