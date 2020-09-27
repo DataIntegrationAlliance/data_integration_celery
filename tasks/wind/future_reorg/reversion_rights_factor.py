@@ -44,6 +44,7 @@ def generate_reversion_rights_factors(instrument_type, switch_by_key='position')
     :param switch_by_key: position 持仓量, volume 成交量, st_stock 注册仓单量
     :return:
     """
+    instrument_type = instrument_type.upper()
     # 获取当前期货品种全部历史合约的日级别行情数据
     sql_str = r"""select wind_code, trade_date, open, close, """ + switch_by_key + """ 
       from wind_future_daily where wind_code regexp %s"""
@@ -157,6 +158,7 @@ def generate_reversion_rights_factors(instrument_type, switch_by_key='position')
             'instrument_id_secondary': instrument_id_secondary,
         }
 
+    # 构造复权因子数据
     adj_factor_df = pd.DataFrame(date_adj_factor_dic).T.sort_index(ascending=False)[[
         "instrument_id_main",
         "adj_factor_main",
@@ -165,8 +167,9 @@ def generate_reversion_rights_factors(instrument_type, switch_by_key='position')
     ]]
     adj_factor_df['adj_factor_main'] = adj_factor_df['adj_factor_main'].fillna(1).cumprod()
     adj_factor_df['adj_factor_secondary'] = adj_factor_df['adj_factor_secondary'].fillna(1).cumprod()
-    adj_factor_df.ffill(inplace=True)
-    adj_factor_df.sort_index(inplace=True)
+    adj_factor_df = adj_factor_df.ffill().sort_index().reset_index().rename(
+        columns={'index': 'trade_date'})
+    adj_factor_df["instrument_type"] = instrument_type
     return adj_factor_df
 
 
@@ -199,7 +202,7 @@ def save_adj_factor(instrument_types: list, to_db=True, to_csv=True):
         logger.info("生成 %s 复权因子", instrument_type)
         adj_factor_df = generate_reversion_rights_factors(instrument_type)
         if to_csv:
-            adj_factor_df.to_csv(f'adj_factor_{instrument_type}.csv')
+            adj_factor_df.to_csv(f'adj_factor_{instrument_type}.csv', index=False)
         if to_db:
             table_name = 'wind_future_adj_factor'
             dtype = {
@@ -210,8 +213,6 @@ def save_adj_factor(instrument_types: list, to_db=True, to_csv=True):
                 'adj_factor_secondary': DOUBLE,
                 'instrument_type': String(20),
             }
-            adj_factor_df = adj_factor_df.reset_index().rename(columns={'index': 'trade_date'})
-            adj_factor_df["instrument_type"] = instrument_type
             update_df_2_db(instrument_type, table_name, adj_factor_df, dtype)
 
         logger.info("生成 %s 复权因子 %s 条记录\n%s",
