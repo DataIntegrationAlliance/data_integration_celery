@@ -92,6 +92,19 @@ def is_earlier_instruments(inst_a, inst_b, by_wind_code=True):
     return inst_num_a < inst_num_b
 
 
+def is_later_instruments(inst_a, inst_b, by_wind_code=True):
+    """
+    比较两个合约交割日期 True
+    :param inst_a:
+    :param inst_b:
+    :param by_wind_code:
+    :return:
+    """
+    inst_num_a = get_instrument_num(inst_a, by_wind_code)
+    inst_num_b = get_instrument_num(inst_b, by_wind_code)
+    return inst_num_a > inst_num_b
+
+
 def update_df_2_db(instrument_type, table_name, data_df):
     """将 DataFrame 数据保存到 数据库对应的表中"""
     dtype = {
@@ -162,7 +175,7 @@ def data_reorg_daily(instrument_type, update_table=True) -> (pd.DataFrame, pd.Da
     """
     sql_str = r"""select wind_code, trade_date, open, high, low, close, volume, position, st_stock 
       from wind_future_daily where wind_code regexp %s"""
-    data_df = pd.read_sql(sql_str, engine_md, params=[r'^%s[0-9]+\.[A-Z]+' % (instrument_type)])
+    data_df = pd.read_sql(sql_str, engine_md, params=[r'^%s[0-9]+\.[A-Z]+' % (instrument_type, )])
     date_instrument_vol_df = data_df.pivot(index="trade_date", columns="wind_code", values="volume").sort_index()
     date_instrument_open_df = data_df.pivot(index="trade_date", columns="wind_code", values="open")
     date_instrument_low_df = data_df.pivot(index="trade_date", columns="wind_code", values="low")
