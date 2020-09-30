@@ -6,6 +6,7 @@
 @desc    : 用于计算给定期货品种的前复权因子、对应的合约及日期，导入数据库
 """
 import logging
+from enum import Enum
 from collections import defaultdict
 import pandas as pd
 from ibats_utils.db import bunch_insert_on_duplicate_update, with_db_session
@@ -20,28 +21,46 @@ from tasks.config import config
 logger = logging.getLogger()
 
 
-def calc_adj_factor(close_df, trade_date, instrument_id_curr, instrument_id_last):
+class Method(Enum):
+    """
+    方法枚举，value为对应的默认 adj_factor 因子值
+    """
+    division = 1
+    diff = 0
+
+
+def calc_adj_factor(close_df, trade_date, instrument_id_curr, instrument_id_last, method: Method = Method.division):
     """
     合约切换时计算两合约直接的价格调整因子
     该调整因子为前复权因子，使用方法
+    method='division'
     复权后价格 = instrument_id_last 合约的价格 * adj_factor
+    method='diff'
+    复权后价格 = instrument_id_last 合约的价格 + adj_factor
     :param close_df:
     :param trade_date:
     :param instrument_id_curr:
     :param instrument_id_last:
+    :param method: division 除法  diff  差值发
     :return:
     """
     close_last = close_df[instrument_id_last][trade_date]
     close_curr = close_df[instrument_id_curr][trade_date]
-    adj_factor = close_curr / close_last
+    if method == Method.division:
+        adj_factor = close_curr / close_last
+    elif method == Method.diff:
+        adj_factor = close_curr - close_last
+    else:
+        raise ValueError(f"method {method} 不被支持")
     return adj_factor
 
 
-def generate_reversion_rights_factors(instrument_type, switch_by_key='position'):
+def generate_reversion_rights_factors(instrument_type, switch_by_key='position', method:Method=Method.division):
     """
     给定期货品种，历史合约的生成前复权因子
     :param instrument_type: 合约品种，RB、I、HC 等
     :param switch_by_key: position 持仓量, volume 成交量, st_stock 注册仓单量
+    :param method: division 除法  diff  差值发
     :return:
     """
     instrument_type = instrument_type.upper()
@@ -127,7 +146,9 @@ def generate_reversion_rights_factors(instrument_type, switch_by_key='position')
             adj_chg = calc_adj_factor(
                 close_df, trade_date_last,
                 instrument_id_curr=instrument_id_main,
-                instrument_id_last=instrument_id_main_last)
+                instrument_id_last=instrument_id_main_last,
+                method=method
+            )
             date_adj_factor_dic[trade_date_last]['adj_factor_main'] = adj_chg
             date_adj_factor_dic[trade_date_last]['instrument_id_main'] = instrument_id_main_last
 
@@ -138,7 +159,9 @@ def generate_reversion_rights_factors(instrument_type, switch_by_key='position')
             adj_chg = calc_adj_factor(
                 close_df, trade_date_last,
                 instrument_id_curr=instrument_id_secondary,
-                instrument_id_last=instrument_id_secondary_last)
+                instrument_id_last=instrument_id_secondary_last,
+                method=method
+            )
             date_adj_factor_dic[trade_date_last]['adj_factor_secondary'] = adj_chg
             date_adj_factor_dic[trade_date_last]['instrument_id_secondary'] = instrument_id_secondary_last
 
@@ -152,9 +175,9 @@ def generate_reversion_rights_factors(instrument_type, switch_by_key='position')
     else:
         # 记录最新一个交易日的主力合约次主力合约调整因子 为1
         date_adj_factor_dic[trade_date] = {
-            'adj_factor_main': 1,
+            'adj_factor_main': method.value,
             'instrument_id_main': instrument_id_main,
-            'adj_factor_secondary': 1,
+            'adj_factor_secondary': method.value,
             'instrument_id_secondary': instrument_id_secondary,
         }
 
@@ -165,8 +188,15 @@ def generate_reversion_rights_factors(instrument_type, switch_by_key='position')
         "instrument_id_secondary",
         "adj_factor_secondary",
     ]]
-    adj_factor_df['adj_factor_main'] = adj_factor_df['adj_factor_main'].fillna(1).cumprod()
-    adj_factor_df['adj_factor_secondary'] = adj_factor_df['adj_factor_secondary'].fillna(1).cumprod()
+    if method == Method.division:
+        adj_factor_df['adj_factor_main'] = adj_factor_df['adj_factor_main'].fillna(1).cumprod()
+        adj_factor_df['adj_factor_secondary'] = adj_factor_df['adj_factor_secondary'].fillna(1).cumprod()
+    elif method == Method.diff:
+        adj_factor_df['adj_factor_main'] = adj_factor_df['adj_factor_main'].fillna(1).cumsum()
+        adj_factor_df['adj_factor_secondary'] = adj_factor_df['adj_factor_secondary'].fillna(1).cumsum()
+    else:
+        raise ValueError(f"method={method} 不被支持")
+
     adj_factor_df = adj_factor_df.ffill().sort_index().reset_index().rename(
         columns={'index': 'trade_date'})
     adj_factor_df["instrument_type"] = instrument_type
@@ -198,25 +228,36 @@ def update_df_2_db(instrument_type, table_name, data_df, dtype=None):
 
 
 def save_adj_factor(instrument_types: list, to_db=True, to_csv=True):
-    for n, instrument_type in enumerate(instrument_types):
-        logger.info("生成 %s 复权因子", instrument_type)
-        adj_factor_df = generate_reversion_rights_factors(instrument_type)
-        if to_csv:
-            adj_factor_df.to_csv(f'adj_factor_{instrument_type}.csv', index=False)
-        if to_db:
-            table_name = 'wind_future_adj_factor'
-            dtype = {
-                'trade_date': Date,
-                'instrument_id_main': String(20),
-                'adj_factor_main': DOUBLE,
-                'instrument_id_secondary': String(20),
-                'adj_factor_secondary': DOUBLE,
-                'instrument_type': String(20),
-            }
-            update_df_2_db(instrument_type, table_name, adj_factor_df, dtype)
+    """
 
-        logger.info("生成 %s 复权因子 %s 条记录\n%s",
-                    instrument_type, adj_factor_df.shape[0], adj_factor_df)
+    :param instrument_types: 合约类型
+    :param to_db: 是否保存到数据库
+    :param to_csv: 是否保存到csv文件
+    :param method: division 除法  diff  差值发
+    :return:
+    """
+    for method in Method:
+        for n, instrument_type in enumerate(instrument_types):
+            logger.info("生成 %s 复权因子", instrument_type)
+            adj_factor_df = generate_reversion_rights_factors(instrument_type, method=method)
+            if to_csv:
+                adj_factor_df.to_csv(f'adj_factor_{instrument_type}_{method}.csv', index=False)
+            if to_db:
+                table_name = 'wind_future_adj_factor'
+                dtype = {
+                    'trade_date': Date,
+                    'instrument_id_main': String(20),
+                    'adj_factor_main': DOUBLE,
+                    'instrument_id_secondary': String(20),
+                    'adj_factor_secondary': DOUBLE,
+                    'instrument_type': String(20),
+                    'method': String(20),
+                }
+                adj_factor_df['method'] = method.name
+                update_df_2_db(instrument_type, table_name, adj_factor_df, dtype)
+
+            logger.info("生成 %s 复权因子 %s 条记录\n%s",
+                        instrument_type, adj_factor_df.shape[0], adj_factor_df)
 
 
 def _test_generate_reversion_rights_factors():
