@@ -78,6 +78,13 @@ except AttributeError:
     logger.exception("加载 tushare token 设置失败，该异常不影响其他功能正常使用")
 
 try:
+    import rqdatac
+
+    rqdatac.init(config.RQDATAC_USER_NAME, config.RQDATAC_QUANT_PASSWORD)
+except AttributeError:
+    logger.exception("加载 rqdatac 失败，该异常不影响其他功能正常使用")
+
+try:
     from tasks.tushare.app_tasks import tushare_daily_task, tushare_weekly_task, tushare_import_once, \
         tushare_tasks_local_first_time, tushare_tasks_local
 except ImportError:
