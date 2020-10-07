@@ -60,6 +60,9 @@ class ConfigClass(object):
     ENABLE_EXPORT_2_SQLITE = False
     SQLITE_FOLDER_PATH = r"/home/mg/github/data_integration_celery/sqlite_db"
 
+    RQDATAC_USER_NAME = '***'
+    RQDATAC_QUANT_PASSWORD = '***'
+
     # log settings
     logging_config = dict(
         version=1,
