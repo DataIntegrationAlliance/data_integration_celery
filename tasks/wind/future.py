@@ -321,7 +321,7 @@ def import_future_daily(chain_param=None, wind_code_set=None, begin_time=None):
     data_len = len(future_date_dic)
     try:
         logger.info("%d future instrument will be handled", data_len)
-        for num, (wind_code, (date_frm, date_to)) in enumerate(future_date_dic.items()):
+        for num, (wind_code, (date_frm, date_to)) in enumerate(future_date_dic.items(), start=1):
             # 暂时只处理 RU 期货合约信息
             # if wind_code.find('RU') == -1:
             #     continue
