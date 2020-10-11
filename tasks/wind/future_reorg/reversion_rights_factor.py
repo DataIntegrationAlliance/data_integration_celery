@@ -15,7 +15,7 @@ from sqlalchemy.dialects.mysql import DOUBLE
 from sqlalchemy.types import String, Date
 from tasks.backend import engine_md
 from tasks.wind.future_reorg.reorg_md_2_db import get_instrument_num, \
-    is_earlier_instruments, is_later_instruments
+    is_earlier_instruments, is_later_instruments, get_all_instrument_type
 from tasks.config import config
 
 logger = logging.getLogger()
@@ -55,7 +55,7 @@ def calc_adj_factor(close_df, trade_date, instrument_id_curr, instrument_id_last
     return adj_factor
 
 
-def generate_reversion_rights_factors(instrument_type, switch_by_key='position', method:Method=Method.division):
+def generate_reversion_rights_factors(instrument_type, switch_by_key='position', method: Method = Method.division):
     """
     给定期货品种，历史合约的生成前复权因子
     :param instrument_type: 合约品种，RB、I、HC 等
@@ -135,7 +135,7 @@ def generate_reversion_rights_factors(instrument_type, switch_by_key='position',
             logger.warning("%d) %s 主力合约缺少主力合约", n, trade_date)
 
         # 检查次主力合约是否确定
-        if instrument_id_secondary is None:
+        if instrument_id_secondary is None:  # and instrument_id_main_last is not None
             logger.warning("%d) %s 当日主力合约 %s, 没有次主力合约",
                            n, trade_date, instrument_id_main)
 
@@ -154,6 +154,7 @@ def generate_reversion_rights_factors(instrument_type, switch_by_key='position',
 
         # 如果次主力合约切换，则计算调整因子
         if instrument_id_secondary_last is not None \
+                and instrument_id_secondary is not None \
                 and instrument_id_secondary_last != instrument_id_secondary:
             trade_date_last = trade_date_available_list[-1]
             adj_chg = calc_adj_factor(
@@ -217,7 +218,7 @@ def update_df_2_db(instrument_type, table_name, data_df, dtype=None):
         if is_existed is not None:
             session.execute("delete from %s where instrument_type = :instrument_type" % table_name,
                             params={"instrument_type": instrument_type})
-            logger.debug("删除 %s 中的 %s 历史数据", table_name, instrument_type)
+            logger.debug("删除 %s 中的 %s 历史数据，重新载入新的复权数据", table_name, instrument_type)
 
     # 插入数据库
     # pd.DataFrame.to_sql(data_df, table_name, engine_md, if_exists='append', index=False, dtype=dtype)
@@ -241,7 +242,7 @@ def save_adj_factor(instrument_types: list, to_db=True, to_csv=True):
             logger.info("生成 %s 复权因子", instrument_type)
             adj_factor_df = generate_reversion_rights_factors(instrument_type, method=method)
             if to_csv:
-                adj_factor_df.to_csv(f'adj_factor_{instrument_type}_{method}.csv', index=False)
+                adj_factor_df.to_csv(f'adj_factor_{instrument_type}_{method.name}.csv', index=False)
             if to_db:
                 table_name = 'wind_future_adj_factor'
                 dtype = {
@@ -266,7 +267,8 @@ def _test_generate_reversion_rights_factors():
 
 
 def _test_save_adj_factor():
-    instrument_types = ['rb', 'i', 'hc']
+    # instrument_types = ['rb', 'i', 'hc']
+    instrument_types = get_all_instrument_type()
     save_adj_factor(instrument_types=instrument_types)
 
 
