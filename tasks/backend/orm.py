@@ -155,11 +155,11 @@ def build_primary_key(table_name_list):
 
             elif table_name.find('wind_') != -1:
                 # wind info daily
-                create_wind_daily_pk_str = """ALTER TABLE %s
+                create_daily_pk_str = """ALTER TABLE %s
                     CHANGE COLUMN `wind_code` `wind_code` VARCHAR(20) NOT NULL FIRST,
                     CHANGE COLUMN `trade_date` `trade_date` DATE NOT NULL AFTER `wind_code`,
                     ADD PRIMARY KEY (`wind_code`, `trade_date`)"""
-                create_wind_info_pk_str = """ALTER TABLE %s
+                create_info_pk_str = """ALTER TABLE %s
                     CHANGE COLUMN `wind_code` `wind_code` VARCHAR(20) NOT NULL FIRST,
                     ADD PRIMARY KEY (`wind_code`)"""
                 if table_name.find('_daily') != -1:
@@ -168,7 +168,7 @@ def build_primary_key(table_name_list):
                                                        'table_name': table_name}).scalar()
                     if col_name is None:
                         # 如果没有记录则 创建主键
-                        session.execute(create_wind_daily_pk_str % table_name)
+                        session.execute(create_daily_pk_str % table_name)
                         logger.info('%d/%d) %s 建立主键 [wind_code, trade_date]', num, table_count, table_name)
 
                 elif table_name.find('_info') != -1:
@@ -177,18 +177,18 @@ def build_primary_key(table_name_list):
                                                        'table_name': table_name}).scalar()
                     if col_name is None:
                         # 如果没有记录则 创建主键
-                        session.execute(create_wind_info_pk_str % table_name)
+                        session.execute(create_info_pk_str % table_name)
                         logger.info('%d/%d) %s 建立主键 [wind_code]', num, table_count, table_name)
                 else:
                     logger.debug('%d/%d) %s 无需操作', num, table_count, table_name)
 
             elif table_name.find('tushare_') != -1:
                 # tushare info daily
-                create_wind_daily_pk_str = """ALTER TABLE %s
+                create_daily_pk_str = """ALTER TABLE %s
                         CHANGE COLUMN `ts_code` `ts_code` VARCHAR(20) NOT NULL FIRST,
                         CHANGE COLUMN `trade_date` `trade_date` DATE NOT NULL AFTER `ts_code`,
                         ADD PRIMARY KEY (`ts_code`, `trade_date`)"""
-                create_wind_info_pk_str = """ALTER TABLE %s
+                create_info_pk_str = """ALTER TABLE %s
                         CHANGE COLUMN `ts_code` `ts_code` VARCHAR(20) NOT NULL FIRST,
                         ADD PRIMARY KEY (`ts_code`)"""
                 if table_name.find('_daily') != -1:
@@ -197,7 +197,7 @@ def build_primary_key(table_name_list):
                                                        'table_name': table_name}).scalar()
                     if col_name is None:
                         # 如果没有记录则 创建主键
-                        session.execute(create_wind_daily_pk_str % table_name)
+                        session.execute(create_daily_pk_str % table_name)
                         logger.info('%d/%d) %s 建立主键 [ts_code, trade_date]', num, table_count, table_name)
 
                 elif table_name.find('_info') != -1:
@@ -206,8 +206,51 @@ def build_primary_key(table_name_list):
                                                        'table_name': table_name}).scalar()
                     if col_name is None:
                         # 如果没有记录则 创建主键
-                        session.execute(create_wind_info_pk_str % table_name)
+                        session.execute(create_info_pk_str % table_name)
                         logger.info('%d/%d) %s 建立主键 [ts_code]', num, table_count, table_name)
+                else:
+                    logger.debug('%d/%d) %s 无需操作', num, table_count, table_name)
+
+            elif table_name.find('rqdatac_') != -1:
+                # wind info daily
+                create_daily_pk_str = """ALTER TABLE %s
+                    CHANGE COLUMN `order_book_id` `order_book_id` VARCHAR(20) NOT NULL FIRST,
+                    CHANGE COLUMN `trade_date` `trade_date` DATE NOT NULL AFTER `order_book_id`,
+                    ADD PRIMARY KEY (`order_book_id`, `trade_date`)"""
+                # wind info min
+                create_min_pk_str = """ALTER TABLE %s
+                    CHANGE COLUMN `order_book_id` `order_book_id` VARCHAR(20) NOT NULL FIRST,
+                    CHANGE COLUMN `trade_date` `trade_date` datetime NOT NULL AFTER `order_book_id`,
+                    ADD PRIMARY KEY (`order_book_id`, `trade_date`)"""
+                create_info_pk_str = """ALTER TABLE %s
+                    CHANGE COLUMN `order_book_id` `order_book_id` VARCHAR(20) NOT NULL FIRST,
+                    ADD PRIMARY KEY (`order_book_id`)"""
+                if table_name.find('_daily') != -1:
+                    col_name = session.execute(query_pk_str,
+                                               params={'schema': config.DB_SCHEMA_MD,
+                                                       'table_name': table_name}).scalar()
+                    if col_name is None:
+                        # 如果没有记录则 创建主键
+                        session.execute(create_daily_pk_str % table_name)
+                        logger.info('%d/%d) %s 建立主键 [order_book_id, trade_date]', num, table_count, table_name)
+
+                elif table_name.find('_min') != -1:
+                    col_name = session.execute(query_pk_str,
+                                               params={'schema': config.DB_SCHEMA_MD,
+                                                       'table_name': table_name}).scalar()
+                    if col_name is None:
+                        # 如果没有记录则 创建主键
+                        session.execute(create_min_pk_str % table_name)
+                        logger.info('%d/%d) %s 建立主键 [order_book_id, trade_date]', num, table_count, table_name)
+
+                elif table_name.find('_info') != -1:
+                    col_name = session.execute(query_pk_str,
+                                               params={'schema': config.DB_SCHEMA_MD,
+                                                       'table_name': table_name}).scalar()
+                    if col_name is None:
+                        # 如果没有记录则 创建主键
+                        session.execute(create_info_pk_str % table_name)
+                        logger.info('%d/%d) %s 建立主键 [order_book_id]', num, table_count, table_name)
                 else:
                     logger.debug('%d/%d) %s 无需操作', num, table_count, table_name)
 
