@@ -7,14 +7,12 @@
 @desc    : 导入 rqdatac 期货行情数据
 """
 import logging
-import re
-import itertools
 import pandas as pd
 from datetime import datetime, date, timedelta
 import rqdatac
+from rqdatac.share.errors import QuotaExceeded
 from sqlalchemy.dialects.mysql import DOUBLE, TINYINT, SMALLINT
 from tasks import app
-from tasks.wind import invoker
 from ibats_utils.db import with_db_session
 from sqlalchemy.types import String, Date
 from ibats_utils.mess import STR_FORMAT_DATE, date_2_str, str_2_date
@@ -114,6 +112,9 @@ def import_future_info(chain_param=None):
 
 
 def import_future_min(chain_param=None, order_book_id_set=None, begin_time=None):
+    """
+    加载商品期货分钟级数据
+    """
     table_name = "rqdatac_future_min"
     logger.info("更新 %s 开始", table_name)
     has_table = engine_md.has_table(table_name)
@@ -155,7 +156,20 @@ def import_future_min(chain_param=None, order_book_id_set=None, begin_time=None)
         logger.warning('%s 不存在，仅使用 wind_future_info 表进行计算日期范围', table_name)
 
     else:
-        sql_str = ''
+        sql_str = """select order_book_id, date_frm, if(lasttrade_date<end_date, lasttrade_date, end_date) date_to
+            FROM
+            (
+                select fi.order_book_id, ifnull(trade_date_max_1, listed_date) date_frm, 
+                    maturity_date lasttrade_date,
+                    if(hour(now())<16, subdate(curdate(),1), curdate()) end_date
+                from rqdatac_future_info fi 
+                left outer join
+                    (select order_book_id, DATE(adddate(max(trade_date),1)) trade_date_max_1 from {table_name} group by order_book_id) wfd
+                on fi.order_book_id = wfd.order_book_id
+            ) tt
+            where date_frm <= if(lasttrade_date<end_date, lasttrade_date, end_date) 
+            -- and subdate(curdate(), 360) < if(lasttrade_date<end_date, lasttrade_date, end_date) 
+            order by date_frm desc""".format(table_name=table_name)
 
     with with_db_session(engine_md) as session:
         table = session.execute(sql_str)
@@ -179,11 +193,15 @@ def import_future_min(chain_param=None, order_book_id_set=None, begin_time=None)
             date_frm_str = date_frm.strftime(STR_FORMAT_DATE)
             date_to_str = date_to.strftime(STR_FORMAT_DATE)
             logger.info('%d/%d) get %s between %s and %s', num, data_len, order_book_id, date_frm_str, date_to_str)
-            # get_price(order_book_ids, start_date='2013-01-04', end_date='2014-01-04', frequency='1d', fields=None,
-            #           adjust_type='pre', skip_suspended=False, market='cn', expect_df=False)
-            data_df = rqdatac.get_price(
-                order_book_id, start_date=date_frm_str, end_date=date_to_str, frequency='1m',
-                adjust_type='none', skip_suspended=False, market='cn')  # fields=field_list,
+            try:
+                # get_price(order_book_ids, start_date='2013-01-04', end_date='2014-01-04', frequency='1d', fields=None,
+                #           adjust_type='pre', skip_suspended=False, market='cn', expect_df=False)
+                data_df = rqdatac.get_price(
+                    order_book_id, start_date=date_frm_str, end_date=date_to_str, frequency='1m',
+                    adjust_type='none', skip_suspended=False, market='cn')  # fields=field_list,
+            except QuotaExceeded:
+                logger.exception("获取数据超量")
+                break
 
             if data_df is None or data_df.shape[0] == 0:
                 logger.warning('%d/%d) %s has no data during %s %s', num, data_len, order_book_id, date_frm_str,
@@ -197,7 +215,7 @@ def import_future_min(chain_param=None, order_book_id_set=None, begin_time=None)
             data_df.rename(columns={c: str.lower(c) for c in data_df.columns}, inplace=True)
             data_df_list.append(data_df)
             # 仅仅调试时使用
-            if DEBUG and len(data_df_list) >= 1:
+            if DEBUG and len(data_df_list) > 1:
                 break
     finally:
         data_df_count = len(data_df_list)
