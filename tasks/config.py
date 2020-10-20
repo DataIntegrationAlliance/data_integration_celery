@@ -38,9 +38,12 @@ class CeleryConfig:
 class ConfigClass(object):
     # Sql Alchemy settings
     DB_SCHEMA_MD = 'md_integration'
+    DB_SCHEMA_VNPY = 'vnpy'
     DB_URL_DIC = {
-        DB_SCHEMA_MD: "mysql://m*:****@localhost/{DB_SCHEMA_MD}?charset=utf8".format(
-            DB_SCHEMA_MD=DB_SCHEMA_MD)
+        DB_SCHEMA_MD: "mysql://m*:****@localhost/{DB_SCHEMA}?charset=utf8".format(
+            DB_SCHEMA=DB_SCHEMA_MD),
+        DB_SCHEMA_VNPY: "mysql://m*:****@localhost/{DB_SCHEMA}?charset=utf8".format(
+            DB_SCHEMA=DB_SCHEMA_VNPY)
     }
 
     # ifind settings
