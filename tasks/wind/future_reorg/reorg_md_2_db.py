@@ -382,14 +382,14 @@ def wind_future_continuous_md():
 
 if __name__ == "__main__":
     # 将期货合约数据合并成为连续合约数据，并保存数据库
-    wind_future_continuous_md()
+    # wind_future_continuous_md()
 
     # instrument_type_list = ["RU", "AG", "AU", "RB", "HC", "J", "JM", "I", "CU",
     #                         "AL", "ZN", "PB", "NI", "SN",
     #                         "SR", "CF"]
-    # instrument_type_list = ["JM"]
+    instrument_type_list = ["RB"]
     # instrument_type_list = get_all_instrument_type()
-    # handle_data(instrument_type_list, period="daily")
+    handle_data(instrument_type_list, period="daily", export_2_csv=True)
     # handle_data(instrument_type_list, period="half_day")
     # handle_data(instrument_type_list, period=PeriodType.Min15)
     # handle_data(instrument_type_list, period=PeriodType.Min5)
