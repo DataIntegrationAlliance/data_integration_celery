@@ -4,6 +4,7 @@ Created on 2017/5/2
 @author: MG
 @desc    : 2018-08-23 info daily 已经正式运行测试完成，可以正常使用
 """
+import typing
 import logging
 import re
 import itertools
@@ -25,6 +26,12 @@ from ibats_utils.db import bunch_insert_on_duplicate_update
 logger = logging.getLogger()
 RE_PATTERN_MFPRICE = re.compile(r'\d*\.*\d*')
 ONE_DAY = timedelta(days=1)
+WIND_VNPY_EXCHANGE_DIC = {
+    'SHF': 'SHFE',
+    'CZC': 'CZCE',
+    'CFE': 'CFFEX',
+    'DCE': 'DCE',
+}
 # 标示每天几点以后下载当日行情数据
 BASE_LINE_HOUR = 17
 DEBUG = False
@@ -353,7 +360,7 @@ def import_future_daily(chain_param=None, wind_code_set=None, begin_time=None):
             data_df.index.rename('trade_date', inplace=True)
             data_df.reset_index(inplace=True)
             data_df.rename(columns={c: str.lower(c) for c in data_df.columns}, inplace=True)
-            data_df.rename(columns={'oi': 'position'}, inplace=True)
+            data_df.rename(columns={'oi': 'position'}, inplace=True)  # oi 应该是 open_interest
             data_df['instrument_id'] = wind_code.split('.')[0]
             data_df_list.append(data_df)
             # 仅仅调试时使用
@@ -434,6 +441,44 @@ def update_future_info_hk(chain_param=None):
         logger.info("更新 wind_future_info_hk 结束 %d 条记录被更新", future_info_count)
 
 
+def get_wind_code_list_by_types(instrument_types: list, all_if_none=True) -> list:
+    """
+    输入 instrument_type 列表，返回对应的所有合约列表
+    :param instrument_types: 可以使 instrument_type 列表 也可以是 （instrument_type，exchange）列表
+    :return: wind_code_list
+    """
+    wind_code_list = []
+    if all_if_none and instrument_types is None:
+        sql_str = f"select wind_code from wind_future_info"
+        with with_db_session(engine_md) as session:
+            table = session.execute(sql_str)
+            # 获取date_from,date_to，将date_from,date_to做为value值
+            for row in table.fetchall():
+                wind_code = row[0]
+                wind_code_list.append(wind_code)
+    else:
+        for instrument_type in instrument_types:
+            if isinstance(instrument_type, tuple):
+                instrument_type, exchange = instrument_type
+            else:
+                exchange = None
+            # re.search(r"(?<=RB)\d{4}(?=\.SHF)", 'RB2101.SHF')
+            # pattern = re.compile(r"(?<=" + instrument_type + r")\d{4}(?=\." + exchange + ")")
+            # MySql: REGEXP 'rb[:digit:]+.[:alpha:]+'
+            # 参考链接： https://blog.csdn.net/qq_22238021/article/details/80929518
+
+            sql_str = f"select wind_code from wind_future_info where wind_code " \
+                      f"REGEXP 'rb[:digit:]+.{'[:alpha:]+' if exchange is None else exchange}'"
+            with with_db_session(engine_md) as session:
+                table = session.execute(sql_str)
+                # 获取date_from,date_to，将date_from,date_to做为value值
+                for row in table.fetchall():
+                    wind_code = row[0]
+                    wind_code_list.append(wind_code)
+
+    return wind_code_list
+
+
 def load_by_wind_code_desc(instrument_types):
     wind_code_set, year_month_set = set(), set()
     for instrument_type, exchange in instrument_types:
@@ -464,13 +509,62 @@ def load_by_wind_code_desc(instrument_types):
         import_future_daily(None, wind_code_set=set(_))
 
 
+@app.task
+def daily_to_vnpy(chain_param=None, instrument_types=None):
+    from tasks.config import config
+    from tasks.backend import engine_dic
+    table_name = 'dbbardata'
+    engine_vnpy = engine_dic[config.DB_SCHEMA_VNPY]
+    has_table = engine_vnpy.has_table(table_name)
+    if not has_table:
+        logger.error('当前数据库 %s 没有 %s 表，建议使用 vnpy先建立相应的数据库表后再进行导入操作', engine_vnpy, table_name)
+        return
+
+    wind_code_list = get_wind_code_list_by_types(instrument_types)
+    wind_code_count = len(wind_code_list)
+    for n, wind_code in enumerate(wind_code_list, start=1):
+        symbol, exchange = wind_code.split('.')
+        if exchange in WIND_VNPY_EXCHANGE_DIC:
+            exchange_vnpy = WIND_VNPY_EXCHANGE_DIC[exchange]
+        else:
+            logger.warning('exchange: %s 在交易所列表中不存在', exchange)
+            exchange_vnpy = exchange
+
+        # 读取日线数据
+        sql_str = "select trade_date `datetime`, `open` open_price, high high_price, " \
+                  "`low` low_price, `close` close_price, volume, position as open_interest " \
+                  "from wind_future_daily where wind_code = %s"
+        df = pd.read_sql(sql_str, engine_md, params=[wind_code])
+        df['symbol'] = symbol
+        df['exchange'] = exchange_vnpy
+        df['interval'] = '1d'
+
+        sql_str = f"select count(1) from {table_name} where symbol=:symbol limit 1"
+        del_sql_str = f"delete from {table_name} where symbol=:symbol"
+        with with_db_session(engine_vnpy) as session:
+            has_data = session.scalar(sql_str, params={'symbol': symbol})
+            if has_data > 0:
+                session.execute(del_sql_str, params={'symbol': symbol})
+                session.commit()
+
+        df.to_sql(table_name, engine_vnpy, if_exists='append', index=False)
+        logger.info("%d/%d) %s %d data have been insert into table %s",
+                    n, wind_code_count, symbol, df.shape[0], table_name)
+
+
+def _run_daily_to_vnpy():
+    instrument_types = ['RB']
+    instrument_types = None
+    daily_to_vnpy(None, instrument_types)
+
+
 if __name__ == "__main__":
     # DEBUG = True
-    wind_code_set = None
+    # wind_code_set = None
     # import_future_info_hk(chain_param=None)
     # import_future_info(chain_param=None)
     # 导入期货每日行情数据
-    import_future_daily(None, wind_code_set)
+    # import_future_daily(None, wind_code_set)
     # update_future_info_hk(chain_param=None)
 
     # 按品种合约倒叙加载每日行情
@@ -479,3 +573,6 @@ if __name__ == "__main__":
     #     ('I', r"DCE"),
     #     ('HC', r"SHF"),
     # ])
+
+    # 根据商品类型将对应日线数据插入到 vnpy dbbardata 表中
+    _run_daily_to_vnpy()
