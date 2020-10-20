@@ -543,7 +543,7 @@ def daily_to_vnpy(chain_param=None, instrument_types=None):
         df['interval'] = '1d'
 
         sql_str = f"select count(1) from {table_name} where symbol=:symbol limit 1"
-        del_sql_str = f"delete from {table_name} where symbol=:symbol"
+        del_sql_str = f"delete from {table_name} where symbol=:symbol and interval='1d'"
         with with_db_session(engine_vnpy) as session:
             has_data = session.scalar(sql_str, params={'symbol': symbol})
             if has_data > 0:
