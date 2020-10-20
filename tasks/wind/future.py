@@ -534,7 +534,10 @@ def daily_to_vnpy(chain_param=None, instrument_types=None):
         sql_str = "select trade_date `datetime`, `open` open_price, high high_price, " \
                   "`low` low_price, `close` close_price, volume, position as open_interest " \
                   "from wind_future_daily where wind_code = %s"
-        df = pd.read_sql(sql_str, engine_md, params=[wind_code])
+        df = pd.read_sql(sql_str, engine_md, params=[wind_code]).dropna()
+        if df.shape == 0:
+            continue
+
         df['symbol'] = symbol
         df['exchange'] = exchange_vnpy
         df['interval'] = '1d'
@@ -547,7 +550,7 @@ def daily_to_vnpy(chain_param=None, instrument_types=None):
                 session.execute(del_sql_str, params={'symbol': symbol})
                 session.commit()
 
-        df.to_sql(table_name, engine_vnpy, if_exists='append', index=False)
+        df.dropna().to_sql(table_name, engine_vnpy, if_exists='append', index=False)
         logger.info("%d/%d) %s %d data have been insert into table %s",
                     n, wind_code_count, symbol, df.shape[0], table_name)
 
