@@ -535,18 +535,21 @@ def daily_to_vnpy(chain_param=None, instrument_types=None):
                   "`low` low_price, `close` close_price, volume, position as open_interest " \
                   "from wind_future_daily where wind_code = %s"
         df = pd.read_sql(sql_str, engine_md, params=[wind_code]).dropna()
-        if df.shape == 0:
+        df_len = df.shape[0]
+        if df_len == 0:
             continue
 
         df['symbol'] = symbol
         df['exchange'] = exchange_vnpy
         df['interval'] = '1d'
 
-        sql_str = f"select count(1) from {table_name} where symbol=:symbol limit 1"
+        sql_str = f"select count(1) from {table_name} where symbol=:symbol"
         del_sql_str = f"delete from {table_name} where symbol=:symbol and interval='1d'"
         with with_db_session(engine_vnpy) as session:
-            has_data = session.scalar(sql_str, params={'symbol': symbol})
-            if has_data > 0:
+            existing_count = session.scalar(sql_str, params={'symbol': symbol})
+            if existing_count == df_len:
+                continue
+            if existing_count > 0:
                 session.execute(del_sql_str, params={'symbol': symbol})
                 session.commit()
 
