@@ -543,17 +543,17 @@ def daily_to_vnpy(chain_param=None, instrument_types=None):
         df['exchange'] = exchange_vnpy
         df['interval'] = '1d'
 
-        sql_str = f"select count(1) from {table_name} where symbol=:symbol"
-        del_sql_str = f"delete from {table_name} where symbol=:symbol and interval='1d'"
+        sql_str = f"select count(1) from {table_name} where symbol=:symbol and `interval`='1d'"
+        del_sql_str = f"delete from {table_name} where symbol=:symbol and `interval`='1d'"
         with with_db_session(engine_vnpy) as session:
-            existing_count = session.scalar(sql_str, params={'symbol': symbol})
-            if existing_count == df_len:
+            existed_count = session.scalar(sql_str, params={'symbol': symbol})
+            if existed_count == df_len:
                 continue
-            if existing_count > 0:
+            if existed_count > 0:
                 session.execute(del_sql_str, params={'symbol': symbol})
                 session.commit()
 
-        df.dropna().to_sql(table_name, engine_vnpy, if_exists='append', index=False)
+        df.to_sql(table_name, engine_vnpy, if_exists='append', index=False)
         logger.info("%d/%d) %s %d data have been insert into table %s",
                     n, wind_code_count, symbol, df.shape[0], table_name)
 
