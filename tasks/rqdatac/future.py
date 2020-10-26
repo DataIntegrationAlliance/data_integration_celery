@@ -26,7 +26,8 @@ from tasks.backend.orm import build_primary_key
 logger = logging.getLogger()
 ONE_DAY = timedelta(days=1)
 # 标示每天几点以后下载当日行情数据
-BASE_LINE_HOUR = 17
+# 米矿每天17:30左右更新完当日数据
+BASE_LINE_HOUR = 18
 DEBUG = False
 
 
