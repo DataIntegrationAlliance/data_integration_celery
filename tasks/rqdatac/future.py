@@ -7,20 +7,21 @@
 @desc    : 导入 rqdatac 期货行情数据
 """
 import logging
+from datetime import date, timedelta
+
 import pandas as pd
-from datetime import datetime, date, timedelta
 import rqdatac
-from rqdatac.share.errors import QuotaExceeded
-from sqlalchemy.dialects.mysql import DOUBLE, TINYINT, SMALLINT
-from tasks import app
-from ibats_utils.db import with_db_session
-from sqlalchemy.types import String, Date
-from ibats_utils.mess import STR_FORMAT_DATE, date_2_str, str_2_date
-from tasks.backend.orm import build_primary_key
-from tasks.merge.code_mapping import update_from_info_table
-from tasks.backend import engine_md
 from ibats_utils.db import alter_table_2_myisam
 from ibats_utils.db import bunch_insert_on_duplicate_update
+from ibats_utils.db import with_db_session
+from ibats_utils.mess import STR_FORMAT_DATE
+from rqdatac.share.errors import QuotaExceeded
+from sqlalchemy.dialects.mysql import DOUBLE, TINYINT, SMALLINT
+from sqlalchemy.types import String, Date
+
+from tasks import app
+from tasks.backend import engine_md
+from tasks.backend.orm import build_primary_key
 
 logger = logging.getLogger()
 ONE_DAY = timedelta(days=1)
@@ -261,6 +262,93 @@ def import_future_min(chain_param=None, order_book_id_set=None, begin_time=None)
         logger.info("更新 %s 结束，累计 %d 条记录被更新", table_name, tot_data_count)
 
 
+def get_code_list_by_types(instrument_types: list, all_if_none=True) -> list:
+    """
+    输入 instrument_type 列表，返回对应的所有合约列表
+    :param instrument_types: 可以使 instrument_type 列表 也可以是 （instrument_type，exchange）列表
+    :param all_if_none 如果 instrument_types 为 None 则返回全部合约代码
+    :return: wind_code_list list of (wind_code, exchange)
+    """
+    wind_code_list = []
+    if all_if_none and instrument_types is None:
+        sql_str = f"SELECT order_book_id, `exchange` FROM rqdatac_future_info"
+        with with_db_session(engine_md) as session:
+            table = session.execute(sql_str)
+            # 获取date_from,date_to，将date_from,date_to做为value值
+            for wind_code, exchange in table.fetchall():
+                wind_code_list.append((wind_code, exchange))
+    else:
+        for instrument_type in instrument_types:
+            if isinstance(instrument_type, tuple):
+                instrument_type, exchange = instrument_type
+            else:
+                exchange = None
+
+            sql_str = f"select order_book_id, `exchange` from rqdatac_future_info " \
+                      f"where underlying_symbol=:instrument_type"
+            with with_db_session(engine_md) as session:
+                table = session.execute(sql_str, params={"instrument_type": instrument_type})
+                # 获取date_from,date_to，将date_from,date_to做为value值
+                for wind_code, exchange in table.fetchall():
+                    wind_code_list.append((wind_code, exchange))
+
+    return wind_code_list
+
+
+@app.task
+def min_to_vnpy(chain_param=None, instrument_types=None):
+    from tasks.config import config
+    from tasks.backend import engine_dic
+    interval = '1m'
+    table_name = 'dbbardata'
+    engine_vnpy = engine_dic[config.DB_SCHEMA_VNPY]
+    has_table = engine_vnpy.has_table(table_name)
+    if not has_table:
+        logger.error('当前数据库 %s 没有 %s 表，建议使用 vnpy先建立相应的数据库表后再进行导入操作', engine_vnpy, table_name)
+        return
+
+    code_list = get_code_list_by_types(instrument_types)
+    code_count = len(code_list)
+    data_count = 0
+    for n, (symbol, exchange) in enumerate(code_list, start=1):
+        # 读取k线数据
+        sql_str = "select trade_date `datetime`, `open` open_price, high high_price, " \
+                  "`low` low_price, `close` close_price, volume, open_interest " \
+                  "from rqdatac_future_min where order_book_id = %s"
+        df = pd.read_sql(sql_str, engine_md, params=[symbol]).dropna()
+        df_len = df.shape[0]
+        if df_len == 0:
+            continue
+
+        df['symbol'] = symbol
+        df['exchange'] = exchange
+        df['interval'] = interval
+
+        sql_str = f"select count(1) from {table_name} where symbol=:symbol and `interval`='{interval}'"
+        del_sql_str = f"delete from {table_name} where symbol=:symbol and `interval`='{interval}'"
+        with with_db_session(engine_vnpy) as session:
+            existed_count = session.scalar(sql_str, params={'symbol': symbol})
+            if existed_count == df_len:
+                continue
+            if existed_count > 0:
+                session.execute(del_sql_str, params={'symbol': symbol})
+                session.commit()
+
+        df.to_sql(table_name, engine_vnpy, if_exists='append', index=False)
+        logger.info("%d/%d) %s %d data have been insert into table %s",
+                    n, code_count, symbol, df_len, table_name)
+        data_count += df_len
+
+    logger.info(f"全部 {code_count:,d} 个合约 {data_count:,d} 条数据插入完成")
+
+
+def _run_min_to_vnpy():
+    instrument_types = ['RB']
+    instrument_types = None
+    min_to_vnpy(None, instrument_types)
+
+
 if __name__ == "__main__":
     # import_future_info()
-    import_future_min()
+    # import_future_min()
+    _run_min_to_vnpy()
