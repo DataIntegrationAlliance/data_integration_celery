@@ -445,6 +445,7 @@ def get_wind_code_list_by_types(instrument_types: list, all_if_none=True) -> lis
     """
     输入 instrument_type 列表，返回对应的所有合约列表
     :param instrument_types: 可以使 instrument_type 列表 也可以是 （instrument_type，exchange）列表
+    :param all_if_none 如果 instrument_types 为 None 则返回全部合约代码
     :return: wind_code_list
     """
     wind_code_list = []
