@@ -183,6 +183,18 @@ def import_future_min(chain_param=None, order_book_id_set=None, begin_time=None)
     # 设置 dtype
     dtype = {key: val for key, val in param_list}
     dtype['order_book_id'] = String(20)
+
+    # 定义统一的插入函数
+    def insert_db(df: pd.DataFrame):
+        nonlocal has_table
+        insert_data_count = bunch_insert_on_duplicate_update(df, table_name, engine_md, dtype=dtype)
+        if not has_table and engine_md.has_table(table_name):
+            alter_table_2_myisam(engine_md, [table_name])
+            build_primary_key([table_name])
+            has_table = True
+
+        return insert_data_count
+
     data_df_list = []
     data_len = len(future_date_dic)
     bulk_data_count = 0
@@ -216,38 +228,37 @@ def import_future_min(chain_param=None, order_book_id_set=None, begin_time=None)
             data_df.reset_index(inplace=True)
             data_df.rename(columns={c: str.lower(c) for c in data_df.columns}, inplace=True)
             data_df_list.append(data_df)
+            data_df_count = data_df.shape[0]
             bulk_data_count += data_df.shape[0]
-            data_df_count = len(data_df_list)
+            data_df_list_count = len(data_df_list)
             # 仅仅调试时使用
-            if DEBUG and data_df_count > 1:
+            if DEBUG and data_df_list_count > 1:
                 break
 
-            # 数据量过大可能导致更新时内存不足，采取分批方法进行更新
-            if bulk_data_count > 100000:
-                logger.info('merge data with %d df %d data', data_df_count, bulk_data_count)
+            if data_df_list_count > 1 and bulk_data_count > 100000:
+                # 数据量过大可能导致更新时内存不足，采取分批方法进行更新
+                logger.info('merge data with %d df %d data', data_df_list_count, bulk_data_count)
                 data_df = pd.concat(data_df_list)
-                tot_data_count += bunch_insert_on_duplicate_update(data_df, table_name, engine_md, dtype=dtype)
+                tot_data_count += insert_db(data_df)
                 logger.info("更新 %s 结束，累计 %d 条记录被更新", table_name, tot_data_count)
-                if not has_table and engine_md.has_table(table_name):
-                    alter_table_2_myisam(engine_md, [table_name])
-                    build_primary_key([table_name])
-                    has_table = True
-
+                data_df_list = []
+                bulk_data_count = 0
+            elif data_df_list_count == 1 and data_df_count > 50000:
+                # 本语句只是为了避免大的 df concat 造成时间浪费，如果单个df已经很大，直接插入
+                logger.info('data_df has %d data insert db directly', data_df_count)
+                tot_data_count += insert_db(data_df)
+                logger.info("更新 %s 结束，累计 %d 条记录被更新", table_name, tot_data_count)
                 data_df_list = []
                 bulk_data_count = 0
 
     finally:
-        data_df_count = len(data_df_list)
-        if data_df_count > 0:
-            logger.info('merge data with %d df %d data', data_df_count, bulk_data_count)
+        data_df_list_count = len(data_df_list)
+        if data_df_list_count > 0:
+            logger.info('merge data with %d df %d data', data_df_list_count, bulk_data_count)
             data_df = pd.concat(data_df_list)
-            data_count = bunch_insert_on_duplicate_update(data_df, table_name, engine_md, dtype=dtype)
-            logger.info("更新 %s 结束，累计 %d 条记录被更新", table_name, data_count)
-            if not has_table and engine_md.has_table(table_name):
-                alter_table_2_myisam(engine_md, [table_name])
-                build_primary_key([table_name])
-        else:
-            logger.info("更新 %s 结束 0 条记录被更新", table_name)
+            tot_data_count = insert_db(data_df)
+
+        logger.info("更新 %s 结束，累计 %d 条记录被更新", table_name, tot_data_count)
 
 
 if __name__ == "__main__":
