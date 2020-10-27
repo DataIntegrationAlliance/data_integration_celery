@@ -16,7 +16,7 @@
 + [四、Window CMD 启动](#4)
 + [五、celery 启动方法](#5)
 + [六、MySQL 配置方法](#6)
-
++ [七、MySQL 参数调整](#7)
 ## <span id="1">一、环境依赖及安装配置</span>
 + windows，ubuntu均可
 + rabbitmq
@@ -192,4 +192,12 @@ class CeleryConfig:
     flush privileges; #刷新系统权限表
     ```
  
- 
+ ## <span id="7">七、MySQL 参数调整</span>
+部分数据过大可能导致数据库连接、存储过程中失效或者速度缓慢，建议调整一下参数：
+
+参数|数值|描述
+:---|---:|:---|
+max_allowed_packet | 500M|配置MySQL允许的最大数据包大小，解决 Lost connection to MySQL server during query 问题|
+wait_timeout| 172800|解决 MySQL server has gone away 的问题|
+interactive_timeout| 172800|解决 MySQL server has gone away 的问题|
+innodb_buffer_pool_size| 1024M|Innodb_buffer_pool_pages_data / Innodb_buffer_pool_pages_total * 100%， 建议使用物理内存的75%|
