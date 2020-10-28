@@ -350,6 +350,6 @@ def _run_min_to_vnpy():
 
 
 if __name__ == "__main__":
-    # import_future_info()
+    import_future_info()
     # import_future_min()
-    _run_min_to_vnpy()
+    # _run_min_to_vnpy()
