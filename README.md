@@ -201,3 +201,14 @@ max_allowed_packet | 500M|配置MySQL允许的最大数据包大小，解决 Los
 wait_timeout| 172800|解决 MySQL server has gone away 的问题|
 interactive_timeout| 172800|解决 MySQL server has gone away 的问题|
 innodb_buffer_pool_size| 1024M|Innodb_buffer_pool_pages_data / Innodb_buffer_pool_pages_total * 100%， 建议使用物理内存的75%|
+
+参数调整方法:
+
+1. 修改 my.cnf 文件
+
+2. 执行 sql命令
+
+   ```sql
+   set global max_allowed_packet=500*1024*1024;
+   ```
+
