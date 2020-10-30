@@ -212,3 +212,8 @@ innodb_buffer_pool_size| 1024M|Innodb_buffer_pool_pages_data / Innodb_buffer_poo
    set global max_allowed_packet=500*1024*1024;
    ```
 
+3. 快速查询数据库中各个表的数据条数命令
+
+    ```sql
+    select a.TABLE_NAME,a.TABLE_ROWS from information_schema.`TABLES` a WHERE a.TABLE_SCHEMA='md_integration' ORDER BY a.TABLE_ROWS desc
+    ```
