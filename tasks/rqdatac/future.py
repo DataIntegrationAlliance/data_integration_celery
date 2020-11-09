@@ -309,7 +309,7 @@ def min_to_vnpy(chain_param=None, instrument_types=None):
         return
 
     code_list = get_code_list_by_types(instrument_types)
-    code_count = len(code_list)
+    code_count, do_count = len(code_list), 0
     data_count = 0
     for n, (symbol, exchange) in enumerate(code_list, start=1):
         # 读取k线数据
@@ -321,6 +321,7 @@ def min_to_vnpy(chain_param=None, instrument_types=None):
         if df_len == 0:
             continue
 
+        do_count += 1
         df['symbol'] = symbol
         df['exchange'] = exchange
         df['interval'] = interval
@@ -340,7 +341,7 @@ def min_to_vnpy(chain_param=None, instrument_types=None):
                     n, code_count, symbol, df_len, table_name)
         data_count += df_len
 
-    logger.info(f"全部 {code_count:,d} 个合约 {data_count:,d} 条数据插入完成")
+    logger.info(f"全部 {do_count:,d} 个合约 {data_count:,d} 条数据插入完成")
 
 
 def _run_min_to_vnpy():
@@ -352,4 +353,4 @@ def _run_min_to_vnpy():
 if __name__ == "__main__":
     # import_future_info()
     import_future_min()
-    # _run_min_to_vnpy()
+    _run_min_to_vnpy()
