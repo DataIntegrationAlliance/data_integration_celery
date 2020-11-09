@@ -567,11 +567,11 @@ def _run_daily_to_vnpy():
 
 if __name__ == "__main__":
     # DEBUG = True
-    # wind_code_set = None
+    wind_code_set = None
     # import_future_info_hk(chain_param=None)
     # import_future_info(chain_param=None)
     # 导入期货每日行情数据
-    # import_future_daily(None, wind_code_set)
+    import_future_daily(None, wind_code_set)
     # update_future_info_hk(chain_param=None)
 
     # 按品种合约倒叙加载每日行情
