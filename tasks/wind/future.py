@@ -15,8 +15,8 @@ from sqlalchemy.dialects.mysql import DOUBLE
 from tasks import app
 from tasks.wind import invoker
 from ibats_utils.db import with_db_session
-from sqlalchemy.types import String, Date
-from ibats_utils.mess import STR_FORMAT_DATE, date_2_str, str_2_date
+from sqlalchemy.types import String, Date, DateTime
+from ibats_utils.mess import STR_FORMAT_DATE, STR_FORMAT_DATETIME, date_2_str, str_2_date
 from tasks.backend.orm import build_primary_key
 from tasks.merge.code_mapping import update_from_info_table
 from tasks.backend import engine_md
@@ -381,6 +381,182 @@ def import_future_daily(chain_param=None, wind_code_set=None, begin_time=None):
 
 
 @app.task
+def import_future_min(chain_param=None, wind_code_set=None, begin_time=None):
+    """
+    更新期货合约分钟级别行情信息
+    请求语句类似于：
+    w.wsi("CU2012.SHF", "open,high,low,close,volume,amt,oi,begin_time,end_time", "2020-11-11 09:00:00", "2020-11-11 11:18:27", "")
+    :param chain_param:  在celery 中將前面結果做爲參數傳給後面的任務
+    :return:
+    """
+    # global DEBUG
+    # DEBUG = True
+    table_name = "wind_future_min"
+    logger.info("更新 %s 开始", table_name)
+    has_table = engine_md.has_table(table_name)
+    param_list = [
+        ("open", DOUBLE),
+        ("high", DOUBLE),
+        ("low", DOUBLE),
+        ("close", DOUBLE),
+        ("volume", DOUBLE),
+        ("amt", DOUBLE),
+        ("oi", DOUBLE),
+        # wind 返回的该字段为一个float值，且 begin_time 与 end_time 数值一样，没有意义。
+        # 该值与 trade_datetime 字段相同，因此无需获取
+        # ('begin_time', DateTime),
+        # ('end_time', DateTime),
+        # ('instrument_id', String(20)),
+        # ('trade_date', Date,)
+    ]
+    wind_indictor_str = ",".join([key for key, _ in param_list[:10]])
+
+    if has_table:
+        sql_str = f"""
+        select wind_code, date_frm, if(lasttrade_date<end_date, lasttrade_date, end_date) date_to
+        FROM
+        (
+            select fi.wind_code, 
+                ifnull(trade_date_max_1, addtime(ipo_date,'09:00:00')) date_frm, 
+                addtime(lasttrade_date,'15:00:00') lasttrade_date,
+                case 
+                    when hour(now())>=15 then DATE_FORMAT(now(),'%Y-%d-%m 15:00:00') 
+                    when hour(now())>=12 then DATE_FORMAT(now(),'%Y-%d-%m 12:00:00') 
+                    else DATE_FORMAT(now(),'%Y-%d-%m 05:00:00') 
+                end end_date
+            from wind_future_info fi 
+            left outer join
+            (
+                select wind_code, addtime(max(trade_datetime),'00:00:01') trade_date_max_1 
+                from {table_name} group by wind_code
+            ) wfd
+            on fi.wind_code = wfd.wind_code
+        ) tt
+        where date_frm <= if(lasttrade_date<end_date, lasttrade_date, end_date) 
+        -- and subdate(curdate(), 360) < if(lasttrade_date<end_date, lasttrade_date, end_date) 
+        order by date_to desc, date_frm"""
+    else:
+        sql_str = """
+        SELECT wind_code, date_frm,
+            if(lasttrade_date<end_date,lasttrade_date, end_date) date_to
+        FROM
+        (
+            SELECT info.wind_code,
+            addtime(ipo_date,'09:00:00') date_frm, 
+            addtime(lasttrade_date,'15:00:00')  lasttrade_date,
+            case 
+                when hour(now())>=15 then DATE_FORMAT(now(),'%Y-%d-%m 15:00:00') 
+                when hour(now())>=12 then DATE_FORMAT(now(),'%Y-%d-%m 12:00:00') 
+                else DATE_FORMAT(now(),'%Y-%d-%m 05:00:00') 
+            end end_date
+            FROM wind_future_info info
+        ) tt
+        WHERE date_frm <= if(lasttrade_date<end_date, lasttrade_date, end_date)
+        ORDER BY date_to desc, date_frm"""
+        logger.warning('%s 不存在，仅使用 wind_future_info 表进行计算日期范围', table_name)
+
+    with with_db_session(engine_md) as session:
+        table = session.execute(sql_str)
+        # 获取date_from,date_to，将date_from,date_to做为value值
+        future_date_dic = {
+            wind_code: (date_from if begin_time is None else min([date_from, begin_time]), date_to)
+            for wind_code, date_from, date_to in table.fetchall() if
+            wind_code_set is None or wind_code in wind_code_set}
+
+    # 设置 dtype
+    dtype = {key: val for key, val in param_list}
+    dtype['wind_code'] = String(20)
+    dtype['instrument_id'] = String(20)
+    dtype['trade_date'] = Date
+    dtype['trade_datetime'] = DateTime
+    dtype['open_interest'] = dtype.pop('oi')
+
+    # 定义统一的插入函数
+    def insert_db(df: pd.DataFrame):
+        nonlocal has_table
+        insert_data_count = bunch_insert_on_duplicate_update(df, table_name, engine_md, dtype=dtype)
+        if not has_table and engine_md.has_table(table_name):
+            # mysql 8 开始 myisam 不再支持 partition，因此只能使用 innodb
+            # alter_table_2_myisam(engine_md, [table_name])
+            build_primary_key([table_name])
+            has_table = True
+
+        return insert_data_count
+
+    data_df_list = []
+    future_count = len(future_date_dic)
+    bulk_data_count, tot_data_count = 0, 0
+    try:
+        logger.info("%d future instrument will be handled", future_count)
+        for num, (wind_code, (date_frm, date_to)) in enumerate(future_date_dic.items(), start=1):
+            # 暂时只处理 RU 期货合约信息
+            # if wind_code.find('RU') == -1:
+            #     continue
+            if date_frm > date_to:
+                continue
+            if isinstance(date_frm, datetime):
+                date_frm_str = date_frm.strftime(STR_FORMAT_DATETIME)
+            elif isinstance(date_frm, str):
+                date_frm_str = date_frm
+            else:
+                date_frm_str = date_frm.strftime(STR_FORMAT_DATE) + ' 09:00:00'
+
+            # 结束时间到次日的凌晨5点
+            if isinstance(date_to, str):
+                date_to_str = date_to
+            else:
+                date_to += timedelta(days=1)
+                date_to_str = date_to.strftime(STR_FORMAT_DATE) + ' 05:00:00'
+
+            logger.info('%d/%d) get %s between %s and %s', num, future_count, wind_code, date_frm_str, date_to_str)
+            # data_df = wsd_cache(w, wind_code, "open,high,low,close,volume,amt,dealnum,settle,oi,st_stock",
+            #                         date_frm, date_to, "")
+            try:
+                data_df = invoker.wsi(wind_code, wind_indictor_str, date_frm_str, date_to_str, "")
+            except APIError as exp:
+                logger.exception("%d/%d) %s 执行异常", num, future_count, wind_code)
+                if exp.ret_dic.setdefault('error_code', 0) in (
+                        -40520007,  # 没有可用数据
+                        -40521009,  # 数据解码失败。检查输入参数是否正确，如：日期参数注意大小月月末及短二月
+                ):
+                    continue
+                else:
+                    break
+            if data_df is None:
+                logger.warning('%d/%d) %s has no data during %s %s', num, future_count, wind_code, date_frm_str, date_to)
+                continue
+            logger.info('%d/%d) %d data of %s between %s and %s',
+                        num, future_count, data_df.shape[0], wind_code, date_frm_str, date_to)
+            data_df['wind_code'] = wind_code
+            data_df.index.rename('trade_datetime', inplace=True)
+            data_df.reset_index(inplace=True)
+            data_df['trade_date'] = pd.to_datetime(data_df['trade_datetime']).apply(lambda x: x.date())
+            data_df.rename(columns={c: str.lower(c) for c in data_df.columns}, inplace=True)
+            data_df.rename(columns={'oi': 'open_interest'}, inplace=True)
+            data_df['instrument_id'] = wind_code.split('.')[0]
+            data_df_list.append(data_df)
+            bulk_data_count += data_df.shape[0]
+            # 仅仅调试时使用
+            if DEBUG and len(data_df_list) >= 1:
+                break
+            if bulk_data_count > 50000:
+                logger.info('merge data with %d df %d data', len(data_df_list), bulk_data_count)
+                data_df = pd.concat(data_df_list)
+                tot_data_count = insert_db(data_df)
+                logger.info("更新 %s，累计 %d 条记录被更新", table_name, tot_data_count)
+                data_df_list = []
+                bulk_data_count = 0
+    finally:
+        data_df_count = len(data_df_list)
+        if data_df_count > 0:
+            logger.info('merge data with %d df %d data', len(data_df_list), bulk_data_count)
+            data_df = pd.concat(data_df_list)
+            tot_data_count += insert_db(data_df)
+
+        logger.info("更新 %s 结束 累计 %d 条记录被更新", table_name, tot_data_count)
+
+
+@app.task
 def update_future_info_hk(chain_param=None):
     """
     更新 香港股指 期货合约列表信息
@@ -571,8 +747,10 @@ if __name__ == "__main__":
     # import_future_info_hk(chain_param=None)
     # import_future_info(chain_param=None)
     # 导入期货每日行情数据
-    import_future_daily(None, wind_code_set)
+    # import_future_daily(None, wind_code_set)
     # update_future_info_hk(chain_param=None)
+    # 导入期货分钟级行情数据
+    import_future_min(None, wind_code_set)
 
     # 按品种合约倒叙加载每日行情
     # load_by_wind_code_desc(instrument_types=[
@@ -582,4 +760,4 @@ if __name__ == "__main__":
     # ])
 
     # 根据商品类型将对应日线数据插入到 vnpy dbbardata 表中
-    _run_daily_to_vnpy()
+    # _run_daily_to_vnpy()
