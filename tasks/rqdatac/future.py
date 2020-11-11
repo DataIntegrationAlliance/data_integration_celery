@@ -242,14 +242,14 @@ def import_future_min(chain_param=None, order_book_id_set=None, begin_time=None)
                 logger.info('merge data with %d df %d data', data_df_list_count, bulk_data_count)
                 data_df = pd.concat(data_df_list)
                 tot_data_count += insert_db(data_df)
-                logger.info("更新 %s 结束，累计 %d 条记录被更新", table_name, tot_data_count)
+                logger.info("更新 %s，累计 %d 条记录被更新", table_name, tot_data_count)
                 data_df_list = []
                 bulk_data_count = 0
             elif data_df_list_count == 1 and data_df_count > 50000:
                 # 本语句只是为了避免大的 df concat 造成时间浪费，如果单个df已经很大，直接插入
                 logger.info('data_df has %d data insert db directly', data_df_count)
                 tot_data_count += insert_db(data_df)
-                logger.info("更新 %s 结束，累计 %d 条记录被更新", table_name, tot_data_count)
+                logger.info("更新 %s，累计 %d 条记录被更新", table_name, tot_data_count)
                 data_df_list = []
                 bulk_data_count = 0
 
