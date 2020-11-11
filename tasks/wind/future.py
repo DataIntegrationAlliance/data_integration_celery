@@ -735,6 +735,56 @@ def daily_to_vnpy(chain_param=None, instrument_types=None):
                     n, wind_code_count, symbol, df.shape[0], table_name)
 
 
+@app.task
+def min_to_vnpy(chain_param=None, instrument_types=None):
+    from tasks.config import config
+    from tasks.backend import engine_dic
+    table_name = 'dbbardata'
+    engine_vnpy = engine_dic[config.DB_SCHEMA_VNPY]
+    has_table = engine_vnpy.has_table(table_name)
+    if not has_table:
+        logger.error('当前数据库 %s 没有 %s 表，建议使用 vnpy先建立相应的数据库表后再进行导入操作', engine_vnpy, table_name)
+        return
+
+    wind_code_list = get_wind_code_list_by_types(instrument_types)
+    wind_code_count = len(wind_code_list)
+    for n, wind_code in enumerate(wind_code_list, start=1):
+        symbol, exchange = wind_code.split('.')
+        if exchange in WIND_VNPY_EXCHANGE_DIC:
+            exchange_vnpy = WIND_VNPY_EXCHANGE_DIC[exchange]
+        else:
+            logger.warning('exchange: %s 在交易所列表中不存在', exchange)
+            exchange_vnpy = exchange
+
+        # 读取日线数据
+        sql_str = "select trade_datetime `datetime`, `open` open_price, high high_price, " \
+                  "`low` low_price, `close` close_price, volume, open_interest as open_interest " \
+                  "from wind_future_min where wind_code = %s"
+        df = pd.read_sql(sql_str, engine_md, params=[wind_code]).dropna()
+        df_len = df.shape[0]
+        if df_len == 0:
+            continue
+
+        interval = '1m'
+        df['symbol'] = symbol
+        df['exchange'] = exchange_vnpy
+        df['interval'] = interval
+
+        sql_str = f"select count(1) from {table_name} where symbol=:symbol and `interval`='{interval}'"
+        del_sql_str = f"delete from {table_name} where symbol=:symbol and `interval`='{interval}'"
+        with with_db_session(engine_vnpy) as session:
+            existed_count = session.scalar(sql_str, params={'symbol': symbol})
+            if existed_count == df_len:
+                continue
+            if existed_count > 0:
+                session.execute(del_sql_str, params={'symbol': symbol})
+                session.commit()
+
+        df.to_sql(table_name, engine_vnpy, if_exists='append', index=False)
+        logger.info("%d/%d) %s %d data have been insert into table %s",
+                    n, wind_code_count, symbol, df.shape[0], table_name)
+
+
 def _run_daily_to_vnpy():
     instrument_types = ['RB']
     instrument_types = None
@@ -751,6 +801,7 @@ if __name__ == "__main__":
     # update_future_info_hk(chain_param=None)
     # 导入期货分钟级行情数据
     import_future_min(None, wind_code_set)
+    # min_to_vnpy(None)
 
     # 按品种合约倒叙加载每日行情
     # load_by_wind_code_desc(instrument_types=[
