@@ -162,6 +162,11 @@ def build_primary_key(table_name_list):
                 create_info_pk_str = """ALTER TABLE %s
                     CHANGE COLUMN `wind_code` `wind_code` VARCHAR(20) NOT NULL FIRST,
                     ADD PRIMARY KEY (`wind_code`)"""
+                create_min_pk_str = """ALTER TABLE %s
+                    CHANGE COLUMN `wind_code` `wind_code` VARCHAR(20) NOT NULL FIRST,
+                    CHANGE COLUMN `trade_date` `trade_date` DATE NOT NULL AFTER `wind_code`,
+                    CHANGE COLUMN `trade_datetime` `trade_datetime` DATETIME NOT NULL AFTER `trade_date`,
+                    ADD PRIMARY KEY (`wind_code`, `trade_date`, `trade_datetime`)"""
                 if table_name.find('_daily') != -1:
                     col_name = session.execute(query_pk_str,
                                                params={'schema': config.DB_SCHEMA_MD,
@@ -170,6 +175,15 @@ def build_primary_key(table_name_list):
                         # 如果没有记录则 创建主键
                         session.execute(create_daily_pk_str % table_name)
                         logger.info('%d/%d) %s 建立主键 [wind_code, trade_date]', num, table_count, table_name)
+
+                elif table_name.find('_min') != -1:
+                    col_name = session.execute(query_pk_str,
+                                               params={'schema': config.DB_SCHEMA_MD,
+                                                       'table_name': table_name}).scalar()
+                    if col_name is None:
+                        # 如果没有记录则 创建主键
+                        session.execute(create_min_pk_str % table_name)
+                        logger.info('%d/%d) %s 建立主键 [wind_code, trade_date, trade_datetime]', num, table_count, table_name)
 
                 elif table_name.find('_info') != -1:
                     col_name = session.execute(query_pk_str,
