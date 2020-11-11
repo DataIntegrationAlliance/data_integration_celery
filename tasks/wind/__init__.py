@@ -7,9 +7,9 @@
 @contact : mmmaaaggg@163.com
 @desc    : 
 """
-from celery import chain
-from tasks.config import config
 from direstinvoker.iwind import WindRestInvoker
+
+from tasks.config import config
 
 invoker = WindRestInvoker(config.WIND_REST_URL)
 
@@ -41,19 +41,19 @@ wind_daily_task = (
         # import_sectorconstituent_all.s() |
         # import_smfund_daily.s() |
         import_stock_daily.s()
-        # import_stock_daily_hk.s() |
-        # import_stock_quertarly_hk.s() |
-        # import_stock_daily_hk.s()
+    # import_stock_daily_hk.s() |
+    # import_stock_quertarly_hk.s() |
+    # import_stock_daily_hk.s()
 )
 # 周级别加载的程序
 wind_weekly_task = (
-        # import_cb_info.s() |
+    # import_cb_info.s() |
         import_future_info.s() |
         # import_private_fund_info.s()
         # import_pub_fund_info.s() |
         # import_smfund_info.s() |
         import_wind_stock_info.s()
-        # import_stock_info_hk.s()
+    # import_stock_info_hk.s()
 )
 # 一次性加载的程序
 wind_codes = ['HSCEI.HI', 'HSI.HI', 'HSML25.HI', 'HSPI.HI', '000001.SH', '000016.SH',
@@ -68,3 +68,9 @@ wind_import_once = (
 #     # 仅供接口测试使用
 #     # df = invoker.wset("sectorconstituent", "date=2018-01-04;sectorid=a001010100000000")
 #     # print(df)
+
+ERROR_CODE_MSG_DIC = {
+    -40520008: "Start登陆超时，请重新登陆",
+    -40520007: "没有可用数据",
+    -40521009: "数据解码失败。检查输入参数是否正确，如：日期参数注意大小月月末及短二月",
+}

@@ -514,8 +514,11 @@ def import_future_min(chain_param=None, wind_code_set=None, begin_time=None):
             try:
                 data_df = invoker.wsi(wind_code, wind_indictor_str, date_frm_str, date_to_str, "")
             except APIError as exp:
-                logger.exception("%d/%d) %s 执行异常", num, future_count, wind_code)
-                if exp.ret_dic.setdefault('error_code', 0) in (
+                from tasks.wind import ERROR_CODE_MSG_DIC
+                error_code = exp.ret_dic.setdefault('error_code', 0)
+                logger.exception("%d/%d) %s 执行异常 %S",
+                                 num, future_count, wind_code, ERROR_CODE_MSG_DIC.setdefault(error_code, ""))
+                if error_code in (
                         -40520007,  # 没有可用数据
                         -40521009,  # 数据解码失败。检查输入参数是否正确，如：日期参数注意大小月月末及短二月
                 ):
