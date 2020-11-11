@@ -6,11 +6,13 @@
 @desc    : 用于计算给定期货品种的前复权因子、对应的合约及日期，导入数据库
 """
 import logging
+import os
 from enum import Enum
 from collections import defaultdict
 import pandas as pd
+import numpy as np
 from ibats_utils.db import bunch_insert_on_duplicate_update, with_db_session
-from ibats_utils.mess import str_2_float
+from ibats_utils.mess import str_2_float, date_2_str
 from sqlalchemy.dialects.mysql import DOUBLE
 from sqlalchemy.types import String, Date
 from tasks.backend import engine_md
@@ -86,6 +88,7 @@ def generate_reversion_rights_factors(instrument_type, switch_by_key='position',
     # 主力合约为当日“持仓量”最大合约，合约号只能前进不能后退
     # 次主力合约的交割日期要大于主力合约的交割日期，
     trade_date_list = list(switch_by_df.index)
+    trade_date_latest = np.max(trade_date_list)
     trade_date_available_list = []
     trade_date, trade_date_last = None, None  # 当前交易日， 上一个交易日日期
     for n, trade_date in enumerate(trade_date_list):
@@ -201,7 +204,7 @@ def generate_reversion_rights_factors(instrument_type, switch_by_key='position',
     adj_factor_df = adj_factor_df.ffill().sort_index().reset_index().rename(
         columns={'index': 'trade_date'})
     adj_factor_df["instrument_type"] = instrument_type
-    return adj_factor_df
+    return adj_factor_df, trade_date_latest
 
 
 def update_df_2_db(instrument_type, table_name, data_df, dtype=None):
@@ -237,12 +240,20 @@ def save_adj_factor(instrument_types: list, to_db=True, to_csv=True):
     :param method: division 除法  diff  差值发
     :return:
     """
+    dir_path = 'output'
+    if to_csv:
+        # 建立 output folder
+        os.makedirs(dir_path, exist_ok=True)
+
     for method in Method:
         for n, instrument_type in enumerate(instrument_types):
             logger.info("生成 %s 复权因子", instrument_type)
-            adj_factor_df = generate_reversion_rights_factors(instrument_type, method=method)
+            adj_factor_df, trade_date_latest = generate_reversion_rights_factors(instrument_type, method=method)
             if to_csv:
-                adj_factor_df.to_csv(f'adj_factor_{instrument_type}_{method.name}.csv', index=False)
+                csv_file_name = f'adj_factor_{instrument_type}_{method.name}_{date_2_str(trade_date_latest)}.csv'
+                csv_file_path = os.path.join(dir_path, csv_file_name)
+                adj_factor_df.to_csv(csv_file_path, index=False)
+
             if to_db:
                 table_name = 'wind_future_adj_factor'
                 dtype = {
@@ -262,7 +273,7 @@ def save_adj_factor(instrument_types: list, to_db=True, to_csv=True):
 
 
 def _test_generate_reversion_rights_factors():
-    adj_factor_df = generate_reversion_rights_factors(instrument_type='hc')
+    adj_factor_df, trade_date_latest = generate_reversion_rights_factors(instrument_type='hc')
     print(adj_factor_df)
 
 
