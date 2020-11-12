@@ -293,7 +293,8 @@ def build_commodity_info():
         alter_table_2_myisam(engine_md, [table_name])
         create_pk_str = """ALTER TABLE {table_name}
             CHANGE COLUMN `key` `key` VARCHAR(20) NOT NULL FIRST,
-            ADD PRIMARY KEY (`key`)""".format(table_name=table_name)
+            CHANGE COLUMN `en_name` `en_name` VARCHAR(120) NOT NULL,
+            ADD PRIMARY KEY (`key`, `en_name`)""".format(table_name=table_name)
         with with_db_session(engine_md) as session:
             session.execute(create_pk_str)
         logger.info('%s 表 `key` 主键设置完成', table_name)
@@ -412,5 +413,5 @@ if __name__ == "__main__":
     # DEBUG = True
     build_commodity_info()
     # 更新每日商品数据
-    import_edb()
+    # import_edb()
 
