@@ -4,24 +4,25 @@ Created on 2017/5/2
 @author: MG
 @desc    : 2018-08-23 info daily 已经正式运行测试完成，可以正常使用
 """
-import typing
+import itertools
 import logging
 import re
-import itertools
-import pandas as pd
 from datetime import datetime, date, timedelta
+
+import pandas as pd
 from direstinvoker import APIError
-from sqlalchemy.dialects.mysql import DOUBLE
-from tasks import app
-from tasks.wind import invoker
-from ibats_utils.db import with_db_session
-from sqlalchemy.types import String, Date, DateTime
-from ibats_utils.mess import STR_FORMAT_DATE, STR_FORMAT_DATETIME, date_2_str, str_2_date
-from tasks.backend.orm import build_primary_key
-from tasks.merge.code_mapping import update_from_info_table
-from tasks.backend import engine_md
 from ibats_utils.db import alter_table_2_myisam
 from ibats_utils.db import bunch_insert_on_duplicate_update
+from ibats_utils.db import with_db_session
+from ibats_utils.mess import STR_FORMAT_DATE, STR_FORMAT_DATETIME
+from sqlalchemy.dialects.mysql import DOUBLE
+from sqlalchemy.types import String, Date, DateTime
+
+from tasks import app
+from tasks.backend import engine_md
+from tasks.backend.orm import build_primary_key
+from tasks.merge.code_mapping import update_from_info_table
+from tasks.wind import invoker
 
 logger = logging.getLogger()
 RE_PATTERN_MFPRICE = re.compile(r'\d*\.*\d*')
@@ -516,8 +517,13 @@ def import_future_min(chain_param=None, wind_code_set=None, begin_time=None):
             except APIError as exp:
                 from tasks.wind import ERROR_CODE_MSG_DIC
                 error_code = exp.ret_dic.setdefault('error_code', 0)
-                logger.exception("%d/%d) %s 执行异常 %S",
-                                 num, future_count, wind_code, ERROR_CODE_MSG_DIC.setdefault(error_code, ""))
+                if error_code in ERROR_CODE_MSG_DIC:
+                    logger.error("%d/%d) %s 执行异常 error_code=%d, %s",
+                                 num, future_count, wind_code, error_code, ERROR_CODE_MSG_DIC[error_code])
+                else:
+                    logger.exception("%d/%d) %s 执行异常 error_code=%d",
+                                     num, future_count, wind_code, error_code)
+
                 if error_code in (
                         -40520007,  # 没有可用数据
                         -40521009,  # 数据解码失败。检查输入参数是否正确，如：日期参数注意大小月月末及短二月
@@ -526,7 +532,8 @@ def import_future_min(chain_param=None, wind_code_set=None, begin_time=None):
                 else:
                     break
             if data_df is None:
-                logger.warning('%d/%d) %s has no data during %s %s', num, future_count, wind_code, date_frm_str, date_to)
+                logger.warning('%d/%d) %s has no data during %s %s',
+                               num, future_count, wind_code, date_frm_str, date_to)
                 continue
             logger.info('%d/%d) %d data of %s between %s and %s',
                         num, future_count, data_df.shape[0], wind_code, date_frm_str, date_to)
