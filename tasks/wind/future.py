@@ -6,6 +6,7 @@ Created on 2017/5/2
 """
 import itertools
 import logging
+import os
 import re
 from datetime import datetime, date, timedelta
 
@@ -33,6 +34,7 @@ WIND_VNPY_EXCHANGE_DIC = {
     'CFE': 'CFFEX',
     'DCE': 'DCE',
 }
+PATTERN_INSTRUMENT_TYPE = re.compile(r'\D+(?=\d{2,4})', re.IGNORECASE)
 # 标示每天几点以后下载当日行情数据
 BASE_LINE_HOUR = 17
 DEBUG = False
@@ -799,6 +801,43 @@ def _run_daily_to_vnpy():
     instrument_types = ['RB']
     instrument_types = None
     daily_to_vnpy(None, instrument_types)
+
+
+def get_instrument_type(symbol):
+    match = PATTERN_INSTRUMENT_TYPE.search(symbol)
+    if match is not None:
+        instrument_type = match.group()
+    else:
+        logger.error("当前合约 %s 无法判断期货品种", symbol)
+        instrument_type = None
+
+    return instrument_type.upper()
+
+
+def output_future_multiplier():
+    """保存每个期货品种的乘数"""
+    df = pd.read_sql("SELECT trade_code, contractmultiplier FROM wind_future_info", engine_md)
+    df.rename(columns={'contractmultiplier': "multiplier"}, inplace=True)
+    df['instrument_type'] = df['trade_code'].apply(get_instrument_type)
+    df = df[['instrument_type', 'multiplier']].drop_duplicates()
+    df.to_csv(os.path.join("output", "instrument_type_multiplier.csv"), index=False)
+    import json
+    logger.info(json.dumps({row['instrument_type']: row['multiplier'] for _, row in df.iterrows()}, indent=4))
+
+
+def output_instrument_type_daily_bar_count():
+    """保存每个期货品种的每日分钟数"""
+    sql_str = """select inst_type, max(bar_count) daily_bar_count
+    from (
+        SELECT REGEXP_SUBSTR(wind_code, '^[[:alpha:]]+') inst_type, trade_date, count(1) bar_count 
+        FROM wind_future_min 
+        group by REGEXP_SUBSTR(wind_code, '^[[:alpha:]]+'), trade_date
+    ) t
+    group by inst_type"""
+    df = pd.read_sql(sql_str, engine_md)
+    df.to_csv(os.path.join("output", "instrument_type_daily_bar_count.csv"), index=False)
+    import json
+    logger.info(json.dumps({row['inst_type']: row['daily_bar_count'] for _, row in df.iterrows()}, indent=4))
 
 
 if __name__ == "__main__":
