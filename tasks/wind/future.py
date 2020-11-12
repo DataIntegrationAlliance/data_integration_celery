@@ -249,7 +249,7 @@ def import_future_info(chain_param=None):
         data_count = bunch_insert_on_duplicate_update(future_info_df, table_name, engine_md, dtype=dtype)
         logging.info("更新 %s 结束 %d 条信息被更新", table_name, data_count)
         if not has_table and engine_md.has_table(table_name):
-            alter_table_2_myisam(engine_md, [table_name])
+            # alter_table_2_myisam(engine_md, [table_name])
             build_primary_key([table_name])
 
         logger.info("更新 wind_future_info 结束 %d 条记录被更新", future_info_count)
@@ -589,30 +589,30 @@ def update_future_info_hk(chain_param=None):
     param_list = [
         ("ipo_date", Date),
         ("sec_name", String(50)),
-        ("sec_englishname", String(50)),
-        ("exch_eng", String(50)),
+        ("sec_englishname", String(200)),
+        ("exch_eng", String(200)),
         ("lasttrade_date", Date),
         ("lastdelivery_date", Date),
-        ("dlmonth", String(50)),
-        ("lprice", Date),
-        ("sccode", String(50)),
-        ("margin", Date),
-        ("punit", String(50)),
-        ("changelt", Date),
-        ("mfprice", Date),
+        ("dlmonth", String(20)),
+        ("lprice", DOUBLE),
+        ("sccode", String(20)),
+        ("margin", DOUBLE),
+        ("punit", String(200)),
+        ("changelt", DOUBLE),
+        ("mfprice", DOUBLE),
         ("contractmultiplier", DOUBLE),
         ("ftmargins", String(100)),
-        ("trade_code", String(50)),
+        ("trade_code", String(200)),
     ]
     wind_indictor_str = ",".join([key for key, _ in param_list])
     dtype = {key: val for key, val in param_list}
     dtype['wind_code'] = String(20)
     logger.info("更新 wind_future_info_hk 开始")
     # 获取已存在合约列表
-    sql_str = 'select wind_code, ipo_date from wind_future_info_hk'
-    with with_db_session(engine_md) as session:
-        table = session.execute(sql_str)
-        wind_code_ipo_date_dic = dict(table.fetchall())
+    # sql_str = 'select wind_code, ipo_date from wind_future_info_hk'
+    # with with_db_session(engine_md) as session:
+    #     table = session.execute(sql_str)
+    #     wind_code_ipo_date_dic = dict(table.fetchall())
 
     # 获取合约列表
     # 手动生成合约列表
@@ -852,9 +852,9 @@ if __name__ == "__main__":
     # DEBUG = True
     wind_code_set = None
     # import_future_info_hk(chain_param=None)
-    import_future_info(chain_param=None)
+    # import_future_info(chain_param=None)
     # 导入期货每日行情数据
-    import_future_daily(None, wind_code_set)
+    # import_future_daily(None, wind_code_set)
     update_future_info_hk(chain_param=None)
     # 导入期货分钟级行情数据
     # import_future_min(None, wind_code_set)
