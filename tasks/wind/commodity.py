@@ -33,7 +33,7 @@ def build_commodity_info():
         ["S5006045", "m_price_lyg", "连云港豆粕价格", "2009-01-04", None, ''],
         ["S5006038", "m_price_rz", "日照豆粕价格", "2009-01-04", None, ''],
         ["S5006055", "m_price_zj", "湛江豆粕价格", "2009-01-04", None, ''],
-        ["S5006038", "m_price_zjg", "张家港豆粕价格", "2009-01-04", None, ''],
+        ["S5006046", "m_price_zjg", "张家港豆粕价格", "2009-01-04", None, ''],
         ["S0142909", "m_price_moa", "农业部统计豆粕价格", "2008-02-14", None, ''],
         ["S5006057", "m_price_fcg", "防城港豆粕价格", "2009-01-04", None, ''],
         ["S5006030", "m_price_dl", "大连豆粕价格", "2009-01-04", None, ''],
@@ -293,7 +293,6 @@ def build_commodity_info():
         alter_table_2_myisam(engine_md, [table_name])
         create_pk_str = """ALTER TABLE {table_name}
             CHANGE COLUMN `key` `key` VARCHAR(20) NOT NULL FIRST,
-            CHANGE COLUMN `en_name` `en_name` VARCHAR(120) NOT NULL,
             ADD PRIMARY KEY (`key`, `en_name`)""".format(table_name=table_name)
         with with_db_session(engine_md) as session:
             session.execute(create_pk_str)
@@ -413,5 +412,4 @@ if __name__ == "__main__":
     # DEBUG = True
     build_commodity_info()
     # 更新每日商品数据
-    # import_edb()
-
+    import_edb()
