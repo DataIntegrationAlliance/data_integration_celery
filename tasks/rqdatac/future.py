@@ -7,6 +7,7 @@
 @desc    : 导入 rqdatac 期货行情数据
 """
 import logging
+import os
 from datetime import date, timedelta
 
 import pandas as pd
@@ -345,12 +346,29 @@ def min_to_vnpy(chain_param=None, instrument_types=None):
 
 
 def _run_min_to_vnpy():
-    instrument_types = ['RB']
-    instrument_types = None
+    instrument_types = ['RB', "HC", "I"]
+    # instrument_types = None
     min_to_vnpy(None, instrument_types)
+
+
+def get_instrument_type_daily_bar_count():
+    """保存每个期货品种的每日分钟数"""
+    sql_str = """select inst_type, max(bar_count) daily_bar_count
+    from
+    (
+        SELECT REGEXP_SUBSTR(order_book_id, '^[[:alpha:]]+') inst_type,  date(trade_date) trade_date, count(1) bar_count
+        FROM md_integration.rqdatac_future_min
+        group by REGEXP_SUBSTR(order_book_id, '^[[:alpha:]]+'), date(trade_date)
+    ) t
+    group by inst_type"""
+    df = pd.read_sql(sql_str, engine_md)
+    df.to_csv(os.path.join("output", "instrument_type_daily_bar_count.csv"), index=False)
+    import json
+    logger.info(json.dumps({row['inst_type']: row['daily_bar_count'] for _, row in df.iterrows()}, indent=4))
 
 
 if __name__ == "__main__":
     # import_future_info()
-    import_future_min()
+    # import_future_min()
     _run_min_to_vnpy()
+    # get_instrument_type_daily_bar_count()
