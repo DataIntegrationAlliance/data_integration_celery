@@ -420,9 +420,9 @@ def import_future_min(chain_param=None, wind_code_set=None, begin_time=None):
                 ifnull(trade_date_max_1, addtime(ipo_date,'09:00:00')) date_frm, 
                 addtime(lasttrade_date,'15:00:00') lasttrade_date,
                 case 
-                    when hour(now())>=15 then DATE_FORMAT(now(),'%Y-%d-%m 15:00:00') 
-                    when hour(now())>=12 then DATE_FORMAT(now(),'%Y-%d-%m 12:00:00') 
-                    else DATE_FORMAT(now(),'%Y-%d-%m 05:00:00') 
+                    when hour(now())>=15 then DATE_FORMAT(now(),'%Y-%m-%d 15:00:00') 
+                    when hour(now())>=12 then DATE_FORMAT(now(),'%Y-%m-%d 12:00:00') 
+                    else DATE_FORMAT(now(),'%Y-%m-%d 05:00:00') 
                 end end_date
             from wind_future_info fi 
             left outer join
@@ -445,9 +445,9 @@ def import_future_min(chain_param=None, wind_code_set=None, begin_time=None):
             addtime(ipo_date,'09:00:00') date_frm, 
             addtime(lasttrade_date,'15:00:00')  lasttrade_date,
             case 
-                when hour(now())>=15 then DATE_FORMAT(now(),'%Y-%d-%m 15:00:00') 
-                when hour(now())>=12 then DATE_FORMAT(now(),'%Y-%d-%m 12:00:00') 
-                else DATE_FORMAT(now(),'%Y-%d-%m 05:00:00') 
+                when hour(now())>=15 then DATE_FORMAT(now(),'%Y-%m-%d 15:00:00') 
+                when hour(now())>=12 then DATE_FORMAT(now(),'%Y-%m-%d 12:00:00') 
+                else DATE_FORMAT(now(),'%Y-%m-%d 05:00:00') 
             end end_date
             FROM wind_future_info info
         ) tt
