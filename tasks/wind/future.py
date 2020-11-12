@@ -345,7 +345,15 @@ def import_future_daily(chain_param=None, wind_code_set=None, begin_time=None):
             try:
                 data_df = invoker.wsd(wind_code, wind_indictor_str, date_frm_str, date_to_str, "")
             except APIError as exp:
-                logger.exception("%d/%d) %s 执行异常", num, data_len, wind_code)
+                from tasks.wind import ERROR_CODE_MSG_DIC
+                error_code = exp.ret_dic.setdefault('error_code', 0)
+                if error_code in ERROR_CODE_MSG_DIC:
+                    logger.error("%d/%d) %s 执行异常 error_code=%d, %s",
+                                 num, data_len, wind_code, error_code, ERROR_CODE_MSG_DIC[error_code])
+                else:
+                    logger.exception("%d/%d) %s 执行异常 error_code=%d",
+                                     num, data_len, wind_code, error_code)
+
                 if exp.ret_dic.setdefault('error_code', 0) in (
                         -40520007,  # 没有可用数据
                         -40521009,  # 数据解码失败。检查输入参数是否正确，如：日期参数注意大小月月末及短二月
@@ -844,12 +852,12 @@ if __name__ == "__main__":
     # DEBUG = True
     wind_code_set = None
     # import_future_info_hk(chain_param=None)
-    # import_future_info(chain_param=None)
+    import_future_info(chain_param=None)
     # 导入期货每日行情数据
-    # import_future_daily(None, wind_code_set)
-    # update_future_info_hk(chain_param=None)
+    import_future_daily(None, wind_code_set)
+    update_future_info_hk(chain_param=None)
     # 导入期货分钟级行情数据
-    import_future_min(None, wind_code_set)
+    # import_future_min(None, wind_code_set)
     # min_to_vnpy(None)
 
     # 按品种合约倒叙加载每日行情
