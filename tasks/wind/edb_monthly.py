@@ -71,22 +71,21 @@ def import_edb_monthly():
     data_len = len(PMI_FIELD_CODE_2_CN_DIC)
     if has_table:
         sql_str = """select field_code, max(trade_date) trade_date_max from wind_edb_monthly group by field_code"""
+        # 获取数据库中最大日期
+        with with_db_session(engine_md) as session:
+            table = session.execute(sql_str)
+            field_date_dic = {row[0]: row[1] for row in table.fetchall()}
 
     else:
-        sql_str = """
-                       CREATE TABLE {table_name } (
-                     `field_code` varchar(20) NOT NULL,
-                     `field_name` varchar(45) DEFAULT NULL,
-                     `trade_date` date NOT NULL,
-                     `val` double DEFAULT NULL,
-                     PRIMARY KEY (`field_code`,`trade_date`)
-                   ) ENGINE=MyISAM DEFAULT CHARSET=utf8 COMMENT='保存wind edb 宏观经济数据';   
+        sql_str = f"""
+        CREATE TABLE {table_name} (
+         `field_code` varchar(20) NOT NULL,
+         `field_name` varchar(45) DEFAULT NULL,
+         `trade_date` date NOT NULL,
+         `val` double DEFAULT NULL,
+         PRIMARY KEY (`field_code`,`trade_date`)
+       ) ENGINE=MyISAM DEFAULT CHARSET=utf8 COMMENT='保存wind edb 宏观经济数据';"""
 
-               """.format(table_name)
-    # 获取数据库中最大日期
-    with with_db_session(engine_md) as session:
-        table = session.execute(sql_str)
-        field_date_dic = {row[0]: row[1] for row in table.fetchall()}
     # 循环更新
     for data_num, (wind_code, (field_name, date_from)) in enumerate(PMI_FIELD_CODE_2_CN_DIC.items(), start=1):
         if wind_code in field_date_dic:
@@ -123,4 +122,4 @@ def import_edb_monthly():
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG, format='%(asctime)s: %(levelname)s [%(name)s:%(funcName)s] %(message)s')
-    # import_edb_monthly()
+    import_edb_monthly()
