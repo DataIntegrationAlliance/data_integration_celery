@@ -331,7 +331,7 @@ def min_to_vnpy(chain_param=None, instrument_types=None):
         del_sql_str = f"delete from {table_name} where symbol=:symbol and `interval`='{interval}'"
         with with_db_session(engine_vnpy) as session:
             existed_count = session.scalar(sql_str, params={'symbol': symbol})
-            if existed_count == df_len:
+            if existed_count >= df_len:
                 continue
             if existed_count > 0:
                 session.execute(del_sql_str, params={'symbol': symbol})
