@@ -392,12 +392,15 @@ def import_future_daily(chain_param=None, wind_code_set=None, begin_time=None):
 
 
 @app.task
-def import_future_min(chain_param=None, wind_code_set=None, begin_time=None):
+def import_future_min(chain_param=None, wind_code_set=None, begin_time=None, recent_n_years=3):
     """
     更新期货合约分钟级别行情信息
     请求语句类似于：
     w.wsi("CU2012.SHF", "open,high,low,close,volume,amt,oi,begin_time,end_time", "2020-11-11 09:00:00", "2020-11-11 11:18:27", "")
     :param chain_param:  在celery 中將前面結果做爲參數傳給後面的任務
+    :param wind_code_set:  只道 wind_code 集合
+    :param begin_time:  最早的起始日期
+    :param recent_n_years:  忽略n年前的合约，wind不提供更早的历史数据
     :return:
     """
     # global DEBUG
@@ -497,6 +500,8 @@ def import_future_min(chain_param=None, wind_code_set=None, begin_time=None):
     data_df_list = []
     future_count = len(future_date_dic)
     bulk_data_count, tot_data_count = 0, 0
+    # 忽略更早的历史合约
+    ignore_before = pd.to_datetime(date.today() - timedelta(days=365*recent_n_years)) if recent_n_years is not None else None
     try:
         logger.info("%d future instrument will be handled", future_count)
         for num, (wind_code, (date_frm, date_to)) in enumerate(future_date_dic.items(), start=1):
@@ -504,6 +509,10 @@ def import_future_min(chain_param=None, wind_code_set=None, begin_time=None):
             # if wind_code.find('RU') == -1:
             #     continue
             if date_frm > date_to:
+                continue
+
+            if ignore_before is not None and pd.to_datetime(date_frm) < ignore_before:
+                # 忽略掉 n 年前的合约
                 continue
             if isinstance(date_frm, datetime):
                 date_frm_str = date_frm.strftime(STR_FORMAT_DATETIME)
@@ -794,7 +803,7 @@ def min_to_vnpy(chain_param=None, instrument_types=None):
         del_sql_str = f"delete from {table_name} where symbol=:symbol and `interval`='{interval}'"
         with with_db_session(engine_vnpy) as session:
             existed_count = session.scalar(sql_str, params={'symbol': symbol})
-            if existed_count == df_len:
+            if existed_count >= df_len:
                 continue
             if existed_count > 0:
                 session.execute(del_sql_str, params={'symbol': symbol})
@@ -848,17 +857,17 @@ def output_instrument_type_daily_bar_count():
     logger.info(json.dumps({row['inst_type']: row['daily_bar_count'] for _, row in df.iterrows()}, indent=4))
 
 
-if __name__ == "__main__":
+def _run_task():
     # DEBUG = True
     wind_code_set = None
     # import_future_info_hk(chain_param=None)
     # import_future_info(chain_param=None)
     # 导入期货每日行情数据
     # import_future_daily(None, wind_code_set)
-    update_future_info_hk(chain_param=None)
+    # update_future_info_hk(chain_param=None)
     # 导入期货分钟级行情数据
-    # import_future_min(None, wind_code_set)
-    # min_to_vnpy(None)
+    import_future_min(None, wind_code_set)
+    min_to_vnpy(None)
 
     # 按品种合约倒叙加载每日行情
     # load_by_wind_code_desc(instrument_types=[
@@ -869,3 +878,7 @@ if __name__ == "__main__":
 
     # 根据商品类型将对应日线数据插入到 vnpy dbbardata 表中
     # _run_daily_to_vnpy()
+
+
+if __name__ == "__main__":
+    _run_task()
