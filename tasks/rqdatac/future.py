@@ -114,7 +114,7 @@ def import_future_info(chain_param=None):
     # update_from_info_table(table_name)
 
 
-def import_future_min(chain_param=None, order_book_id_set=None, begin_time=None):
+def import_future_min(chain_param=None, order_book_id_set=None, begin_time=date(2000, 1, 4)):
     """
     加载商品期货分钟级数据
     """
@@ -178,7 +178,9 @@ def import_future_min(chain_param=None, order_book_id_set=None, begin_time=None)
         table = session.execute(sql_str)
         # 获取date_from,date_to，将date_from,date_to做为value值
         future_date_dic = {
-            order_book_id: (date_from if begin_time is None else min([date_from, begin_time]), date_to)
+            order_book_id: (
+                date_from if begin_time is None or date_from is None else min([date_from, begin_time]),
+                date_to)
             for order_book_id, date_from, date_to in table.fetchall()
             if order_book_id_set is None or order_book_id in order_book_id_set
         }
@@ -205,7 +207,7 @@ def import_future_min(chain_param=None, order_book_id_set=None, begin_time=None)
     try:
         logger.info("%d future instrument will be handled", data_len)
         for num, (order_book_id, (date_frm, date_to)) in enumerate(future_date_dic.items(), start=1):
-            if date_frm > date_to:
+            if date_frm is None or date_to is None or date_frm > date_to:
                 continue
             date_frm_str = date_frm.strftime(STR_FORMAT_DATE)
             date_to_str = date_to.strftime(STR_FORMAT_DATE)
@@ -369,6 +371,6 @@ def get_instrument_type_daily_bar_count():
 
 if __name__ == "__main__":
     # import_future_info()
-    # import_future_min()
-    _run_min_to_vnpy()
+    import_future_min()
+    # _run_min_to_vnpy()
     # get_instrument_type_daily_bar_count()
