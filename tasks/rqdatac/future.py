@@ -372,5 +372,5 @@ def get_instrument_type_daily_bar_count():
 if __name__ == "__main__":
     # import_future_info()
     import_future_min()
-    # _run_min_to_vnpy()
+    _run_min_to_vnpy()
     # get_instrument_type_daily_bar_count()
