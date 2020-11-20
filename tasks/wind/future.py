@@ -861,13 +861,15 @@ def _run_task():
     # DEBUG = True
     wind_code_set = None
     # import_future_info_hk(chain_param=None)
-    # import_future_info(chain_param=None)
+    import_future_info(chain_param=None)
     # 导入期货每日行情数据
-    # import_future_daily(None, wind_code_set)
+    import_future_daily(None, wind_code_set)
+    # 根据商品类型将对应日线数据插入到 vnpy dbbardata 表中
+    # _run_daily_to_vnpy()
     # update_future_info_hk(chain_param=None)
     # 导入期货分钟级行情数据
     import_future_min(None, wind_code_set)
-    min_to_vnpy(None)
+    # min_to_vnpy(None)
 
     # 按品种合约倒叙加载每日行情
     # load_by_wind_code_desc(instrument_types=[
@@ -875,9 +877,6 @@ def _run_task():
     #     ('I', r"DCE"),
     #     ('HC', r"SHF"),
     # ])
-
-    # 根据商品类型将对应日线数据插入到 vnpy dbbardata 表中
-    # _run_daily_to_vnpy()
 
 
 if __name__ == "__main__":
