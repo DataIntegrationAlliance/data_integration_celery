@@ -179,7 +179,7 @@ def import_future_min(chain_param=None, order_book_id_set=None, begin_time=date(
         # 获取date_from,date_to，将date_from,date_to做为value值
         future_date_dic = {
             order_book_id: (
-                date_from if begin_time is None or date_from is None else min([date_from, begin_time]),
+                date_from if begin_time is None or date_from is None else max([date_from, begin_time]),
                 date_to)
             for order_book_id, date_from, date_to in table.fetchall()
             if order_book_id_set is None or order_book_id in order_book_id_set
