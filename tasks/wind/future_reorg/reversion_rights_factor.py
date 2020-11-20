@@ -7,18 +7,21 @@
 """
 import logging
 import os
-from enum import Enum
 from collections import defaultdict
-import pandas as pd
+from enum import Enum
+
 import numpy as np
+import pandas as pd
 from ibats_utils.db import bunch_insert_on_duplicate_update, with_db_session
 from ibats_utils.mess import str_2_float, date_2_str
 from sqlalchemy.dialects.mysql import DOUBLE
 from sqlalchemy.types import String, Date
+
+from tasks import app
 from tasks.backend import engine_md
+from tasks.config import config
 from tasks.wind.future_reorg.reorg_md_2_db import get_instrument_num, \
     is_earlier_instruments, is_later_instruments, get_all_instrument_type
-from tasks.config import config
 
 logger = logging.getLogger()
 
@@ -250,8 +253,10 @@ def save_adj_factor(instrument_types: list, to_db=True, to_csv=True):
             logger.info("生成 %s 复权因子", instrument_type)
             adj_factor_df, trade_date_latest = generate_reversion_rights_factors(instrument_type, method=method)
             if to_csv:
-                csv_file_name = f'adj_factor_{instrument_type}_{method.name}_{date_2_str(trade_date_latest)}.csv'
-                csv_file_path = os.path.join(dir_path, csv_file_name)
+                csv_file_name = f'adj_factor_{instrument_type}_{method.name}.csv'
+                folder_path = os.path.join(dir_path, date_2_str(trade_date_latest))
+                csv_file_path = os.path.join(folder_path, csv_file_name)
+                os.makedirs(folder_path, exist_ok=True)
                 adj_factor_df.to_csv(csv_file_path, index=False)
 
             if to_db:
@@ -277,7 +282,8 @@ def _test_generate_reversion_rights_factors():
     print(adj_factor_df)
 
 
-def _test_save_adj_factor():
+@app.task
+def task_save_adj_factor(chain_param=None):
     # instrument_types = ['rb', 'i', 'hc']
     instrument_types = get_all_instrument_type()
     save_adj_factor(instrument_types=instrument_types)
@@ -285,4 +291,4 @@ def _test_save_adj_factor():
 
 if __name__ == "__main__":
     # _test_generate_reversion_rights_factors()
-    _test_save_adj_factor()
+    task_save_adj_factor()
