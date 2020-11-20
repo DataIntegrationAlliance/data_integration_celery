@@ -319,7 +319,7 @@ def data_reorg_daily(instrument_type, update_table=True) -> (pd.DataFrame, pd.Da
                     "Low", "LowNext", "WarehouseWarrant", "WarehouseWarrantNext",
                     "adj_factor_main", "adj_factor_secondary", "instrument_type"]
         # 无复权价格
-        data_no_adj_df = date_reorg_data_df[col_list].copy()
+        data_no_adj_df = date_reorg_data_df[col_list].copy().sort_index()
 
         # 前复权价格
         date_reorg_data_df['Open'] = date_reorg_data_df['Open'] * date_reorg_data_df['adj_factor_main']
@@ -331,7 +331,7 @@ def data_reorg_daily(instrument_type, update_table=True) -> (pd.DataFrame, pd.Da
         date_reorg_data_df['LowNext'] = date_reorg_data_df['LowNext'] * date_reorg_data_df['adj_factor_secondary']
         date_reorg_data_df['CloseNext'] = date_reorg_data_df['CloseNext'] * date_reorg_data_df['adj_factor_secondary']
 
-        data_adj_df = date_reorg_data_df[col_list].copy()
+        data_adj_df = date_reorg_data_df[col_list].copy().sort_index()
 
         # date_adj_df.reset_index(inplace=True)
         # data_adj_df.rename(columns={
