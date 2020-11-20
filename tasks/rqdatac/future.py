@@ -340,16 +340,16 @@ def min_to_vnpy(chain_param=None, instrument_types=None):
                 session.commit()
 
         df.to_sql(table_name, engine_vnpy, if_exists='append', index=False)
-        logger.info("%d/%d) %s %d data have been insert into table %s",
-                    n, code_count, symbol, df_len, table_name)
+        logger.info("%d/%d) %s %d -> %d data have been insert into table %s",
+                    n, code_count, symbol, existed_count, df_len, table_name)
         data_count += df_len
 
     logger.info(f"全部 {do_count:,d} 个合约 {data_count:,d} 条数据插入完成")
 
 
 def _run_min_to_vnpy():
-    instrument_types = ['RB', "HC", "I"]
-    # instrument_types = None
+    # instrument_types = ['RB', "HC", "I"]
+    instrument_types = None
     min_to_vnpy(None, instrument_types)
 
 
@@ -371,6 +371,6 @@ def get_instrument_type_daily_bar_count():
 
 if __name__ == "__main__":
     # import_future_info()
-    import_future_min()
+    # import_future_min()
     _run_min_to_vnpy()
     # get_instrument_type_daily_bar_count()
