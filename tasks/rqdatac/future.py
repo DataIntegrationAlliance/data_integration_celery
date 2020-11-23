@@ -313,6 +313,7 @@ def min_to_vnpy(chain_param=None, instrument_types=None):
 
     code_list = get_code_list_by_types(instrument_types)
     code_count, do_count = len(code_list), 0
+    logger.info("导入分钟级数据到 vnpy 数据库，预计 %d 条记录", code_count)
     data_count = 0
     for n, (symbol, exchange) in enumerate(code_list, start=1):
         # 读取k线数据
@@ -348,8 +349,8 @@ def min_to_vnpy(chain_param=None, instrument_types=None):
 
 
 def _run_min_to_vnpy():
-    # instrument_types = ['RB', "HC", "I"]
-    instrument_types = None
+    instrument_types = ['RB', "HC", "I"]
+    # instrument_types = None
     min_to_vnpy(None, instrument_types)
 
 
@@ -370,7 +371,7 @@ def get_instrument_type_daily_bar_count():
 
 
 if __name__ == "__main__":
-    # import_future_info()
-    # import_future_min()
+    import_future_info()
+    import_future_min()
     _run_min_to_vnpy()
     # get_instrument_type_daily_bar_count()
