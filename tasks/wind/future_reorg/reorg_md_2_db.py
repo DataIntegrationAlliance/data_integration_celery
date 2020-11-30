@@ -387,9 +387,9 @@ if __name__ == "__main__":
     # instrument_type_list = ["RU", "AG", "AU", "RB", "HC", "J", "JM", "I", "CU",
     #                         "AL", "ZN", "PB", "NI", "SN",
     #                         "SR", "CF"]
-    instrument_type_list = ["RB"]
-    # instrument_type_list = get_all_instrument_type()
-    handle_data(instrument_type_list, period="daily", export_2_csv=True)
+    # instrument_type_list = ["RB"]
+    instrument_type_list = get_all_instrument_type()
+    handle_data(instrument_type_list, period="daily", export_2_csv=False)
     # handle_data(instrument_type_list, period="half_day")
     # handle_data(instrument_type_list, period=PeriodType.Min15)
     # handle_data(instrument_type_list, period=PeriodType.Min5)
