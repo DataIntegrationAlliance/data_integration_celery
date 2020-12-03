@@ -548,6 +548,7 @@ def import_future_min(chain_param=None, wind_code_set=None, begin_time=None, rec
                 if error_code in (
                         -40520007,  # 没有可用数据
                         -40521009,  # 数据解码失败。检查输入参数是否正确，如：日期参数注意大小月月末及短二月
+                        -40520004,  # 错误码是“登陆失败”其实就是没有数据了
                 ):
                     continue
                 else:
