@@ -780,6 +780,21 @@ def daily_to_vnpy(chain_param=None, instrument_types=None):
                     n, wind_code_count, symbol, df.shape[0], table_name)
 
 
+def daily_to_model_server_db(chain_param=None, instrument_types=None):
+    from tasks.config import config
+    from tasks.backend import engine_dic
+    from tasks.wind.future_reorg.reorg_md_2_db import data_reorg_daily, update_data_reorg_df_2_db
+    table_name = 'wind_future_continuous_adj'
+    engine_model_db = engine_dic[config.DB_SCHEMA_MODEL]
+    wind_code_list = get_wind_code_list_by_types(instrument_types)
+    instrument_types = {get_instrument_type(wind_code.split('.')[0]) for wind_code in wind_code_list}
+    for instrument_type in instrument_types:
+        logger.info("开始将 %s 前复权数据插入到数据库 %s", instrument_type, engine_model_db)
+        data_no_adj_df, data_adj_df = data_reorg_daily(instrument_type=instrument_type)
+        table_name = 'wind_future_continuous_adj'
+        update_data_reorg_df_2_db(instrument_type, table_name, data_adj_df, engine=engine_model_db)
+
+
 @app.task
 def min_to_vnpy(chain_param=None, instrument_types=None):
     from tasks.config import config
@@ -881,6 +896,8 @@ def _run_task():
     import_future_info(chain_param=None)
     # 导入期货每日行情数据
     import_future_daily(None, wind_code_set)
+    # 同步到 阿里云 RDS 服务器
+    daily_to_model_server_db()
     # 根据商品类型将对应日线数据插入到 vnpy dbbardata 表中
     _run_daily_to_vnpy()
     # 导入期货分钟级行情数据
