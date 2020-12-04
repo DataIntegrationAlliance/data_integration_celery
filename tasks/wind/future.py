@@ -34,6 +34,7 @@ WIND_VNPY_EXCHANGE_DIC = {
     'CZC': 'CZCE',
     'CFE': 'CFFEX',
     'DCE': 'DCE',
+    'INE': 'INE'
 }
 PATTERN_INSTRUMENT_TYPE = re.compile(r'\D+(?=\d{2,4})', re.IGNORECASE)
 # 标示每天几点以后下载当日行情数据
@@ -815,7 +816,7 @@ def min_to_vnpy(chain_param=None, instrument_types=None):
         if exchange in WIND_VNPY_EXCHANGE_DIC:
             exchange_vnpy = WIND_VNPY_EXCHANGE_DIC[exchange]
         else:
-            logger.warning('exchange: %s 在交易所列表中不存在', exchange)
+            logger.warning('%s exchange: %s 在交易所列表中不存在', wind_code, exchange)
             exchange_vnpy = exchange
 
         # 读取日线数据
