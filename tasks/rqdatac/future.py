@@ -275,12 +275,12 @@ def get_code_list_by_types(instrument_types: list, all_if_none=True) -> list:
     """
     wind_code_list = []
     if all_if_none and instrument_types is None:
-        sql_str = f"SELECT order_book_id, `exchange` FROM rqdatac_future_info"
+        sql_str = f"SELECT order_book_id, `exchange`, trading_code as symbol FROM rqdatac_future_info"
         with with_db_session(engine_md) as session:
             table = session.execute(sql_str)
             # 获取date_from,date_to，将date_from,date_to做为value值
-            for wind_code, exchange in table.fetchall():
-                wind_code_list.append((wind_code, exchange))
+            for order_book_id, exchange, symbol in table.fetchall():
+                wind_code_list.append((order_book_id, exchange, symbol))
     else:
         for instrument_type in instrument_types:
             if isinstance(instrument_type, tuple):
@@ -288,13 +288,13 @@ def get_code_list_by_types(instrument_types: list, all_if_none=True) -> list:
             else:
                 exchange = None
 
-            sql_str = f"select order_book_id, `exchange` from rqdatac_future_info " \
+            sql_str = f"select order_book_id, `exchange`, trading_code as symbol from rqdatac_future_info " \
                       f"where underlying_symbol=:instrument_type"
             with with_db_session(engine_md) as session:
                 table = session.execute(sql_str, params={"instrument_type": instrument_type})
                 # 获取date_from,date_to，将date_from,date_to做为value值
-                for wind_code, exchange in table.fetchall():
-                    wind_code_list.append((wind_code, exchange))
+                for order_book_id, exchange, symbol in table.fetchall():
+                    wind_code_list.append((order_book_id, exchange, symbol))
 
     return wind_code_list
 
@@ -315,12 +315,12 @@ def min_to_vnpy(chain_param=None, instrument_types=None):
     code_count, do_count = len(code_list), 0
     logger.info("导入分钟级数据到 vnpy 数据库，预计 %d 条记录", code_count)
     data_count = 0
-    for n, (symbol, exchange) in enumerate(code_list, start=1):
+    for n, (order_book_id, exchange, symbol) in enumerate(code_list, start=1):
         # 读取k线数据
         sql_str = "select trade_date `datetime`, `open` open_price, high high_price, " \
                   "`low` low_price, `close` close_price, volume, open_interest " \
                   "from rqdatac_future_min where order_book_id = %s"
-        df = pd.read_sql(sql_str, engine_md, params=[symbol]).dropna()
+        df = pd.read_sql(sql_str, engine_md, params=[order_book_id]).dropna()
         df_len = df.shape[0]
         if df_len == 0:
             continue
@@ -368,6 +368,31 @@ def get_instrument_type_daily_bar_count():
     df.to_csv(os.path.join("output", "instrument_type_daily_bar_count.csv"), index=False)
     import json
     logger.info(json.dumps({row['inst_type']: row['daily_bar_count'] for _, row in df.iterrows()}, indent=4))
+
+
+def _patch_vnpy_min_data():
+    """将部分 order_book_id 与 trading_code 不同数据进行修正，此前用 order_book_id 作为 symbol，其实 trading_code 才是 symbol"""
+    from tasks.config import config
+    from tasks.backend import engine_dic
+    get_mapping_sql_str = "SELECT order_book_id, trading_code FROM rqdatac_future_info " \
+                          "where order_book_id <> trading_code"
+    code_map_list = []
+    with with_db_session(engine_md) as session:
+        table = session.execute(get_mapping_sql_str)
+        # 获取date_from,date_to，将date_from,date_to做为value值
+        for order_book_id, symbol in table.fetchall():
+            code_map_list.append((order_book_id, symbol))
+
+    engine_vnpy = engine_dic[config.DB_SCHEMA_VNPY]
+    sql_str = f"select count(1) from dbbardata where symbol=:symbol and `interval`='1m'"
+    del_sql_str = f"delete from dbbardata where symbol=:symbol and `interval`='1m'"
+    with with_db_session(engine_vnpy) as session:
+        for order_book_id, symbol in code_map_list:
+            existed_count = session.scalar(sql_str, params={'symbol': order_book_id})
+            if existed_count >= 0:
+                continue
+            session.execute(del_sql_str, params={'symbol': order_book_id})
+            session.commit()
 
 
 if __name__ == "__main__":
