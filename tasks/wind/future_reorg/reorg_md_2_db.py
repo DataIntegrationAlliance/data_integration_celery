@@ -105,7 +105,7 @@ def is_later_instruments(inst_a, inst_b, by_wind_code=True):
     return inst_num_a > inst_num_b
 
 
-def update_df_2_db(instrument_type, table_name, data_df):
+def update_data_reorg_df_2_db(instrument_type, table_name, data_df, engine=None):
     """将 DataFrame 数据保存到 数据库对应的表中"""
     dtype = {
         'trade_date': Date,
@@ -130,6 +130,9 @@ def update_df_2_db(instrument_type, table_name, data_df):
         'adj_factor_secondary': DOUBLE,
         'instrument_type': String(20),
     }
+    if engine is None:
+        engine = engine_md
+
     # 为了解决 AttributeError: 'numpy.float64' object has no attribute 'translate' 错误，需要将数据类型转换成 float
     data_df["Close"] = data_df["Close"].apply(str_2_float)
     data_df["CloseNext"] = data_df["CloseNext"].apply(str_2_float)
@@ -149,7 +152,7 @@ def update_df_2_db(instrument_type, table_name, data_df):
     data_df["adj_factor_main"] = data_df["adj_factor_main"].apply(str_2_float)
     data_df["adj_factor_secondary"] = data_df["adj_factor_secondary"].apply(str_2_float)
     # 清理历史记录
-    with with_db_session(engine_md) as session:
+    with with_db_session(engine) as session:
         sql_str = """SELECT table_name FROM information_schema.TABLES 
             WHERE table_name = :table_name and TABLE_SCHEMA=(select database())"""
         # 复权数据表
@@ -161,7 +164,7 @@ def update_df_2_db(instrument_type, table_name, data_df):
 
     # 插入数据库
     # pd.DataFrame.to_sql(data_df, table_name, engine_md, if_exists='append', index=False, dtype=dtype)
-    bunch_insert_on_duplicate_update(data_df, table_name, engine_md,
+    bunch_insert_on_duplicate_update(data_df, table_name, engine,
                                      dtype=dtype, myisam_if_create_table=True,
                                      primary_keys=['trade_date', 'Contract'], schema=config.DB_SCHEMA_MD)
 
@@ -340,9 +343,9 @@ def data_reorg_daily(instrument_type, update_table=True) -> (pd.DataFrame, pd.Da
 
         if update_table:
             table_name = 'wind_future_continuous_adj'
-            update_df_2_db(instrument_type, table_name, data_adj_df)
+            update_data_reorg_df_2_db(instrument_type, table_name, data_adj_df)
             table_name = 'wind_future_continuous_no_adj'
-            update_df_2_db(instrument_type, table_name, data_no_adj_df)
+            update_data_reorg_df_2_db(instrument_type, table_name, data_no_adj_df)
 
     return data_no_adj_df, data_adj_df
 
@@ -387,9 +390,9 @@ if __name__ == "__main__":
     # instrument_type_list = ["RU", "AG", "AU", "RB", "HC", "J", "JM", "I", "CU",
     #                         "AL", "ZN", "PB", "NI", "SN",
     #                         "SR", "CF"]
-    instrument_type_list = ["RB"]
-    # instrument_type_list = get_all_instrument_type()
-    handle_data(instrument_type_list, period="daily", export_2_csv=True)
+    # instrument_type_list = ["RB"]
+    instrument_type_list = get_all_instrument_type()
+    handle_data(instrument_type_list, period="daily", export_2_csv=False)
     # handle_data(instrument_type_list, period="half_day")
     # handle_data(instrument_type_list, period=PeriodType.Min15)
     # handle_data(instrument_type_list, period=PeriodType.Min5)

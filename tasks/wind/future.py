@@ -16,6 +16,7 @@ from ibats_utils.db import alter_table_2_myisam
 from ibats_utils.db import bunch_insert_on_duplicate_update
 from ibats_utils.db import with_db_session
 from ibats_utils.mess import STR_FORMAT_DATE, STR_FORMAT_DATETIME
+from ibats_utils.mess import date_2_str
 from sqlalchemy.dialects.mysql import DOUBLE
 from sqlalchemy.types import String, Date, DateTime
 
@@ -502,7 +503,8 @@ def import_future_min(chain_param=None, wind_code_set=None, begin_time=None, rec
     future_count = len(future_date_dic)
     bulk_data_count, tot_data_count = 0, 0
     # 忽略更早的历史合约
-    ignore_before = pd.to_datetime(date.today() - timedelta(days=365*recent_n_years)) if recent_n_years is not None else None
+    ignore_before = pd.to_datetime(
+        date.today() - timedelta(days=365 * recent_n_years)) if recent_n_years is not None else None
     try:
         logger.info("%d future instrument will be handled", future_count)
         for num, (wind_code, (date_frm, date_to)) in enumerate(future_date_dic.items(), start=1):
@@ -647,18 +649,26 @@ def update_future_info_hk(chain_param=None):
         logger.info("更新 wind_future_info_hk 结束 %d 条记录被更新", future_info_count)
 
 
-def get_wind_code_list_by_types(instrument_types: list, all_if_none=True) -> list:
+def get_wind_code_list_by_types(instrument_types: list, all_if_none=True,
+                                lasttrade_date_lager_than_n_days_before=30) -> list:
     """
     输入 instrument_type 列表，返回对应的所有合约列表
     :param instrument_types: 可以使 instrument_type 列表 也可以是 （instrument_type，exchange）列表
     :param all_if_none 如果 instrument_types 为 None 则返回全部合约代码
+    :param lasttrade_date_lager_than_n_days_before 仅返回最后一个交易日 大于 N 日前日期的合约
     :return: wind_code_list
     """
     wind_code_list = []
     if all_if_none and instrument_types is None:
         sql_str = f"select wind_code from wind_future_info"
         with with_db_session(engine_md) as session:
-            table = session.execute(sql_str)
+            if lasttrade_date_lager_than_n_days_before is not None:
+                date_from_str = date_2_str(date.today() - timedelta(days=lasttrade_date_lager_than_n_days_before))
+                sql_str += " where lasttrade_date > :lasttrade_date"
+                table = session.execute(sql_str, params={"lasttrade_date": date_from_str})
+            else:
+                table = session.execute(sql_str)
+
             # 获取date_from,date_to，将date_from,date_to做为value值
             for row in table.fetchall():
                 wind_code = row[0]
@@ -677,7 +687,13 @@ def get_wind_code_list_by_types(instrument_types: list, all_if_none=True) -> lis
             sql_str = f"select wind_code from wind_future_info where wind_code " \
                       f"REGEXP 'rb[:digit:]+.{'[:alpha:]+' if exchange is None else exchange}'"
             with with_db_session(engine_md) as session:
-                table = session.execute(sql_str)
+                if lasttrade_date_lager_than_n_days_before is not None:
+                    date_from_str = date_2_str(date.today() - timedelta(days=lasttrade_date_lager_than_n_days_before))
+                    sql_str += " and lasttrade_date > :lasttrade_date"
+                    table = session.execute(sql_str, params={"lasttrade_date": date_from_str})
+                else:
+                    table = session.execute(sql_str)
+
                 # 获取date_from,date_to，将date_from,date_to做为value值
                 for row in table.fetchall():
                     wind_code = row[0]
@@ -765,6 +781,21 @@ def daily_to_vnpy(chain_param=None, instrument_types=None):
                     n, wind_code_count, symbol, df.shape[0], table_name)
 
 
+def daily_to_model_server_db(chain_param=None, instrument_types=None):
+    from tasks.config import config
+    from tasks.backend import engine_dic
+    from tasks.wind.future_reorg.reorg_md_2_db import data_reorg_daily, update_data_reorg_df_2_db
+    table_name = 'wind_future_continuous_adj'
+    engine_model_db = engine_dic[config.DB_SCHEMA_MODEL]
+    wind_code_list = get_wind_code_list_by_types(instrument_types)
+    instrument_types = {get_instrument_type(wind_code.split('.')[0]) for wind_code in wind_code_list}
+    for instrument_type in instrument_types:
+        logger.info("开始将 %s 前复权数据插入到数据库 %s", instrument_type, engine_model_db)
+        data_no_adj_df, data_adj_df = data_reorg_daily(instrument_type=instrument_type)
+        table_name = 'wind_future_continuous_adj'
+        update_data_reorg_df_2_db(instrument_type, table_name, data_adj_df, engine=engine_model_db)
+
+
 @app.task
 def min_to_vnpy(chain_param=None, instrument_types=None):
     from tasks.config import config
@@ -788,7 +819,7 @@ def min_to_vnpy(chain_param=None, instrument_types=None):
 
         # 读取日线数据
         sql_str = "select trade_datetime `datetime`, `open` open_price, high high_price, " \
-                  "`low` low_price, `close` close_price, volume, open_interest as open_interest " \
+                  "`low` low_price, `close` close_price, volume, position as open_interest " \
                   "from wind_future_min where wind_code = %s"
         df = pd.read_sql(sql_str, engine_md, params=[wind_code]).dropna()
         df_len = df.shape[0]
@@ -862,15 +893,17 @@ def _run_task():
     # DEBUG = True
     wind_code_set = None
     # import_future_info_hk(chain_param=None)
+    # update_future_info_hk(chain_param=None)
     import_future_info(chain_param=None)
     # 导入期货每日行情数据
     import_future_daily(None, wind_code_set)
+    # 同步到 阿里云 RDS 服务器
+    daily_to_model_server_db()
     # 根据商品类型将对应日线数据插入到 vnpy dbbardata 表中
-    # _run_daily_to_vnpy()
-    # update_future_info_hk(chain_param=None)
+    _run_daily_to_vnpy()
     # 导入期货分钟级行情数据
     import_future_min(None, wind_code_set)
-    # min_to_vnpy(None)
+    min_to_vnpy(None)
 
     # 按品种合约倒叙加载每日行情
     # load_by_wind_code_desc(instrument_types=[
