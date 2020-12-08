@@ -437,9 +437,10 @@ def import_future_min(chain_param=None, wind_code_set=None, begin_time=None, rec
                 ifnull(trade_date_max_1, addtime(ipo_date,'09:00:00')) date_frm, 
                 addtime(lasttrade_date,'15:00:00') lasttrade_date,
                 case 
+                    when hour(now())>=23 then DATE_FORMAT(now(),'%Y-%m-%d 23:00:00') 
                     when hour(now())>=15 then DATE_FORMAT(now(),'%Y-%m-%d 15:00:00') 
                     when hour(now())>=12 then DATE_FORMAT(now(),'%Y-%m-%d 12:00:00') 
-                    else DATE_FORMAT(now(),'%Y-%m-%d 05:00:00') 
+                    else DATE_FORMAT(now(),'%Y-%m-%d 03:00:00') 
                 end end_date
             from wind_future_info fi 
             left outer join
@@ -462,9 +463,10 @@ def import_future_min(chain_param=None, wind_code_set=None, begin_time=None, rec
             addtime(ipo_date,'09:00:00') date_frm, 
             addtime(lasttrade_date,'15:00:00')  lasttrade_date,
             case 
+                when hour(now())>=23 then DATE_FORMAT(now(),'%Y-%m-%d 23:00:00') 
                 when hour(now())>=15 then DATE_FORMAT(now(),'%Y-%m-%d 15:00:00') 
                 when hour(now())>=12 then DATE_FORMAT(now(),'%Y-%m-%d 12:00:00') 
-                else DATE_FORMAT(now(),'%Y-%m-%d 05:00:00') 
+                else DATE_FORMAT(now(),'%Y-%m-%d 03:00:00') 
             end end_date
             FROM wind_future_info info
         ) tt
@@ -739,6 +741,7 @@ def daily_to_vnpy(chain_param=None, instrument_types=None):
     from tasks.config import config
     from tasks.backend import engine_dic
     table_name = 'dbbardata'
+    interval = '1d'
     engine_vnpy = engine_dic[config.DB_SCHEMA_VNPY]
     has_table = engine_vnpy.has_table(table_name)
     if not has_table:
@@ -766,7 +769,7 @@ def daily_to_vnpy(chain_param=None, instrument_types=None):
 
         df['symbol'] = symbol
         df['exchange'] = exchange_vnpy
-        df['interval'] = '1d'
+        df['interval'] = interval
 
         sql_str = f"select count(1) from {table_name} where symbol=:symbol and `interval`='1d'"
         del_sql_str = f"delete from {table_name} where symbol=:symbol and `interval`='1d'"
@@ -779,8 +782,8 @@ def daily_to_vnpy(chain_param=None, instrument_types=None):
                 session.commit()
 
         df.to_sql(table_name, engine_vnpy, if_exists='append', index=False)
-        logger.info("%d/%d) %s %d data have been insert into table %s",
-                    n, wind_code_count, symbol, df.shape[0], table_name)
+        logger.info("%d/%d) %s %d data have been insert into table %s interval %s",
+                    n, wind_code_count, symbol, df.shape[0], table_name, interval)
 
 
 def daily_to_model_server_db(chain_param=None, instrument_types=None):
@@ -791,8 +794,9 @@ def daily_to_model_server_db(chain_param=None, instrument_types=None):
     engine_model_db = engine_dic[config.DB_SCHEMA_MODEL]
     wind_code_list = get_wind_code_list_by_types(instrument_types)
     instrument_types = {get_instrument_type(wind_code.split('.')[0]) for wind_code in wind_code_list}
-    for instrument_type in instrument_types:
-        logger.info("开始将 %s 前复权数据插入到数据库 %s", instrument_type, engine_model_db)
+    instrument_type_count = len(instrument_types)
+    for num, instrument_type in enumerate(instrument_types, start=1):
+        logger.info("%d/%d) 开始将 %s 前复权数据插入到数据库 %s", num, instrument_type_count, instrument_type, engine_model_db)
         data_no_adj_df, data_adj_df = data_reorg_daily(instrument_type=instrument_type)
         table_name = 'wind_future_continuous_adj'
         update_data_reorg_df_2_db(instrument_type, table_name, data_adj_df, engine=engine_model_db)
@@ -803,6 +807,7 @@ def min_to_vnpy(chain_param=None, instrument_types=None):
     from tasks.config import config
     from tasks.backend import engine_dic
     table_name = 'dbbardata'
+    interval = '1m'
     engine_vnpy = engine_dic[config.DB_SCHEMA_VNPY]
     has_table = engine_vnpy.has_table(table_name)
     if not has_table:
@@ -828,7 +833,6 @@ def min_to_vnpy(chain_param=None, instrument_types=None):
         if df_len == 0:
             continue
 
-        interval = '1m'
         df['symbol'] = symbol
         df['exchange'] = exchange_vnpy
         df['interval'] = interval
@@ -845,10 +849,10 @@ def min_to_vnpy(chain_param=None, instrument_types=None):
                     session.commit()
 
         df.to_sql(table_name, engine_vnpy, if_exists='append', index=False)
-        logger.info("%d/%d) %s %s -> %s %d data have been insert into table %s",
+        logger.info("%d/%d) %s %s -> %s %d data have been insert into table %s interval %s",
                     n, wind_code_count, symbol,
                     datetime_2_str(datetime_exist), datetime_2_str(datetime_latest),
-                    df_len, table_name)
+                    df_len, table_name, interval)
 
 
 def _run_daily_to_vnpy():
@@ -899,7 +903,7 @@ def _run_task():
     wind_code_set = None
     # import_future_info_hk(chain_param=None)
     # update_future_info_hk(chain_param=None)
-    import_future_info(chain_param=None)
+    # import_future_info(chain_param=None)
     # 导入期货每日行情数据
     # import_future_daily(None, wind_code_set)
     # 同步到 阿里云 RDS 服务器
