@@ -15,7 +15,7 @@ import rqdatac
 from ibats_utils.db import alter_table_2_myisam
 from ibats_utils.db import bunch_insert_on_duplicate_update
 from ibats_utils.db import with_db_session
-from ibats_utils.mess import STR_FORMAT_DATE
+from ibats_utils.mess import STR_FORMAT_DATE, datetime_2_str
 from rqdatac.share.errors import QuotaExceeded
 from sqlalchemy.dialects.mysql import DOUBLE, TINYINT, SMALLINT
 from sqlalchemy.types import String, Date
@@ -319,7 +319,7 @@ def min_to_vnpy(chain_param=None, instrument_types=None):
         # 读取k线数据
         sql_str = "select trade_date `datetime`, `open` open_price, high high_price, " \
                   "`low` low_price, `close` close_price, volume, open_interest " \
-                  "from rqdatac_future_min where order_book_id = %s"
+                  "from rqdatac_future_min where order_book_id = %s and `close` is not null"
         df = pd.read_sql(sql_str, engine_md, params=[order_book_id]).dropna()
         df_len = df.shape[0]
         if df_len == 0:
@@ -329,20 +329,24 @@ def min_to_vnpy(chain_param=None, instrument_types=None):
         df['symbol'] = symbol
         df['exchange'] = exchange
         df['interval'] = interval
-
-        sql_str = f"select count(1) from {table_name} where symbol=:symbol and `interval`='{interval}'"
+        datetime_latest = df['datetime'].max().to_pydatetime()
+        sql_str = f"select max(`datetime`) from {table_name} where symbol=:symbol and `interval`='{interval}'"
         del_sql_str = f"delete from {table_name} where symbol=:symbol and `interval`='{interval}'"
         with with_db_session(engine_vnpy) as session:
-            existed_count = session.scalar(sql_str, params={'symbol': symbol})
-            if existed_count >= df_len:
-                continue
-            if existed_count > 0:
-                session.execute(del_sql_str, params={'symbol': symbol})
-                session.commit()
+            datetime_exist = session.scalar(sql_str, params={'symbol': symbol})
+
+            if datetime_exist is not None:
+                if datetime_exist >= datetime_latest:
+                    continue
+                else:
+                    session.execute(del_sql_str, params={'symbol': symbol})
+                    session.commit()
 
         df.to_sql(table_name, engine_vnpy, if_exists='append', index=False)
-        logger.info("%d/%d) %s %d -> %d data have been insert into table %s",
-                    n, code_count, symbol, existed_count, df_len, table_name)
+        logger.info("%d/%d) %s %s -> %s %d data have been insert into table %s",
+                    n, code_count, symbol,
+                    datetime_2_str(datetime_exist), datetime_2_str(datetime_latest),
+                    df_len, table_name)
         data_count += df_len
 
     logger.info(f"全部 {do_count:,d} 个合约 {data_count:,d} 条数据插入完成")
@@ -396,7 +400,7 @@ def _patch_vnpy_min_data():
 
 
 if __name__ == "__main__":
-    import_future_info()
-    import_future_min()
+    # import_future_info()
+    # import_future_min()
     _run_min_to_vnpy()
     # get_instrument_type_daily_bar_count()

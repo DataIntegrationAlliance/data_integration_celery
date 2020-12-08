@@ -15,7 +15,7 @@ from direstinvoker import APIError
 from ibats_utils.db import alter_table_2_myisam
 from ibats_utils.db import bunch_insert_on_duplicate_update
 from ibats_utils.db import with_db_session
-from ibats_utils.mess import STR_FORMAT_DATE, STR_FORMAT_DATETIME
+from ibats_utils.mess import STR_FORMAT_DATE, STR_FORMAT_DATETIME, datetime_2_str
 from ibats_utils.mess import date_2_str
 from sqlalchemy.dialects.mysql import DOUBLE
 from sqlalchemy.types import String, Date, DateTime
@@ -530,7 +530,7 @@ def import_future_min(chain_param=None, wind_code_set=None, begin_time=None, rec
                 date_to_str = date_to
             else:
                 date_to += timedelta(days=1)
-                date_to_str = date_to.strftime(STR_FORMAT_DATE) + ' 05:00:00'
+                date_to_str = date_to.strftime(STR_FORMAT_DATE) + ' 03:00:00'
 
             logger.info('%d/%d) get %s between %s and %s', num, future_count, wind_code, date_frm_str, date_to_str)
             # data_df = wsd_cache(w, wind_code, "open,high,low,close,volume,amt,dealnum,settle,oi,st_stock",
@@ -822,7 +822,7 @@ def min_to_vnpy(chain_param=None, instrument_types=None):
         # 读取日线数据
         sql_str = "select trade_datetime `datetime`, `open` open_price, high high_price, " \
                   "`low` low_price, `close` close_price, volume, position as open_interest " \
-                  "from wind_future_min where wind_code = %s"
+                  "from wind_future_min where wind_code = %s and `close` is not null"
         df = pd.read_sql(sql_str, engine_md, params=[wind_code]).dropna()
         df_len = df.shape[0]
         if df_len == 0:
@@ -832,20 +832,23 @@ def min_to_vnpy(chain_param=None, instrument_types=None):
         df['symbol'] = symbol
         df['exchange'] = exchange_vnpy
         df['interval'] = interval
-
-        sql_str = f"select count(1) from {table_name} where symbol=:symbol and `interval`='{interval}'"
+        datetime_latest = df['datetime'].max().to_pydatetime()
+        sql_str = f"select max(`datetime`) from {table_name} where symbol=:symbol and `interval`='{interval}'"
         del_sql_str = f"delete from {table_name} where symbol=:symbol and `interval`='{interval}'"
         with with_db_session(engine_vnpy) as session:
-            existed_count = session.scalar(sql_str, params={'symbol': symbol})
-            if existed_count >= df_len:
-                continue
-            if existed_count > 0:
-                session.execute(del_sql_str, params={'symbol': symbol})
-                session.commit()
+            datetime_exist = session.scalar(sql_str, params={'symbol': symbol})
+            if datetime_exist is not None:
+                if datetime_exist >= datetime_latest:
+                    continue
+                else:
+                    session.execute(del_sql_str, params={'symbol': symbol})
+                    session.commit()
 
         df.to_sql(table_name, engine_vnpy, if_exists='append', index=False)
-        logger.info("%d/%d) %s %d data have been insert into table %s",
-                    n, wind_code_count, symbol, df.shape[0], table_name)
+        logger.info("%d/%d) %s %s -> %s %d data have been insert into table %s",
+                    n, wind_code_count, symbol,
+                    datetime_2_str(datetime_exist), datetime_2_str(datetime_latest),
+                    df_len, table_name)
 
 
 def _run_daily_to_vnpy():
@@ -898,7 +901,7 @@ def _run_task():
     # update_future_info_hk(chain_param=None)
     import_future_info(chain_param=None)
     # 导入期货每日行情数据
-    import_future_daily(None, wind_code_set)
+    # import_future_daily(None, wind_code_set)
     # 同步到 阿里云 RDS 服务器
     daily_to_model_server_db()
     # 根据商品类型将对应日线数据插入到 vnpy dbbardata 表中
