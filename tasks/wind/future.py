@@ -905,7 +905,7 @@ def _run_task():
     # update_future_info_hk(chain_param=None)
     # import_future_info(chain_param=None)
     # 导入期货每日行情数据
-    # import_future_daily(None, wind_code_set)
+    import_future_daily(None, wind_code_set)
     # 同步到 阿里云 RDS 服务器
     daily_to_model_server_db()
     # 根据商品类型将对应日线数据插入到 vnpy dbbardata 表中
