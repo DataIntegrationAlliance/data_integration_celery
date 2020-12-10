@@ -858,5 +858,4 @@ def _run_task():
 
 
 if __name__ == "__main__":
-    # _run_task()
-    import_future_info()
+    _run_task()
