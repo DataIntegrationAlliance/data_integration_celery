@@ -400,7 +400,7 @@ def _patch_vnpy_min_data():
 
 
 if __name__ == "__main__":
-    # import_future_info()
-    # import_future_min()
+    import_future_info()
+    import_future_min()
     _run_min_to_vnpy()
     # get_instrument_type_daily_bar_count()
