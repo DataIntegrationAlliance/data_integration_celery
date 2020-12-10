@@ -15,7 +15,7 @@ from direstinvoker import APIError
 from ibats_utils.db import alter_table_2_myisam
 from ibats_utils.db import bunch_insert_on_duplicate_update
 from ibats_utils.db import with_db_session
-from ibats_utils.mess import STR_FORMAT_DATE, STR_FORMAT_DATETIME, datetime_2_str
+from ibats_utils.mess import STR_FORMAT_DATE, STR_FORMAT_DATETIME, datetime_2_str, str_2_date
 from ibats_utils.mess import date_2_str
 from sqlalchemy.dialects.mysql import DOUBLE
 from sqlalchemy.types import String, Date, DateTime
@@ -55,6 +55,7 @@ def mfprice_2_num(input_str):
 def get_date_since(wind_code_ipo_date_dic, regex_str, date_establish):
     """
     获取最新的合约日期，如果没有对应合约日期则返回该品种起始日期
+    2020-12-10 开始按照交易所获取合约列表，因此该函数不再使用，仅留存供参考
     :param wind_code_ipo_date_dic: 
     :param regex_str: 
     :param date_establish: 
@@ -69,6 +70,14 @@ def get_date_since(wind_code_ipo_date_dic, regex_str, date_establish):
     # if date_since != date_establish:
     #     date_since += timedelta(days=ndays_per_update)
     return date_since
+
+
+def get_exchange_latest_data():
+    sql_str = 'SELECT exch_eng, max(ipo_date) FROM wind_future_info group by exch_eng'
+    with with_db_session(engine_md) as session:
+        table = session.execute(sql_str)
+        exchange_latest_ipo_date_dic = dict(table.fetchall())
+    return exchange_latest_ipo_date_dic
 
 
 @app.task
@@ -90,102 +99,28 @@ def import_future_info(chain_param=None):
     else:
         wind_code_ipo_date_dic = {}
 
-    # 通过wind获取合约列表
-    # w.start()
-    # 初始化服务器接口，用于下载万得数据
-    future_sectorid_dic_list = [
-        # 中金所期货合约
-        {'subject_name': 'CFE 沪深300', 'regex': r"IF\d{4}\.CFE",
-         'sectorid': 'a599010102000000', 'date_establish': '2010-4-16'},
-        {'subject_name': 'CFE 上证50', 'regex': r"IH\d{4}\.CFE",
-         'sectorid': '1000014871000000', 'date_establish': '2015-4-16'},
-        {'subject_name': 'CFE 中证500', 'regex': r"IC\d{4}\.CFE",
-         'sectorid': '1000014872000000', 'date_establish': '2015-4-16'},
-        {'subject_name': '2年期国债', 'regex': r"TS\d{4}\.CFE",
-         'sectorid': '1000014880000000', 'date_establish': '2018-08-17'},
-        {'subject_name': '5年期国债', 'regex': r"TF\d{4}\.CFE",
-         'sectorid': '1000010299000000', 'date_establish': '2013-09-06'},
-        {'subject_name': '10年期国债', 'regex': r"T\d{4}\.CFE",
-         'sectorid': '1000014874000000', 'date_establish': '2015-03-20'},
-
-        # 大连商品交易所合约
-        {'subject_name': 'DCE 焦炭', 'regex': r"J\d{4}\.DCE",
-         'sectorid': '1000002976000000', 'date_establish': '2011-04-15'},
-        {'subject_name': 'DCE 焦煤', 'regex': r"JM\d{4}\.DCE",
-         'sectorid': '1000009338000000', 'date_establish': '2013-03-22'},
-        {'subject_name': '铁矿石', 'regex': r"I\d{4}\.DCE",
-         'sectorid': '1000011439000000', 'date_establish': '2013-10-18'},
-        {'subject_name': '豆粕', 'regex': r"M\d{4}\.DCE",
-         'sectorid': 'a599010304000000', 'date_establish': '2000-07-17'},
-        {'subject_name': '豆油', 'regex': r"Y\d{4}\.DCE",
-         'sectorid': 'a599010306000000', 'date_establish': '2006-01-09'},
-        {'subject_name': '棕榈油', 'regex': r"P\d{4}\.DCE",
-         'sectorid': 'a599010307000000', 'date_establish': '2007-10-29'},
-        {'subject_name': '豆一', 'regex': r"A\d{4}\.DCE",
-         'sectorid': 'a599010302000000', 'date_establish': '2004-07-15'},
-        {'subject_name': '豆二', 'regex': r"B\d{4}\.DCE",
-         'sectorid': 'a599010303000000', 'date_establish': '2004-12-22'},
-        {'subject_name': '玉米', 'regex': r"C\d{4}\.DCE",
-         'sectorid': 'a599010305000000', 'date_establish': '2004-09-22'},
-        {'subject_name': '玉米淀粉', 'regex': r"CS\d{4}\.DCE",
-         'sectorid': '1000011469000000', 'date_establish': '2014-12-19'},
-        {'subject_name': '鸡蛋', 'regex': r"JD\d{4}\.DCE",
-         'sectorid': '1000011464000000', 'date_establish': '2013-11-08'},
-        {'subject_name': '线型低密度聚乙烯', 'regex': r"L\d{4}\.DCE",
-         'sectorid': 'a599010308000000', 'date_establish': '2007-07-31'},
-        {'subject_name': '聚氯乙烯', 'regex': r"V\d{4}\.DCE",
-         'sectorid': 'a599010309000000', 'date_establish': '2009-05-25'},
-        {'subject_name': '聚丙烯', 'regex': r"PP\d{4}\.DCE",
-         'sectorid': '1000011468000000', 'date_establish': '2014-02-28'},
-
-        # 上海期货交易所合约
-        {'subject_name': '天然橡胶', 'regex': r"RU\d{4}\.SHF",
-         'sectorid': 'a599010208000000', 'date_establish': '1995-06-01'},
-        {'subject_name': '铜', 'regex': r"CU\d{4}\.SHF",
-         'sectorid': 'a599010202000000', 'date_establish': '1995-05-01'},
-        {'subject_name': '铝', 'regex': r"AL\d{4}\.SHF",
-         'sectorid': 'a599010203000000', 'date_establish': '1995-05-01'},
-        {'subject_name': '锌', 'regex': r"ZN\d{4}\.SHF",
-         'sectorid': 'a599010204000000', 'date_establish': '2007-03-26'},
-        {'subject_name': '铅', 'regex': r"PB\d{4}\.SHF",
-         'sectorid': '1000002892000000', 'date_establish': '2011-03-24'},
-        {'subject_name': '镍', 'regex': r"NI\d{4}\.SHF",
-         'sectorid': '1000011457000000', 'date_establish': '2015-03-27'},
-        {'subject_name': '锡', 'regex': r"SN\d{4}\.SHF",
-         'sectorid': '1000011458000000', 'date_establish': '2015-03-27'},
-        {'subject_name': 'SHFE 黄金', 'regex': r"AU\d{4}\.SHF",
-         'sectorid': 'a599010205000000', 'date_establish': '2008-01-09'},
-        {'subject_name': 'SHFE 沪银', 'regex': r"AG\d{4}\.SHF",
-         'sectorid': '1000006502000000', 'date_establish': '2012-05-10'},
-        {'subject_name': 'SHFE 螺纹钢', 'regex': r"RB\d{4}\.SHF",
-         'sectorid': 'a599010206000000', 'date_establish': '2009-03-27'},
-        {'subject_name': 'SHFE 热卷', 'regex': r"HC\d{4}\.SHF",
-         'sectorid': '1000011455000000', 'date_establish': '2014-03-21'},
-        {'subject_name': 'SHFE 沥青', 'regex': r"BU\d{4}\.SHF",
-         'sectorid': '1000011013000000', 'date_establish': '2013-10-09'},
-        {'subject_name': '原油', 'regex': r"SC\d{4}\.SHF",
-         'sectorid': '1000011463000000', 'date_establish': '2018-03-26'},
-
-        # 郑商所合约
-        {'subject_name': '白糖', 'regex': r"SR\d{3,4}\.CZC",
-         'sectorid': 'a599010405000000', 'date_establish': '2006-01-06'},
-        {'subject_name': '棉花', 'regex': r"CF\d{3,4}\.CZC",
-         'sectorid': 'a599010404000000', 'date_establish': '2004-06-01'},
-        {'subject_name': '动力煤', 'regex': r"(ZC|TC)\d{3,4}\.CZC",
-         'sectorid': '1000011012000000', 'date_establish': '2013-09-26'},
-        {'subject_name': '玻璃', 'regex': r"FG\d{3,4}\.CZC",
-         'sectorid': '1000008549000000', 'date_establish': '2013-12-03'},
-        {'subject_name': '精对苯二甲酸', 'regex': r"TA\d{3,4}\.CZC",
-         'sectorid': 'a599010407000000', 'date_establish': '2006-12-18'},
-        {'subject_name': '甲醇', 'regex': r"(ME|MA)\d{3,4}\.CZC",
-         'sectorid': '1000005981000000', 'date_establish': '2011-10-28'},
-        {'subject_name': '菜籽油', 'regex': r"OI\d{3,4}\.CZC",
-         'sectorid': 'a599010408000000', 'date_establish': '2007-06-08'},
-        {'subject_name': '菜籽粕', 'regex': r"RM\d{3,4}\.CZC",
-         'sectorid': '1000008622000000', 'date_establish': '2012-12-28'},
+    # 按交易所获取合约列表
+    # 上期所
+    # w.wset("sectorconstituent","date=1995-05-10;sectorid=a599010201000000")
+    # 金交所
+    # w.wset("sectorconstituent","date=2013-09-10;sectorid=a599010101000000")
+    # 大商所
+    # w.wset("sectorconstituent","date=1999-01-10;sectorid=a599010301000000")
+    # 郑商所
+    # w.wset("sectorconstituent","date=1999-01-10;sectorid=a599010401000000")
+    exchange_sectorid_dic_list = [
+        {'exch_eng': 'SHFE', 'exchange_name': '上期所',
+         'sectorid': 'a599010201000000', 'date_establish': '1995-05-10'},
+        {'exch_eng': 'CFFEX', 'exchange_name': '金交所',
+         'sectorid': 'a599010101000000', 'date_establish': '2013-09-10'},
+        {'exch_eng': 'DCE', 'exchange_name': '大商所',
+         'sectorid': 'a599010301000000', 'date_establish': '1999-01-10'},
+        {'exch_eng': 'CZCE', 'exchange_name': '郑商所',
+         'sectorid': 'a599010401000000', 'date_establish': '1999-01-10'},
     ]
+    exchange_latest_ipo_date_dic = get_exchange_latest_data()
     wind_code_set = set()
-    ndays_per_update = 60
+    ndays_per_update = 90
     # 获取接口参数以及参数列表
     col_name_param_list = [
         ("ipo_date", Date),
@@ -210,20 +145,20 @@ def import_future_info(chain_param=None):
     dtype['wind_code'] = String(20)
     # 获取历史期货合约列表信息
     logger.info("获取历史期货合约列表信息")
-    for future_sectorid_dic in future_sectorid_dic_list:
-        subject_name = future_sectorid_dic['subject_name']
-        sector_id = future_sectorid_dic['sectorid']
-        regex_str = future_sectorid_dic['regex']
-        date_establish = datetime.strptime(future_sectorid_dic['date_establish'], STR_FORMAT_DATE).date()
-        date_since = get_date_since(wind_code_ipo_date_dic, regex_str, date_establish)
+    for exchange_sectorid_dic in exchange_sectorid_dic_list:
+        exchange_name = exchange_sectorid_dic['exchange_name']
+        exch_eng = exchange_sectorid_dic['exch_eng']
+        sector_id = exchange_sectorid_dic['sectorid']
+        date_establish = exchange_sectorid_dic['date_establish']
+        date_since = str_2_date(exchange_latest_ipo_date_dic.setdefault(exch_eng, date_establish))
         date_yestoday = date.today() - timedelta(days=1)
-        logger.info("%s[%s] %s ~ %s", subject_name, sector_id, date_since, date_yestoday)
+        logger.info("%s[%s][%s] %s ~ %s", exchange_name, exch_eng, sector_id, date_since, date_yestoday)
         while date_since <= date_yestoday:
             date_since_str = date_since.strftime(STR_FORMAT_DATE)
             future_info_df = invoker.wset("sectorconstituent", "date=%s;sectorid=%s" % (date_since_str, sector_id))
             data_count = 0 if future_info_df is None else future_info_df.shape[0]
             logger.info("subject_name=%s[%s] %s 返回 %d 条数据",
-                        subject_name, sector_id, date_since_str, data_count)
+                        exchange_name, sector_id, date_since_str, data_count)
             if data_count > 0:
                 wind_code_set |= set(future_info_df['wind_code'])
 
@@ -923,4 +858,5 @@ def _run_task():
 
 
 if __name__ == "__main__":
-    _run_task()
+    # _run_task()
+    import_future_info()
