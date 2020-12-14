@@ -295,6 +295,7 @@ def import_future_daily(chain_param=None, wind_code_set=None, begin_time=None):
                         -40520007,  # 没有可用数据
                         -40521009,  # 数据解码失败。检查输入参数是否正确，如：日期参数注意大小月月末及短二月
                         -40520004,  # 错误码是“登陆失败”其实就是没有数据了
+                        -40520017,  # 没有数据
                 ):
                     continue
                 else:
@@ -442,7 +443,7 @@ def import_future_min(chain_param=None, wind_code_set=None, begin_time=None, rec
     bulk_data_count, tot_data_count = 0, 0
     # 忽略更早的历史合约
     ignore_before = pd.to_datetime(
-        date.today() - timedelta(days=365 * recent_n_years)) if recent_n_years is not None else None
+        date.today() - timedelta(days=int(365 * recent_n_years))) if recent_n_years is not None else None
     try:
         logger.info("%d future instrument will be handled", future_count)
         for num, (wind_code, (date_frm, date_to)) in enumerate(future_date_dic.items(), start=1):
@@ -488,6 +489,7 @@ def import_future_min(chain_param=None, wind_code_set=None, begin_time=None, rec
                         -40520007,  # 没有可用数据
                         -40521009,  # 数据解码失败。检查输入参数是否正确，如：日期参数注意大小月月末及短二月
                         -40520004,  # 错误码是“登陆失败”其实就是没有数据了
+                        -40520017,  # 没有数据
                 ):
                     continue
                 else:
@@ -733,7 +735,6 @@ def daily_to_model_server_db(chain_param=None, instrument_types=None):
     for num, instrument_type in enumerate(instrument_types, start=1):
         logger.info("%d/%d) 开始将 %s 前复权数据插入到数据库 %s", num, instrument_type_count, instrument_type, engine_model_db)
         data_no_adj_df, data_adj_df = data_reorg_daily(instrument_type=instrument_type)
-        table_name = 'wind_future_continuous_adj'
         update_data_reorg_df_2_db(instrument_type, table_name, data_adj_df, engine=engine_model_db)
 
 
@@ -791,7 +792,7 @@ def min_to_vnpy(chain_param=None, instrument_types=None):
 
 
 def _run_daily_to_vnpy():
-    instrument_types = ['RB']
+    # instrument_types = ['RB']
     instrument_types = None
     daily_to_vnpy(None, instrument_types)
 
@@ -846,7 +847,7 @@ def _run_task():
     # 根据商品类型将对应日线数据插入到 vnpy dbbardata 表中
     _run_daily_to_vnpy()
     # 导入期货分钟级行情数据
-    import_future_min(None, wind_code_set)
+    import_future_min(None, wind_code_set, recent_n_years=1)
     min_to_vnpy(None)
 
     # 按品种合约倒叙加载每日行情
@@ -857,5 +858,16 @@ def _run_task():
     # ])
 
 
+def run_daily_only():
+    wind_code_set = None
+    # 导入期货每日行情数据
+    import_future_daily(None, wind_code_set)
+    # 同步到 阿里云 RDS 服务器
+    daily_to_model_server_db()
+    # 根据商品类型将对应日线数据插入到 vnpy dbbardata 表中
+    _run_daily_to_vnpy()
+
+
 if __name__ == "__main__":
     _run_task()
+    # run_daily_only()
