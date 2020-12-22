@@ -189,12 +189,19 @@ def generate_reversion_rights_factors(instrument_type, switch_by_key='position',
         }
 
     # 构造复权因子数据
-    adj_factor_df = pd.DataFrame(date_adj_factor_dic).T.sort_index(ascending=False)[[
+    adj_factor_df = pd.DataFrame(date_adj_factor_dic).T.sort_index(ascending=False)
+    available_titles = [
         "instrument_id_main",
         "adj_factor_main",
         "instrument_id_secondary",
         "adj_factor_secondary",
-    ]]
+    ]
+    missing_columns = set(available_titles) - set(adj_factor_df.columns)
+    if len(missing_columns) > 0:
+        logger.error("%s 缺少 %s 数据信息，无法生成复权因子", instrument_type, missing_columns)
+        return None, None
+
+    adj_factor_df = adj_factor_df[available_titles]
     if method == Method.division:
         adj_factor_df['adj_factor_main'] = adj_factor_df['adj_factor_main'].fillna(1).cumprod()
         adj_factor_df['adj_factor_secondary'] = adj_factor_df['adj_factor_secondary'].fillna(1).cumprod()
@@ -252,6 +259,9 @@ def save_adj_factor(instrument_types: list, to_db=True, to_csv=True):
         for n, instrument_type in enumerate(instrument_types):
             logger.info("生成 %s 复权因子", instrument_type)
             adj_factor_df, trade_date_latest = generate_reversion_rights_factors(instrument_type, method=method)
+            if adj_factor_df is None:
+                continue
+
             if to_csv:
                 csv_file_name = f'adj_factor_{instrument_type}_{method.name}.csv'
                 folder_path = os.path.join(dir_path, date_2_str(trade_date_latest))
@@ -273,8 +283,10 @@ def save_adj_factor(instrument_types: list, to_db=True, to_csv=True):
                 adj_factor_df['method'] = method.name
                 update_df_2_db(instrument_type, table_name, adj_factor_df, dtype)
 
-            logger.info("生成 %s 复权因子 %s 条记录\n%s",
-                        instrument_type, adj_factor_df.shape[0], adj_factor_df)
+            logger.info("生成 %s 复权因子 %s 条记录",  # \n%s
+                        instrument_type, adj_factor_df.shape[0]
+                        # , adj_factor_df
+                        )
 
 
 def _test_generate_reversion_rights_factors():
@@ -286,6 +298,7 @@ def _test_generate_reversion_rights_factors():
 def task_save_adj_factor(chain_param=None):
     # instrument_types = ['rb', 'i', 'hc']
     instrument_types = get_all_instrument_type()
+    # instrument_types = ['er']
     save_adj_factor(instrument_types=instrument_types)
 
 
