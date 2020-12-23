@@ -759,7 +759,6 @@ def min_to_vnpy(chain_param=None, instrument_types=None):
         else:
             logger.warning('%s exchange: %s 在交易所列表中不存在', wind_code, exchange)
             exchange_vnpy = exchange
-
         # 读取日线数据
         sql_str = "select trade_datetime `datetime`, `open` open_price, high high_price, " \
                   "`low` low_price, `close` close_price, volume, position as open_interest " \
@@ -835,6 +834,7 @@ def output_instrument_type_daily_bar_count():
 
 
 def _run_task():
+    from tasks.wind.future_reorg.reversion_rights_factor import task_save_adj_factor
     # DEBUG = True
     wind_code_set = None
     # import_future_info_hk(chain_param=None)
@@ -846,6 +846,8 @@ def _run_task():
     daily_to_model_server_db()
     # 根据商品类型将对应日线数据插入到 vnpy dbbardata 表中
     _run_daily_to_vnpy()
+    # 重新计算复权数据
+    task_save_adj_factor()
     # 导入期货分钟级行情数据
     import_future_min(None, wind_code_set, recent_n_years=1)
     min_to_vnpy(None)
