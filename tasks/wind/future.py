@@ -739,7 +739,7 @@ def daily_to_model_server_db(chain_param=None, instrument_types=None):
 
 
 @app.task
-def min_to_vnpy(chain_param=None, instrument_types=None):
+def min_to_vnpy_whole(chain_param=None, instrument_types=None):
     from tasks.config import config
     from tasks.backend import engine_dic
     table_name = 'dbbardata'
@@ -759,7 +759,6 @@ def min_to_vnpy(chain_param=None, instrument_types=None):
         else:
             logger.warning('%s exchange: %s 在交易所列表中不存在', wind_code, exchange)
             exchange_vnpy = exchange
-
         # 读取日线数据
         sql_str = "select trade_datetime `datetime`, `open` open_price, high high_price, " \
                   "`low` low_price, `close` close_price, volume, position as open_interest " \
@@ -784,6 +783,57 @@ def min_to_vnpy(chain_param=None, instrument_types=None):
                     session.execute(del_sql_str, params={'symbol': symbol})
                     session.commit()
 
+        df.to_sql(table_name, engine_vnpy, if_exists='append', index=False)
+        logger.info("%d/%d) %s %s -> %s %d data have been insert into table %s interval %s",
+                    n, wind_code_count, symbol,
+                    datetime_2_str(datetime_exist), datetime_2_str(datetime_latest),
+                    df_len, table_name, interval)
+
+
+@app.task
+def min_to_vnpy_increment(chain_param=None, instrument_types=None):
+    from tasks.config import config
+    from tasks.backend import engine_dic
+    table_name = 'dbbardata'
+    interval = '1m'
+    engine_vnpy = engine_dic[config.DB_SCHEMA_VNPY]
+    has_table = engine_vnpy.has_table(table_name)
+    if not has_table:
+        logger.error('当前数据库 %s 没有 %s 表，建议使用 vnpy先建立相应的数据库表后再进行导入操作', engine_vnpy, table_name)
+        return
+
+    sql_increment_str = "select trade_datetime `datetime`, `open` open_price, high high_price, " \
+                        "`low` low_price, `close` close_price, volume, position as open_interest " \
+                        "from wind_future_min where wind_code = %s and trade_datetime > %s and `close` is not null"
+    sql_whole_str = "select trade_datetime `datetime`, `open` open_price, high high_price, " \
+                    "`low` low_price, `close` close_price, volume, position as open_interest " \
+                    "from wind_future_min where wind_code = %s and `close` is not null"
+    wind_code_list = get_wind_code_list_by_types(instrument_types)
+    wind_code_count = len(wind_code_list)
+    for n, wind_code in enumerate(wind_code_list, start=1):
+        symbol, exchange = wind_code.split('.')
+        if exchange in WIND_VNPY_EXCHANGE_DIC:
+            exchange_vnpy = WIND_VNPY_EXCHANGE_DIC[exchange]
+        else:
+            logger.warning('%s exchange: %s 在交易所列表中不存在', wind_code, exchange)
+            exchange_vnpy = exchange
+        sql_str = f"select max(`datetime`) from {table_name} where symbol=:symbol and `interval`='{interval}'"
+        with with_db_session(engine_vnpy) as session:
+            datetime_exist = session.scalar(sql_str, params={'symbol': symbol})
+        if datetime_exist is not None:
+            # 读取日线数据
+            df = pd.read_sql(sql_increment_str, engine_md, params=[wind_code, datetime_exist]).dropna()
+        else:
+            df = pd.read_sql(sql_whole_str, engine_md, params=[wind_code]).dropna()
+
+        df_len = df.shape[0]
+        if df_len == 0:
+            continue
+
+        df['symbol'] = symbol
+        df['exchange'] = exchange_vnpy
+        df['interval'] = interval
+        datetime_latest = df['datetime'].max().to_pydatetime()
         df.to_sql(table_name, engine_vnpy, if_exists='append', index=False)
         logger.info("%d/%d) %s %s -> %s %d data have been insert into table %s interval %s",
                     n, wind_code_count, symbol,
@@ -835,6 +885,7 @@ def output_instrument_type_daily_bar_count():
 
 
 def _run_task():
+    from tasks.wind.future_reorg.reversion_rights_factor import task_save_adj_factor
     # DEBUG = True
     wind_code_set = None
     # import_future_info_hk(chain_param=None)
@@ -846,9 +897,11 @@ def _run_task():
     daily_to_model_server_db()
     # 根据商品类型将对应日线数据插入到 vnpy dbbardata 表中
     _run_daily_to_vnpy()
+    # 重新计算复权数据
+    task_save_adj_factor()
     # 导入期货分钟级行情数据
     import_future_min(None, wind_code_set, recent_n_years=1)
-    min_to_vnpy(None)
+    min_to_vnpy_increment(None)
 
     # 按品种合约倒叙加载每日行情
     # load_by_wind_code_desc(instrument_types=[
