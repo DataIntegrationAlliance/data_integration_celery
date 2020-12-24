@@ -39,11 +39,14 @@ class ConfigClass(object):
     # Sql Alchemy settings
     DB_SCHEMA_MD = 'md_integration'
     DB_SCHEMA_VNPY = 'vnpy'
+    DB_SCHEMA_ZNJC = 'znjc'
     DB_URL_DIC = {
         DB_SCHEMA_MD: "mysql://m*:****@localhost/{DB_SCHEMA}?charset=utf8".format(
             DB_SCHEMA=DB_SCHEMA_MD),
         DB_SCHEMA_VNPY: "mysql://m*:****@localhost/{DB_SCHEMA}?charset=utf8".format(
-            DB_SCHEMA=DB_SCHEMA_VNPY)
+            DB_SCHEMA=DB_SCHEMA_VNPY),
+        DB_SCHEMA_ZNJC: "mysql://m*:****@localhost/{DB_SCHEMA}?charset=utf8".format(
+            DB_SCHEMA=DB_SCHEMA_ZNJC)
     }
 
     # ifind settings
@@ -102,6 +105,10 @@ class ConfigClass(object):
     from ibats_utils.mess import logger as logger_mass
     logger_mass.setLevel(logging.DEBUG)
     dictConfig(logging_config)
+
+    MYSTEEL_USERNAME = "***"
+    MYSTEEL_PASSWORD = "***"
+    DRIVER_PATH = "***"
 
 
 config = ConfigClass()

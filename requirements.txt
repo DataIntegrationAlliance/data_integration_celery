@@ -17,3 +17,4 @@ jqdatasdk>=1.6.1
 ibats_utils>=1.1.16
 Click>=7.0
 rqdatac>=2.9.10
+selenium==3.141.0
