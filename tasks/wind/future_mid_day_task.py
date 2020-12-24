@@ -5,14 +5,14 @@
 @contact : mmmaaaggg@163.com
 @desc    : 用于
 """
-from tasks.wind.future import import_future_min, min_to_vnpy
+from tasks.wind.future import import_future_min, min_to_vnpy_increment
 
 
 def run_mid_day_task():
     import_future_min(
         # wind_code_set=('RB2101.SHF', 'RB2105.SHF', 'RB2110.SHF', 'HC2101.SHF', 'HC2105.SHF', 'HC2110.SHF'),
     )
-    min_to_vnpy(
+    min_to_vnpy_increment(
         # instrument_types=['rb', 'i', 'hc']
     )
 
