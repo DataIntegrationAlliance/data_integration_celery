@@ -22,7 +22,11 @@ engine_model = engine_dic[config.DB_SCHEMA_ZNJC]
 # driver下载地址：http://chromedriver.storage.googleapis.com/index.html
 @app.task
 def start_web_crawler(date_from=None):
-    browser = webdriver.Chrome(executable_path=config.DRIVER_PATH)
+    chrome_opt = webdriver.ChromeOptions()
+    prefs = {"profile.managed_default_content_settings.images": 2}
+    chrome_opt.add_experimental_option("prefs", prefs)
+
+    browser = webdriver.Chrome(executable_path=config.DRIVER_PATH, chrome_options=chrome_opt)
     browser.get('https://gc.mysteel.com/huizong/index.html')
     time.sleep(1)
 
