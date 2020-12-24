@@ -698,7 +698,7 @@ def daily_to_vnpy(chain_param=None, instrument_types=None):
         # 读取日线数据
         sql_str = "select trade_date `datetime`, `open` open_price, high high_price, " \
                   "`low` low_price, `close` close_price, volume, position as open_interest " \
-                  "from wind_future_daily where wind_code = %s"
+                  "from wind_future_daily where wind_code = %s and `close` <> 0"
         df = pd.read_sql(sql_str, engine_md, params=[wind_code]).dropna()
         df_len = df.shape[0]
         if df_len == 0:
@@ -762,7 +762,7 @@ def min_to_vnpy_whole(chain_param=None, instrument_types=None):
         # 读取日线数据
         sql_str = "select trade_datetime `datetime`, `open` open_price, high high_price, " \
                   "`low` low_price, `close` close_price, volume, position as open_interest " \
-                  "from wind_future_min where wind_code = %s and `close` is not null"
+                  "from wind_future_min where wind_code = %s and `close` is not null and `close` <> 0"
         df = pd.read_sql(sql_str, engine_md, params=[wind_code]).dropna()
         df_len = df.shape[0]
         if df_len == 0:
@@ -804,10 +804,12 @@ def min_to_vnpy_increment(chain_param=None, instrument_types=None):
 
     sql_increment_str = "select trade_datetime `datetime`, `open` open_price, high high_price, " \
                         "`low` low_price, `close` close_price, volume, position as open_interest " \
-                        "from wind_future_min where wind_code = %s and trade_datetime > %s and `close` is not null"
+                        "from wind_future_min where wind_code = %s and " \
+                        "trade_datetime > %s and `close` is not null and `close` <> 0"
     sql_whole_str = "select trade_datetime `datetime`, `open` open_price, high high_price, " \
                     "`low` low_price, `close` close_price, volume, position as open_interest " \
-                    "from wind_future_min where wind_code = %s and `close` is not null"
+                    "from wind_future_min where wind_code = %s and " \
+                    "`close` is not null and `close` <> 0"
     wind_code_list = get_wind_code_list_by_types(instrument_types)
     wind_code_count = len(wind_code_list)
     for n, wind_code in enumerate(wind_code_list, start=1):
