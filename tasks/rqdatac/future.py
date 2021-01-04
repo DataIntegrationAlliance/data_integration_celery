@@ -352,9 +352,68 @@ def min_to_vnpy(chain_param=None, instrument_types=None):
     logger.info(f"全部 {do_count:,d} 个合约 {data_count:,d} 条数据插入完成")
 
 
+@app.task
+def min_to_vnpy_increment(chain_param=None, instrument_types=None):
+    """rqdatac 期货分钟级数据增量更新到 dbbardata 表"""
+    from tasks.config import config
+    from tasks.backend import engine_dic
+    interval = '1m'
+    table_name = 'dbbardata'
+    engine_vnpy = engine_dic[config.DB_SCHEMA_VNPY]
+    has_table = engine_vnpy.has_table(table_name)
+    if not has_table:
+        logger.error('当前数据库 %s 没有 %s 表，建议使用 vnpy先建立相应的数据库表后再进行导入操作', engine_vnpy, table_name)
+        return
+
+    code_list = get_code_list_by_types(instrument_types)
+    code_count, do_count = len(code_list), 0
+    logger.info("导入分钟级数据到 vnpy 数据库，预计 %d 个合约的分钟级数据", code_count)
+    data_count = 0
+    for n, (order_book_id, exchange, symbol) in enumerate(code_list, start=1):
+        # 读取k线数据
+        sql_increment_str = "select trade_date `datetime`, `open` open_price, high high_price, " \
+                            "`low` low_price, `close` close_price, volume, open_interest " \
+                            "from rqdatac_future_min where order_book_id = %s" \
+                            " and `close` is not null and `close` <> 0 and trade_date > %s"
+        sql_whole_str = "select trade_date `datetime`, `open` open_price, high high_price, " \
+                        "`low` low_price, `close` close_price, volume, open_interest " \
+                        "from rqdatac_future_min where order_book_id = %s" \
+                        " and `close` is not null and `close` <> 0"
+        df = pd.read_sql(sql_whole_str, engine_md, params=[order_book_id]).dropna()
+        df_len = df.shape[0]
+        if df_len == 0:
+            continue
+
+        sql_str = f"select max(`datetime`) from {table_name} where symbol=:symbol and `interval`='{interval}'"
+        with with_db_session(engine_vnpy) as session:
+            datetime_exist = session.scalar(sql_str, params={'symbol': symbol})
+        if datetime_exist is None:
+            df = pd.read_sql(sql_whole_str, engine_md, params=[order_book_id]).dropna()
+        else:
+            df = pd.read_sql(sql_increment_str, engine_md, params=[order_book_id, datetime_exist]).dropna()
+
+        df_len = df.shape[0]
+        if df_len == 0:
+            continue
+        do_count += 1
+        df['symbol'] = symbol
+        df['exchange'] = exchange
+        df['interval'] = interval
+        datetime_latest = df['datetime'].max().to_pydatetime()
+
+        df.to_sql(table_name, engine_vnpy, if_exists='append', index=False)
+        logger.info("%d/%d) %s %s -> %s %d data have been insert into table %s",
+                    n, code_count, symbol,
+                    datetime_2_str(datetime_exist), datetime_2_str(datetime_latest),
+                    df_len, table_name)
+        data_count += df_len
+
+    logger.info(f"全部 {do_count:,d} 个合约 {data_count:,d} 条数据插入完成")
+
+
 def _run_min_to_vnpy():
-    instrument_types = ['RB', "HC", "I"]
-    # instrument_types = None
+    # instrument_types = ["AP"]
+    instrument_types = None
     min_to_vnpy(None, instrument_types)
 
 
@@ -400,7 +459,7 @@ def _patch_vnpy_min_data():
 
 
 if __name__ == "__main__":
-    import_future_info()
-    import_future_min()
+    # import_future_info()
+    # import_future_min()
     _run_min_to_vnpy()
     # get_instrument_type_daily_bar_count()
