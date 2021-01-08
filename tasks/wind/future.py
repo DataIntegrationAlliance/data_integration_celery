@@ -121,7 +121,7 @@ def _test_get_main_secondary_contract_by_instrument_types():
     wind_code_list = get_main_secondary_contract_by_instrument_types(instrument_types)
     print(f"instrument_types is {instrument_types}\n", wind_code_list)
 
-    instrument_types = ['rb', 'hc', 'ap']
+    instrument_types = ['rb', 'hc', 'i', 'j', 'jm', 'jd', 'ap', 'a', 'p', 'm', 'y']
     wind_code_list = get_main_secondary_contract_by_instrument_types(instrument_types)
     print(f"instrument_types is {instrument_types}\n", wind_code_list)
 
