@@ -773,7 +773,6 @@ def daily_to_model_server_db(chain_param=None, instrument_types=None):
     from tasks.config import config
     from tasks.backend import engine_dic
     from tasks.wind.future_reorg.reorg_md_2_db import data_reorg_daily, update_data_reorg_df_2_db
-    table_name = 'wind_future_continuous_adj'
     engine_model_db = engine_dic[config.DB_SCHEMA_MODEL]
     wind_code_list = get_wind_code_list_by_types(instrument_types)
     instrument_types = {get_instrument_type(wind_code.split('.')[0]) for wind_code in wind_code_list}
@@ -781,7 +780,10 @@ def daily_to_model_server_db(chain_param=None, instrument_types=None):
     for num, instrument_type in enumerate(instrument_types, start=1):
         logger.info("%d/%d) 开始将 %s 前复权数据插入到数据库 %s", num, instrument_type_count, instrument_type, engine_model_db)
         data_no_adj_df, data_adj_df = data_reorg_daily(instrument_type=instrument_type)
+        table_name = 'wind_future_continuous_adj'
         update_data_reorg_df_2_db(instrument_type, table_name, data_adj_df, engine=engine_model_db)
+        table_name = 'wind_future_continuous_no_adj'
+        update_data_reorg_df_2_db(instrument_type, table_name, data_no_adj_df, engine=engine_model_db)
 
 
 @app.task
