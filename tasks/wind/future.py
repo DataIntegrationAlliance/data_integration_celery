@@ -720,7 +720,7 @@ def load_by_wind_code_desc(instrument_types):
 
 
 @app.task
-def daily_to_vnpy(chain_param=None, instrument_types=None):
+def wind_future_daily_2_vnpy(chain_param=None, instrument_types=None):
     from tasks.config import config
     from tasks.backend import engine_dic
     table_name = 'dbbardata'
@@ -769,6 +769,49 @@ def daily_to_vnpy(chain_param=None, instrument_types=None):
                     n, wind_code_count, symbol, df.shape[0], table_name, interval)
 
 
+@app.task
+def wind_future_daily_2_model_server(chain_param=None, instrument_types=None):
+    from tasks.config import config
+    from tasks.backend import engine_dic
+    table_name = 'wind_future_daily'
+    engine_model_server = engine_dic[config.DB_SCHEMA_ZNJC]
+    has_table = engine_model_server.has_table(table_name)
+    if not has_table:
+        logger.error('当前数据库 %s 没有 %s 表，建议使用先建立相应的数据库表后再进行导入操作',
+                     engine_model_server, table_name)
+        return
+
+    wind_code_list = get_wind_code_list_by_types(instrument_types)
+    wind_code_count = len(wind_code_list)
+    for n, wind_code in enumerate(wind_code_list, start=1):
+        symbol, exchange = wind_code.split('.')
+        if exchange in WIND_VNPY_EXCHANGE_DIC:
+            exchange_vnpy = WIND_VNPY_EXCHANGE_DIC[exchange]
+        else:
+            logger.warning('exchange: %s 在交易所列表中不存在', exchange)
+            exchange_vnpy = exchange
+
+        sql_str = f"select max(trade_date) from wind_future_daily where wind_code = %s"
+        with with_db_session(engine_model_server) as session:
+            trade_date_max = session.scalar(sql_str, params={'symbol': symbol})
+
+        # 读取日线数据
+        if trade_date_max is None:
+            sql_str = "select * from wind_future_daily where wind_code = %s and `close` <> 0"
+            df = pd.read_sql(sql_str, engine_md, params=[wind_code]).dropna()
+        else:
+            sql_str = "select * from wind_future_daily where wind_code = %s and trade_date > %s and `close` <> 0"
+            df = pd.read_sql(sql_str, engine_md, params=[wind_code, trade_date_max]).dropna()
+
+        df_len = df.shape[0]
+        if df_len == 0:
+            continue
+
+        df.to_sql(table_name, engine_model_server, if_exists='append', index=False)
+        logger.info("%d/%d) %s %d data have been insert into table %s interval %s",
+                    n, wind_code_count, symbol, df.shape[0], table_name)
+
+
 def daily_to_model_server_db(chain_param=None, instrument_types=None):
     from tasks.config import config
     from tasks.backend import engine_dic
@@ -777,6 +820,8 @@ def daily_to_model_server_db(chain_param=None, instrument_types=None):
     wind_code_list = get_wind_code_list_by_types(instrument_types)
     instrument_types = {get_instrument_type(wind_code.split('.')[0]) for wind_code in wind_code_list}
     instrument_type_count = len(instrument_types)
+
+    # 同步主力连续合约数据
     for num, instrument_type in enumerate(instrument_types, start=1):
         logger.info("%d/%d) 开始将 %s 前复权数据插入到数据库 %s", num, instrument_type_count, instrument_type, engine_model_db)
         data_no_adj_df, data_adj_df = data_reorg_daily(instrument_type=instrument_type)
@@ -784,6 +829,9 @@ def daily_to_model_server_db(chain_param=None, instrument_types=None):
         update_data_reorg_df_2_db(instrument_type, table_name, data_adj_df, engine=engine_model_db)
         table_name = 'wind_future_continuous_no_adj'
         update_data_reorg_df_2_db(instrument_type, table_name, data_no_adj_df, engine=engine_model_db)
+
+    # 同步每日行情数据
+    wind_future_daily_2_model_server(None, instrument_types=instrument_types)
 
 
 @app.task
@@ -894,7 +942,7 @@ def min_to_vnpy_increment(chain_param=None, instrument_types=None):
 def _run_daily_to_vnpy():
     # instrument_types = ['RB']
     instrument_types = None
-    daily_to_vnpy(None, instrument_types)
+    wind_future_daily_2_vnpy(None, instrument_types)
 
 
 def get_instrument_type(symbol):
