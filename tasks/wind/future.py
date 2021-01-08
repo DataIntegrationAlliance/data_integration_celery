@@ -80,6 +80,52 @@ def get_exchange_latest_data():
     return exchange_latest_ipo_date_dic
 
 
+def get_main_secondary_contract_by_instrument_types(instrument_types=None):
+    if instrument_types is None or len(instrument_types) == 0:
+        sql_str = """SELECT t.instrument_type, t.Contract, t.ContractNext 
+            FROM wind_future_continuous_adj t
+            inner join 
+            (
+                SELECT instrument_type, max(trade_date) trade_date_max 
+                FROM wind_future_continuous_adj group by instrument_type
+            ) latest
+            on t.instrument_type = latest.instrument_type
+            and t.trade_date = latest.trade_date_max"""
+    else:
+        sql_str = f"""SELECT t.instrument_type, t.Contract, t.ContractNext 
+            FROM wind_future_continuous_adj t
+            inner join 
+            (
+                SELECT instrument_type, max(trade_date) trade_date_max 
+                FROM wind_future_continuous_adj
+                where instrument_type in ('{"','".join(instrument_types)}')
+                group by instrument_type
+            ) latest
+            on t.instrument_type = latest.instrument_type
+            and t.trade_date = latest.trade_date_max"""
+
+    with with_db_session(engine_md) as session:
+        table = session.execute(sql_str)
+        wind_code_list = []
+        for instrument_type, main, secondary in table.fetchall():
+            if main is not None:
+                wind_code_list.append(main)
+            if secondary is not None:
+                wind_code_list.append(secondary)
+
+        return wind_code_list
+
+
+def _test_get_main_secondary_contract_by_instrument_types():
+    instrument_types = None
+    wind_code_list = get_main_secondary_contract_by_instrument_types(instrument_types)
+    print(f"instrument_types is {instrument_types}\n", wind_code_list)
+
+    instrument_types = ['rb', 'hc', 'ap']
+    wind_code_list = get_main_secondary_contract_by_instrument_types(instrument_types)
+    print(f"instrument_types is {instrument_types}\n", wind_code_list)
+
+
 @app.task
 def import_future_info(chain_param=None):
     """
@@ -932,3 +978,4 @@ def run_daily_only():
 if __name__ == "__main__":
     _run_task()
     # run_daily_only()
+    # _test_get_main_secondary_contract_by_instrument_types()
