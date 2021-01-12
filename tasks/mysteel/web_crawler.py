@@ -15,7 +15,7 @@ from tasks.backend import engine_dic
 
 
 logger = logging.getLogger()
-engine_model = engine_dic[config.DB_SCHEMA_ZNJC]
+engine_model = engine_dic[config.DB_SCHEMA_MODEL]
 
 
 # 此爬虫仅限使用Chrome浏览器，使用前下载Chrome对应版本的driver并在config文件中修改路径
