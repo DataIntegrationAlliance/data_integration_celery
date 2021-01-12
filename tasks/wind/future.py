@@ -774,7 +774,7 @@ def wind_future_daily_2_model_server(chain_param=None, instrument_types=None):
     from tasks.config import config
     from tasks.backend import engine_dic
     table_name = 'wind_future_daily'
-    engine_model_server = engine_dic[config.DB_SCHEMA_ZNJC]
+    engine_model_server = engine_dic[config.DB_SCHEMA_MODEL]
     has_table = engine_model_server.has_table(table_name)
     if not has_table:
         logger.error('当前数据库 %s 没有 %s 表，建议使用先建立相应的数据库表后再进行导入操作',
@@ -791,7 +791,7 @@ def wind_future_daily_2_model_server(chain_param=None, instrument_types=None):
             logger.warning('exchange: %s 在交易所列表中不存在', exchange)
             exchange_vnpy = exchange
 
-        sql_str = f"select max(trade_date) from wind_future_daily where wind_code = %s"
+        sql_str = f"select max(trade_date) from wind_future_daily where wind_code = :symbol"
         with with_db_session(engine_model_server) as session:
             trade_date_max = session.scalar(sql_str, params={'symbol': symbol})
 
@@ -808,7 +808,7 @@ def wind_future_daily_2_model_server(chain_param=None, instrument_types=None):
             continue
 
         df.to_sql(table_name, engine_model_server, if_exists='append', index=False)
-        logger.info("%d/%d) %s %d data have been insert into table %s interval %s",
+        logger.info("%d/%d) %s %d data have been insert into table %s",
                     n, wind_code_count, symbol, df.shape[0], table_name)
 
 
@@ -1025,7 +1025,12 @@ def run_daily_only():
     _run_daily_to_vnpy()
 
 
+def run_daily_to_model_server_db():
+    daily_to_model_server_db(instrument_types=['rb', 'hc', 'i', 'j', 'jm'])
+
+
 if __name__ == "__main__":
     _run_task()
     # run_daily_only()
     # _test_get_main_secondary_contract_by_instrument_types()
+    # run_daily_to_model_server_db()
