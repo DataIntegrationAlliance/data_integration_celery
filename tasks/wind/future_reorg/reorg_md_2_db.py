@@ -161,6 +161,8 @@ def update_data_reorg_df_2_db(instrument_type, table_name, data_df, engine=None)
             session.execute("delete from %s where instrument_type = :instrument_type" % table_name,
                             params={"instrument_type": instrument_type})
             logger.debug("删除 %s 中的 %s 历史数据", table_name, instrument_type)
+        else:
+            logger.warning("%s 表不存在 engine=", table_name, engine)
 
     # 插入数据库
     # pd.DataFrame.to_sql(data_df, table_name, engine_md, if_exists='append', index=False, dtype=dtype)
