@@ -20,8 +20,8 @@ from sqlalchemy.types import String, Date
 from tasks import app
 from tasks.backend import engine_md
 from tasks.config import config
-from tasks.wind.future_reorg.reorg_md_2_db import get_instrument_num, \
-    is_earlier_instruments, is_later_instruments, get_all_instrument_type
+from tasks.wind.future_reorg.reorg_md_2_db import is_earlier_instruments, is_later_instruments, \
+    get_all_instrument_type, get_instrument_last_trade_date_dic
 
 logger = logging.getLogger()
 
@@ -68,6 +68,7 @@ def generate_reversion_rights_factors(instrument_type, switch_by_key='position',
     :param method: division 除法  diff  差值发
     :return:
     """
+    instrument_last_trade_date_dic = get_instrument_last_trade_date_dic()
     instrument_type = instrument_type.upper()
     # 获取当前期货品种全部历史合约的日级别行情数据
     sql_str = r"""select wind_code, trade_date, open, close, """ + switch_by_key + """ 
@@ -82,7 +83,7 @@ def generate_reversion_rights_factors(instrument_type, switch_by_key='position',
     # date_instrument_id_dic = {}
     # 按合约号排序，历史合约号从远至近排序
     instrument_id_list_sorted = list(switch_by_df.columns)
-    instrument_id_list_sorted.sort(key=get_instrument_num)
+    instrument_id_list_sorted.sort(key=lambda x: instrument_last_trade_date_dic[x])
     switch_by_df = switch_by_df[instrument_id_list_sorted]
     date_adj_factor_dic = defaultdict(dict)
     # 逐日检查主力合约，次主力合约列表
@@ -247,7 +248,6 @@ def save_adj_factor(instrument_types: list, to_db=True, to_csv=True):
     :param instrument_types: 合约类型
     :param to_db: 是否保存到数据库
     :param to_csv: 是否保存到csv文件
-    :param method: division 除法  diff  差值发
     :return:
     """
     dir_path = 'output'
@@ -283,8 +283,8 @@ def save_adj_factor(instrument_types: list, to_db=True, to_csv=True):
                 adj_factor_df['method'] = method.name
                 update_df_2_db(instrument_type, table_name, adj_factor_df, dtype)
 
-            logger.info("生成 %s 复权因子 %s 条记录",  # \n%s
-                        instrument_type, adj_factor_df.shape[0]
+            logger.info("生成 %s 复权因子 %s 条记录[%s]",  # \n%s
+                        instrument_type, adj_factor_df.shape[0], method.name
                         # , adj_factor_df
                         )
 
@@ -298,7 +298,7 @@ def _test_generate_reversion_rights_factors():
 def task_save_adj_factor(chain_param=None):
     # instrument_types = ['rb', 'i', 'hc']
     instrument_types = get_all_instrument_type()
-    # instrument_types = ['er']
+    # instrument_types = ['ap']
     save_adj_factor(instrument_types=instrument_types)
 
 

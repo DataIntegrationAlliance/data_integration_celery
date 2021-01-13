@@ -8,16 +8,19 @@ Created on 2018/2/12
 @desc    : 从 QABAT 项目迁移来
 将期货行情数据进行整理，相同批准不同合约的行情合并成为连续行情，并进行复权处理，然后保存到数据库
 """
-
-import math, os
-import pandas as pd
 import logging
+import math
+import os
 import re
-from sqlalchemy.dialects.mysql import DOUBLE
-from sqlalchemy.types import String, Date, Time, DateTime, Integer
-from tasks.backend import engine_md
+from functools import lru_cache
+
+import pandas as pd
 from ibats_utils.db import with_db_session, bunch_insert_on_duplicate_update
 from ibats_utils.mess import str_2_float
+from sqlalchemy.dialects.mysql import DOUBLE
+from sqlalchemy.types import String, Date
+
+from tasks.backend import engine_md
 from tasks.config import config
 
 logger = logging.getLogger()
@@ -29,7 +32,6 @@ re_pattern_instrument_header_by_instrument_id = re.compile(r"\d{3,4}$", re.IGNOR
 
 
 def get_all_instrument_type():
-
     sql_str = "select wind_code from wind_future_daily group by wind_code"
     with with_db_session(engine_md) as session:
         instrument_list = [row[0] for row in session.execute(sql_str).fetchall()]
@@ -38,14 +40,28 @@ def get_all_instrument_type():
     return list(instrument_type_set)
 
 
+@lru_cache()
+def get_instrument_last_trade_date_dic() -> dict:
+    sql_str = """SELECT wind_code, lasttrade_date FROM wind_future_info"""
+    with with_db_session(engine_md) as session:
+        table = session.execute(sql_str)
+        instrument_last_trade_date_dic = dict(table.fetchall())
+    return instrument_last_trade_date_dic
+
+
 def get_instrument_num(instrument_str, by_wind_code=True):
     """
+    2021-01-13 当前函数废弃，不在维护，仅存档
     获取合约的年月数字
     郑商所部分合约命名规则需要区别开来
     例如：白糖SR、棉花CF 
     SR0605.CZC 200605交割
     SR1605.CZC 201605交割
     SR607.CZC 201607交割
+    由于存在
+    AP101 代表 202101交割
+    但是部分老品种可能是 200101交割
+    因此存在歧义问题。无法进行进行判断
     :param instrument_str: 
     :param by_wind_code: 
     :return: 
@@ -79,7 +95,7 @@ def get_instrument_num(instrument_str, by_wind_code=True):
     return inst_num
 
 
-def is_earlier_instruments(inst_a, inst_b, by_wind_code=True):
+def is_earlier_instruments(inst_a, inst_b):
     """
     比较两个合约交割日期 True
     :param inst_a: 
@@ -87,12 +103,13 @@ def is_earlier_instruments(inst_a, inst_b, by_wind_code=True):
     :param by_wind_code: 
     :return: 
     """
-    inst_num_a = get_instrument_num(inst_a, by_wind_code)
-    inst_num_b = get_instrument_num(inst_b, by_wind_code)
+    instrument_last_trade_date_dic = get_instrument_last_trade_date_dic()
+    inst_num_a = instrument_last_trade_date_dic[inst_a]
+    inst_num_b = instrument_last_trade_date_dic[inst_b]
     return inst_num_a < inst_num_b
 
 
-def is_later_instruments(inst_a, inst_b, by_wind_code=True):
+def is_later_instruments(inst_a, inst_b):
     """
     比较两个合约交割日期 True
     :param inst_a:
@@ -100,8 +117,9 @@ def is_later_instruments(inst_a, inst_b, by_wind_code=True):
     :param by_wind_code:
     :return:
     """
-    inst_num_a = get_instrument_num(inst_a, by_wind_code)
-    inst_num_b = get_instrument_num(inst_b, by_wind_code)
+    instrument_last_trade_date_dic = get_instrument_last_trade_date_dic()
+    inst_num_a = instrument_last_trade_date_dic[inst_a]
+    inst_num_b = instrument_last_trade_date_dic[inst_b]
     return inst_num_a > inst_num_b
 
 
@@ -178,9 +196,10 @@ def data_reorg_daily(instrument_type, update_table=True) -> (pd.DataFrame, pd.Da
     :param update_table: 是否更新数据库
     :return: 
     """
+    instrument_last_trade_date_dic = get_instrument_last_trade_date_dic()
     sql_str = r"""select wind_code, trade_date, open, high, low, close, volume, position, st_stock 
       from wind_future_daily where wind_code regexp %s"""
-    data_df = pd.read_sql(sql_str, engine_md, params=[r'^%s[0-9]+\.[A-Z]+' % (instrument_type, )])
+    data_df = pd.read_sql(sql_str, engine_md, params=[r'^%s[0-9]+\.[A-Z]+' % (instrument_type,)])
     date_instrument_vol_df = data_df.pivot(index="trade_date", columns="wind_code", values="volume").sort_index()
     date_instrument_open_df = data_df.pivot(index="trade_date", columns="wind_code", values="open")
     date_instrument_low_df = data_df.pivot(index="trade_date", columns="wind_code", values="low")
@@ -194,7 +213,7 @@ def data_reorg_daily(instrument_type, update_table=True) -> (pd.DataFrame, pd.Da
     date_instrument_id_dic = {}
     # 按合约号排序
     instrument_id_list_sorted = list(date_instrument_vol_df.columns)
-    instrument_id_list_sorted.sort(key=get_instrument_num)
+    instrument_id_list_sorted.sort(key=lambda x: instrument_last_trade_date_dic[x])
     date_instrument_vol_df = date_instrument_vol_df[instrument_id_list_sorted]
     date_reorg_data_dic = {}
     trade_date_error = None
@@ -288,7 +307,7 @@ def data_reorg_daily(instrument_type, update_table=True) -> (pd.DataFrame, pd.Da
                 "Close": close_main,
                 "CloseNext": close_secondary,
                 "TermStructure": math.nan if math.isnan(close_last_day_main) else (
-                    (close_main - close_last_day_main) / close_last_day_main),
+                        (close_main - close_last_day_main) / close_last_day_main),
                 "Volume": date_instrument_vol_df[instrument_id_main][trade_date],
                 "VolumeNext": date_instrument_vol_df[instrument_id_secondary][
                     trade_date] if instrument_id_secondary is not None else math.nan,
