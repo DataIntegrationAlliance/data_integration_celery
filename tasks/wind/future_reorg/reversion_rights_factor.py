@@ -106,7 +106,7 @@ def generate_reversion_rights_factors(instrument_type, switch_by_key='position',
         # 筛选有效数据
         switch_by_s = switch_by_df.loc[trade_date].dropna()
         if switch_by_s.shape[0] == 0:
-            logger.warning("%d) %s 没有 %s 数据", n, trade_date, switch_by_key)
+            logger.warning("%d) %s %s 没有 %s 数据", n, instrument_type, trade_date, switch_by_key)
             continue
         instrument_id_main_last, instrument_id_secondary_last = instrument_id_main, instrument_id_secondary
         # 当日主力合约没有数据，或者主力合约已经过期
