@@ -988,7 +988,7 @@ def _run_task():
     wind_code_set = None
     # import_future_info_hk(chain_param=None)
     # update_future_info_hk(chain_param=None)
-    # import_future_info(chain_param=None)
+    import_future_info(chain_param=None)
     # 导入期货每日行情数据
     import_future_daily(None, wind_code_set)
     try:
