@@ -9,6 +9,7 @@ import logging
 import os
 from collections import defaultdict
 from enum import Enum
+from multiprocessing import Pool
 
 import numpy as np
 import pandas as pd
@@ -244,51 +245,77 @@ def update_df_2_db(instrument_type, table_name, data_df, dtype=None):
         primary_keys=['trade_date', 'instrument_type'], schema=config.DB_SCHEMA_MD)
 
 
-def save_adj_factor(instrument_types: list, to_db=True, to_csv=True):
+def save_adj_factor_all(instrument_types: list, to_db=True, to_csv=True, multi_process=0):
     """
 
     :param instrument_types: 合约类型
     :param to_db: 是否保存到数据库
     :param to_csv: 是否保存到csv文件
+    :param multi_process: 多进程运行 <=1 为单进程运行
     :return:
     """
-    dir_path = 'output'
     if to_csv:
+        to_csv_dir_path = 'output'
         # 建立 output folder
-        os.makedirs(dir_path, exist_ok=True)
+        os.makedirs(to_csv_dir_path, exist_ok=True)
+    else:
+        to_csv_dir_path = None
+
+    if multi_process > 1:
+        pool = Pool(multi_process)
+    else:
+        pool = None
 
     for method in Method:
         for n, instrument_type in enumerate(instrument_types):
-            logger.info("生成 %s 复权因子", instrument_type)
-            adj_factor_df, trade_date_latest = generate_reversion_rights_factors(instrument_type, method=method)
-            if adj_factor_df is None:
-                continue
+            if pool is None:
+                save_adj_factor(instrument_type, method, to_db, to_csv_dir_path)
+            else:
+                pool.apply_async(save_adj_factor, args=(instrument_type, method, to_db, to_csv_dir_path))
 
-            if to_csv:
-                csv_file_name = f'adj_factor_{instrument_type}_{method.name}.csv'
-                folder_path = os.path.join(dir_path, date_2_str(trade_date_latest))
-                csv_file_path = os.path.join(folder_path, csv_file_name)
-                os.makedirs(folder_path, exist_ok=True)
-                adj_factor_df.to_csv(csv_file_path, index=False)
+    if pool is not None:
+        pool.join()
 
-            if to_db:
-                table_name = 'wind_future_adj_factor'
-                dtype = {
-                    'trade_date': Date,
-                    'instrument_id_main': String(20),
-                    'adj_factor_main': DOUBLE,
-                    'instrument_id_secondary': String(20),
-                    'adj_factor_secondary': DOUBLE,
-                    'instrument_type': String(20),
-                    'method': String(20),
-                }
-                adj_factor_df['method'] = method.name
-                update_df_2_db(instrument_type, table_name, adj_factor_df, dtype)
 
-            logger.info("生成 %s 复权因子 %s 条记录[%s]",  # \n%s
-                        instrument_type, adj_factor_df.shape[0], method.name
-                        # , adj_factor_df
-                        )
+def save_adj_factor(instrument_type: str, method: Method, to_db=True, to_csv_dir_path=None):
+    """
+
+    :param instrument_type: 合约类型
+    :param method: 合约类型
+    :param to_db: 是否保存到数据库
+    :param to_csv_dir_path: 是否保存到csv文件
+    :return:
+    """
+    logger.info("生成 %s 复权因子", instrument_type)
+    adj_factor_df, trade_date_latest = generate_reversion_rights_factors(instrument_type, method=method)
+    if adj_factor_df is None:
+        return
+
+    if to_csv_dir_path is not None:
+        csv_file_name = f'adj_factor_{instrument_type}_{method.name}.csv'
+        folder_path = os.path.join(to_csv_dir_path, date_2_str(trade_date_latest))
+        csv_file_path = os.path.join(folder_path, csv_file_name)
+        os.makedirs(folder_path, exist_ok=True)
+        adj_factor_df.to_csv(csv_file_path, index=False)
+
+    if to_db:
+        table_name = 'wind_future_adj_factor'
+        dtype = {
+            'trade_date': Date,
+            'instrument_id_main': String(20),
+            'adj_factor_main': DOUBLE,
+            'instrument_id_secondary': String(20),
+            'adj_factor_secondary': DOUBLE,
+            'instrument_type': String(20),
+            'method': String(20),
+        }
+        adj_factor_df['method'] = method.name
+        update_df_2_db(instrument_type, table_name, adj_factor_df, dtype)
+
+    logger.info("生成 %s 复权因子 %s 条记录[%s]",  # \n%s
+                instrument_type, adj_factor_df.shape[0], method.name
+                # , adj_factor_df
+                )
 
 
 def _test_generate_reversion_rights_factors():
@@ -301,7 +328,7 @@ def task_save_adj_factor(chain_param=None):
     # instrument_types = ['rb', 'i', 'hc']
     instrument_types = get_all_instrument_type()
     # instrument_types = ['ru']
-    save_adj_factor(instrument_types=instrument_types)
+    save_adj_factor_all(instrument_types=instrument_types, multi_process=0)
 
 
 if __name__ == "__main__":
