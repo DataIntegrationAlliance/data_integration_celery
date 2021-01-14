@@ -765,7 +765,7 @@ def wind_future_daily_2_vnpy(chain_param=None, instrument_types=None):
                 session.commit()
 
         df.to_sql(table_name, engine_vnpy, if_exists='append', index=False)
-        logger.info("%d/%d) %s %d data have been insert into table %s interval %s",
+        logger.info("%d/%d) %s %d data -> %s interval %s",
                     n, wind_code_count, symbol, df.shape[0], table_name, interval)
 
 
@@ -784,16 +784,10 @@ def wind_future_daily_2_model_server(chain_param=None, instrument_types=None):
     wind_code_list = get_wind_code_list_by_types(instrument_types)
     wind_code_count = len(wind_code_list)
     for n, wind_code in enumerate(wind_code_list, start=1):
-        symbol, exchange = wind_code.split('.')
-        if exchange in WIND_VNPY_EXCHANGE_DIC:
-            exchange_vnpy = WIND_VNPY_EXCHANGE_DIC[exchange]
-        else:
-            logger.warning('exchange: %s 在交易所列表中不存在', exchange)
-            exchange_vnpy = exchange
-
-        sql_str = f"select max(trade_date) from wind_future_daily where wind_code = :symbol"
+        # symbol, exchange = wind_code.split('.')
+        sql_str = f"select max(trade_date) from wind_future_daily where wind_code = :wind_code"
         with with_db_session(engine_model_server) as session:
-            trade_date_max = session.scalar(sql_str, params={'symbol': symbol})
+            trade_date_max = session.scalar(sql_str, params={'wind_code': wind_code})
 
         # 读取日线数据
         if trade_date_max is None:
@@ -808,8 +802,8 @@ def wind_future_daily_2_model_server(chain_param=None, instrument_types=None):
             continue
 
         df.to_sql(table_name, engine_model_server, if_exists='append', index=False)
-        logger.info("%d/%d) %s %d data have been insert into table %s",
-                    n, wind_code_count, symbol, df.shape[0], table_name)
+        logger.info("%d/%d) %s %d data -> %s",
+                    n, wind_code_count, wind_code, df.shape[0], table_name)
 
 
 def daily_to_model_server_db(chain_param=None, instrument_types=None):
