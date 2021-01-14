@@ -120,13 +120,15 @@ def generate_reversion_rights_factors(instrument_type, switch_by_key='position',
             # 判断主力合约
             if instrument_id_main is None:
                 instrument_id_main = instrument_id
-            elif instrument_id_main in switch_by_s and switch_by_s[instrument_id_main] < switch_by_s[instrument_id]:
+            elif instrument_id_main not in switch_by_s or switch_by_s[instrument_id_main] < switch_by_s[instrument_id]:
                 instrument_id_main = instrument_id
                 if instrument_id_secondary is not None \
                         and (instrument_id_main == instrument_id_secondary
                              or is_later_instruments(instrument_id_main, instrument_id_secondary)):
                     # 如果次主力合约不是晚于主力合约则至 None，重新寻找合适的次主力合约
                     instrument_id_secondary = None
+            else:
+                pass
 
             # 判断次主力合约
             if instrument_id_secondary is None:
@@ -298,7 +300,7 @@ def _test_generate_reversion_rights_factors():
 def task_save_adj_factor(chain_param=None):
     # instrument_types = ['rb', 'i', 'hc']
     instrument_types = get_all_instrument_type()
-    # instrument_types = ['ap']
+    # instrument_types = ['ru']
     save_adj_factor(instrument_types=instrument_types)
 
 
