@@ -927,7 +927,7 @@ def min_to_vnpy_increment(chain_param=None, instrument_types=None):
         df['interval'] = interval
         datetime_latest = df['datetime'].max().to_pydatetime()
         df.to_sql(table_name, engine_vnpy, if_exists='append', index=False)
-        logger.info("%d/%d) %s %s -> %s %d data have been insert into table %s interval %s",
+        logger.info("%d/%d) %s (%s ~ %s] %d data -> %s interval %s",
                     n, wind_code_count, symbol,
                     datetime_2_str(datetime_exist), datetime_2_str(datetime_latest),
                     df_len, table_name, interval)
