@@ -5,21 +5,25 @@ Created on 2017/5/2
 @desc    : 2018-08-23 his 函数 已经正式运行测试完成，可以正常使用，其他函数稍后验证
 """
 import logging
-from datetime import datetime, date, timedelta
+import re
+from datetime import date, timedelta
+
+import pandas as pd
+from direstinvoker import APIError
 from ibats_utils.db import with_db_session, bunch_insert_on_duplicate_update, alter_table_2_myisam
+from ibats_utils.mess import str_2_date, date_2_str, split_chunk
+from ibats_utils.mess import unzip_join
+from sqlalchemy.dialects.mysql import DOUBLE
+from sqlalchemy.types import String, Date
+
+from tasks.config import config
+from tasks import app
 from tasks.backend import engine_md
 from tasks.backend.orm import build_primary_key
 from tasks.ifind import invoker
-from tasks import app
-from direstinvoker import APIError
-from sqlalchemy.dialects.mysql import DOUBLE
-from sqlalchemy.types import String, Date, Integer
-import re
-import pandas as pd
-from ibats_utils.mess import STR_FORMAT_DATE, unzip_join
 
 DEBUG = False
-TRIAL = True
+TRIAL = False
 logger = logging.getLogger()
 RE_PATTERN_MFPRICE = re.compile(r'\d*\.*\d*')
 ONE_DAY = timedelta(days=1)
@@ -90,6 +94,15 @@ def import_variety_info():
         logger.info('保存交易所品种信息完成， %d条数据被保存', tot_data_count)
 
 
+def get_exchange_latest_data():
+    sql_str = """SELECT exch_eng, max(ths_start_trade_date_future) 
+        FROM ifind_future_info group by exch_eng"""
+    with with_db_session(engine_md) as session:
+        table = session.execute(sql_str)
+        exchange_latest_ipo_date_dic = dict(table.fetchall())
+    return exchange_latest_ipo_date_dic
+
+
 @app.task
 def import_future_info(chain_param=None):
     """
@@ -98,67 +111,33 @@ def import_future_info(chain_param=None):
     :return:
     """
     table_name = 'ifind_future_info'
-    logger.info("更新 %s 开始", table_name)
+    has_table = engine_md.has_table(table_name)
+    logger.info("更新 %s [%s] 开始", table_name, has_table)
     # 获取已存在合约列表
-    try:
-        sql_str = 'SELECT ths_code, ths_start_trade_date_future FROM {table_name}'.format(table_name=table_name)
+    if has_table:
+        sql_str = f'SELECT ths_code, ths_start_trade_date_future FROM {table_name}'
         with with_db_session(engine_md) as session:
             table = session.execute(sql_str)
             code_ipo_date_dic = dict(table.fetchall())
-    except:
+        exchange_latest_ipo_date_dic = get_exchange_latest_data()
+    else:
         code_ipo_date_dic = {}
+        exchange_latest_ipo_date_dic = {}
 
-    # 通过wind获取合约列表
-    future_sectorid_dic_list = [
-        {'subject_name': 'CFE 沪深300', 'regex': r"IF\d{4}\.CFE",
-         'sectorid': '091004001', 'date_establish': '2010-4-16'},
-        {'subject_name': 'CFE 上证50', 'regex': r"IH\d{4}\.CFE",
-         'sectorid': '091004003', 'date_establish': '2015-4-16'},
-        {'subject_name': 'CFE 中证500', 'regex': r"IC\d{4}\.CFE",
-         'sectorid': '091004004', 'date_establish': '2015-4-16'},
-        {'subject_name': 'CFE 5年国债期货', 'regex': r"TF\d{4}\.CFE",
-         'sectorid': '091004002', 'date_establish': '2013-09-06'},
-        {'subject_name': 'CFE 10年期国债期货', 'regex': r"T\d{4}\.CFE",
-         'sectorid': '091004005', 'date_establish': '2015-03-20'},
-        {'subject_name': 'SHFE 黄金', 'regex': r"AU\d{4}\.SHF",
-         'sectorid': '091002002', 'date_establish': '2008-01-09'},
-        {'subject_name': 'SHFE 沪银', 'regex': r"AG\d{4}\.SHF",
-         'sectorid': '091002010', 'date_establish': '2012-05-10'},
-        {'subject_name': 'SHFE 螺纹钢', 'regex': r"RB\d{4}\.SHF",
-         'sectorid': '091002006', 'date_establish': '2009-03-27'},
-        {'subject_name': 'SHFE 热卷', 'regex': r"HC\d{4}\.SHF",
-         'sectorid': '091002012', 'date_establish': '2014-03-21'},
-        {'subject_name': 'DCE 焦炭', 'regex': r"J\d{4}\.SHF",
-         'sectorid': '091001004', 'date_establish': '2011-04-15'},
-        {'subject_name': 'DCE 焦煤', 'regex': r"JM\d{4}\.SHF",
-         'sectorid': '091001010', 'date_establish': '2013-03-22'},
-        {'subject_name': '铁矿石', 'regex': r"I\d{4}\.SHF",
-         'sectorid': '091001011', 'date_establish': '2013-10-18'},
-        {'subject_name': '天然橡胶', 'regex': r"RU\d{4}\.SHF",
-         'sectorid': '091002007', 'date_establish': '1997-02-01'},
-        {'subject_name': '铜', 'regex': r"CU\d{4}\.SHF",
-         'sectorid': '091002003', 'date_establish': '1997-02-01'},
-        {'subject_name': '铝', 'regex': r"AL\d{4}\.SHF",
-         'sectorid': '091002001', 'date_establish': '1997-02-01'},
-        {'subject_name': '锌', 'regex': r"ZN\d{4}\.SHF",
-         'sectorid': '091002009', 'date_establish': '2007-03-26'},
-        {'subject_name': '铅', 'regex': r"PB\d{4}\.SHF",
-         'sectorid': '091002005', 'date_establish': '2011-03-24'},
-        {'subject_name': '镍', 'regex': r"NI\d{4}\.SHF",
-         'sectorid': '091002014', 'date_establish': '2015-03-27'},
-        {'subject_name': '锡', 'regex': r"SN\d{4}\.SHF",
-         'sectorid': '091002013', 'date_establish': '2015-03-27'},
-        {'subject_name': '白糖', 'regex': r"SR\d{4}\.CZC",
-         'sectorid': '091003004', 'date_establish': '2006-01-06'},
-        {'subject_name': '棉花', 'regex': r"CF\d{4}\.CZC",
-         'sectorid': '091003001', 'date_establish': '2004-06-01'},
-        {'subject_name': '鲜苹果', 'regex': r"AP\d{4}\.CZC",
-         'sectorid': '091003019', 'date_establish': '2017-12-22'},
+    exchange_sectorid_dic_list = [
+        {'exch_eng': 'SHFE', 'exchange_name': '上海期货交易所',
+         'sectorid': '091001', 'date_establish': '1995-05-10'},
+        {'exch_eng': 'CFFEX', 'exchange_name': '中国金融期货交易所',
+         'sectorid': '091004', 'date_establish': '2013-09-10'},
+        {'exch_eng': 'DCE', 'exchange_name': '大连商品交易所',
+         'sectorid': '091002', 'date_establish': '1999-01-10'},
+        {'exch_eng': 'CZCE', 'exchange_name': '郑州商品交易所',
+         'sectorid': '091003', 'date_establish': '1999-01-10'},
     ]
 
     # 字段列表及参数
     indicator_param_list = [
-        ('ths_future_short_name_future', '', String(20)),
+        ('ths_future_short_name_future', '', String(50)),
         ('ths_future_code_future', '', String(20)),
         ('ths_sec_type_future', '', String(20)),
         ('ths_td_variety_future', '', String(20)),
@@ -173,50 +152,55 @@ def import_future_info(chain_param=None):
         ('ths_delivery_month_future', '', String(10)),
         ('ths_listing_benchmark_price_future', '', DOUBLE),
         ('ths_initial_td_deposit_future', '', DOUBLE),
-        ('ths_contract_month_explain_future', '', String(60)),
-        ('ths_td_time_explain_future', '', String(80)),
-        ('ths_last_td_date_explian_future', '', String(60)),
-        ('ths_delivery_date_explain_future', '', String(60)),
-        ('ths_exchange_short_name_future', '', String(20)),
-        ('ths_contract_en_short_name_future', '', String(20)),
-        ('ths_contract_en_name_future', '', String(20)),
+        ('ths_contract_month_explain_future', '', String(120)),
+        ('ths_td_time_explain_future', '', String(120)),
+        ('ths_last_td_date_explian_future', '', String(120)),
+        ('ths_delivery_date_explain_future', '', String(120)),
+        ('ths_exchange_short_name_future', '', String(50)),
+        ('ths_contract_en_short_name_future', '', String(50)),
+        ('ths_contract_en_name_future', '', String(50)),
     ]
     json_indicator, json_param = unzip_join([(key, val) for key, val, _ in indicator_param_list], sep=';')
 
     # 设置 dtype
     dtype = {key: val for key, _, val in indicator_param_list}
     dtype['ths_code'] = String(20)
+    dtype['exch_eng'] = String(20)
 
     # 获取合约列表
     code_set = set()
-    ndays_per_update = 60
+    ndays_per_update = 90
     # 获取历史期货合约列表信息
-    sector_count = len(future_sectorid_dic_list)
-    for num, future_sectorid_dic in enumerate(future_sectorid_dic_list, start=1):
-        subject_name = future_sectorid_dic['subject_name']
-        sector_id = future_sectorid_dic['sectorid']
-        regex_str = future_sectorid_dic['regex']
-        date_establish = datetime.strptime(future_sectorid_dic['date_establish'], STR_FORMAT_DATE).date()
+    sector_count = len(exchange_sectorid_dic_list)
+    for num, exchange_sectorid_dic in enumerate(exchange_sectorid_dic_list, start=1):
+        exchange_name = exchange_sectorid_dic['exchange_name']
+        exch_eng = exchange_sectorid_dic['exch_eng']
+        sector_id = exchange_sectorid_dic['sectorid']
+        date_establish = exchange_sectorid_dic['date_establish']
         # 计算获取合约列表的起始日期
-        date_since = get_date_since(code_ipo_date_dic, regex_str, date_establish)
+        date_since = str_2_date(exchange_latest_ipo_date_dic.setdefault(exch_eng, date_establish))
         date_yestoday = date.today() - timedelta(days=1)
-        logger.debug('%d/%d) 获取 %s %s [%s - %s] 合约列表',
-                     num, sector_count, subject_name, sector_id, date_since, date_yestoday)
+        logger.info("%d/%d) %s[%s][%s] %s ~ %s",
+                    num, sector_count, exchange_name, exch_eng, sector_id, date_since, date_yestoday)
         while date_since <= date_yestoday:
-            date_since_str = date_since.strftime(STR_FORMAT_DATE)
-            # 获取合约列表
-            # w.wset("sectorconstituent","date=2017-05-02;sectorid=a599010205000000")
-            # future_info_df = rest.wset("sectorconstituent", "date=%s;sectorid=%s" % (date_since_str, sector_id))
+            date_since_str = date_2_str(date_since)
+            # #数据池-板块_板块成分-日期;同花顺代码;证券名称;当日行情端证券名称(仅股票节点有效)-iFinD数据接口
+            # 获取板块成分（期货商品的合约）
+            # THS_DP('block','2021-01-15;091002003','date:Y,thscode:Y,security_name:Y,security_name_in_time:Y')
             try:
                 future_info_df = invoker.THS_DataPool('block', '%s;%s' % (date_since_str, sector_id),
-                                                      'date:Y,thscode:Y,security_name:Y')
-            except APIError:
-                logger.exception('THS_DataPool %s 获取失败', '%s;%s' % (date_since_str, sector_id))
-                break
-            if future_info_df is None or future_info_df.shape[0] == 0:
-                break
+                                                      'thscode:Y,security_name:Y')
+            except APIError as exp:
+                if exp.ret_dic['error_code'] in (-4001,):
+                    future_info_df = None
+                else:
+                    logger.exception('THS_DataPool %s 获取失败', '%s;%s' % (date_since_str, sector_id))
+                    break
+            # if future_info_df is None or future_info_df.shape[0] == 0:
+            #     break
+            if future_info_df is not None:
+                code_set |= set(future_info_df['THSCODE'])
 
-            code_set |= set(future_info_df['THSCODE'])
             if date_since >= date_yestoday:
                 break
             else:
@@ -231,16 +215,23 @@ def import_future_info(chain_param=None):
     code_list = [wc for wc in code_set if wc not in code_ipo_date_dic]
     # 获取合约基本信息
     if len(code_list) > 0:
-        future_info_df = invoker.THS_BasicData(code_list, json_indicator, json_param)
-        if future_info_df is None or future_info_df.shape[0] == 0:
-            data_count = 0
-            logger.warning("更新 %s 结束 %d 条记录被更新", table_name, data_count)
-        else:
-            data_count = future_info_df.shape[0]
+        for code_list in split_chunk(code_list, 500):
+            future_info_df = invoker.THS_BasicData(code_list, json_indicator, json_param)
+            if future_info_df is None or future_info_df.shape[0] == 0:
+                data_count = 0
+                logger.warning("更新 %s 结束 %d 条记录被更新", table_name, data_count)
+            else:
+                # 补充 exch_eng 字段
+                future_info_df['exch_eng'] = ''
+                for exchange_sectorid_dic in exchange_sectorid_dic_list:
+                    future_info_df['exch_eng'][
+                        future_info_df['ths_exchange_short_name_future'] == exchange_sectorid_dic['exchange_name']
+                    ] = exchange_sectorid_dic['exch_eng']
 
-            # future_info_df.to_sql(table_name, engine_md, if_exists='append', index=False, dtype=dtype)
-            data_count = bunch_insert_on_duplicate_update(future_info_df, table_name, engine_md, dtype)
-            logger.info("更新 %s 结束 %d 条记录被更新", table_name, data_count)
+                data_count = bunch_insert_on_duplicate_update(
+                    future_info_df, table_name, engine_md, dtype,
+                    primary_keys=['ths_code'], schema=config.DB_SCHEMA_MD)
+                logger.info("更新 %s 结束 %d 条记录被更新", table_name, data_count)
 
 
 def save_future_daily_df_list(data_df_list):
@@ -365,10 +356,13 @@ def import_future_daily_his(chain_param=None, ths_code_set: set = None, begin_ti
     try:
         logger.info("%d future instrument will be handled", code_count)
         for num, (ths_code, (begin_time, end_time)) in enumerate(code_date_range_dic.items(), start=1):
+            if begin_time is None:
+                continue
             logger.debug('%d/%d) %s [%s - %s]', num, code_count, ths_code, begin_time, end_time)
             data_df = invoker.THS_HistoryQuotes(
                 ths_code, json_indicator,
-                'Interval:D,CPS:1,baseDate:1900-01-01,Currency:YSHB,fill:Previous', begin_time, end_time)
+                '',  # 'Interval:D,CPS:1,baseDate:1900-01-01,Currency:YSHB,fill:Previous',
+                begin_time, end_time)
             if data_df is not None and data_df.shape[0] > 0:
                 data_count += data_df.shape[0]
                 data_df_list.append(data_df)
@@ -400,12 +394,12 @@ def import_future_daily_his(chain_param=None, ths_code_set: set = None, begin_ti
 
 
 if __name__ == "__main__":
-    TRIAL = True
+    # TRIAL = True
     # DEBUG = True
     # 保存期货交易所品种信息，一次性数据导入，以后基本上不需要使用了
-    import_variety_info()
+    # import_variety_info()
     # 导入期货基础信息数据
-    import_future_info()
+    # import_future_info()
     # 导入期货历史行情数据
     import_future_daily_his()
     # import_future_info_hk()
