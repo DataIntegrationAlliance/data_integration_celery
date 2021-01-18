@@ -24,7 +24,7 @@ def print_indicator_param_dic(*args):
 
 # 以下语句不能够提前，将会导致循环引用异常
 from tasks.ifind.edb import *
-from tasks.ifind.future import *
+from tasks.ifind.future.future_info_daily import *
 from tasks.ifind.private_fund import *
 from tasks.ifind.pub_fund import *
 from tasks.ifind.stock import *
