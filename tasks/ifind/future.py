@@ -191,10 +191,10 @@ def import_future_info(chain_param=None):
                 future_info_df = invoker.THS_DataPool('block', '%s;%s' % (date_since_str, sector_id),
                                                       'thscode:Y,security_name:Y')
             except APIError as exp:
-                if exp.ret_dic['error_code'] in (-4001,):
+                if exp.ret_dic['error_code'] in (-4001, -4210, ):
                     future_info_df = None
                 else:
-                    logger.exception('THS_DataPool %s 获取失败', '%s;%s' % (date_since_str, sector_id))
+                    logger.exception("THS_DataPool %s 获取失败, '%s;%s'", exchange_name, date_since_str, sector_id)
                     break
             # if future_info_df is None or future_info_df.shape[0] == 0:
             #     break
@@ -358,11 +358,27 @@ def import_future_daily_his(chain_param=None, ths_code_set: set = None, begin_ti
         for num, (ths_code, (begin_time, end_time)) in enumerate(code_date_range_dic.items(), start=1):
             if begin_time is None:
                 continue
-            logger.debug('%d/%d) %s [%s - %s]', num, code_count, ths_code, begin_time, end_time)
-            data_df = invoker.THS_HistoryQuotes(
-                ths_code, json_indicator,
-                '',  # 'Interval:D,CPS:1,baseDate:1900-01-01,Currency:YSHB,fill:Previous',
-                begin_time, end_time)
+            if begin_time > end_time:
+                logger.warning('%d/%d) %s [%s - %s] 日期范围无效，跳过', num, code_count, ths_code, begin_time, end_time)
+                continue
+            else:
+                logger.debug('%d/%d) %s [%s - %s]', num, code_count, ths_code, begin_time, end_time)
+
+            try:
+                data_df = invoker.THS_HistoryQuotes(
+                    ths_code, json_indicator,
+                    '',  # 'Interval:D,CPS:1,baseDate:1900-01-01,Currency:YSHB,fill:Previous',
+                    begin_time, end_time)
+            except APIError as exp:
+                if exp.ret_dic['error_code'] in (-4001, -4210, ):
+                    data_df = None
+                    logger.exception("THS_HistoryQuotes 获取失败 '%s', '%s', %s, %s 不影响后续任务",
+                                     ths_code, json_indicator, begin_time, end_time)
+                else:
+                    logger.exception("THS_HistoryQuotes 获取失败 '%s', '%s', %s, %s",
+                                     ths_code, json_indicator, begin_time, end_time)
+                    break
+
             if data_df is not None and data_df.shape[0] > 0:
                 data_count += data_df.shape[0]
                 data_df_list.append(data_df)
