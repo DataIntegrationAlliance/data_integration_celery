@@ -7,9 +7,10 @@
 @contact : mmmaaaggg@163.com
 @desc    : 
 """
-from ibats_utils.mess import zip_split
-from tasks.config import config
 from direstinvoker.ifind import IFinDInvoker
+from ibats_utils.mess import zip_split
+
+from tasks.config import config
 
 invoker = IFinDInvoker(config.IFIND_REST_URL)
 
@@ -25,6 +26,7 @@ def print_indicator_param_dic(*args):
 # 以下语句不能够提前，将会导致循环引用异常
 from tasks.ifind.edb import *
 from tasks.ifind.future.future_info_daily import *
+from tasks.ifind.future.future_min import *
 from tasks.ifind.private_fund import *
 from tasks.ifind.pub_fund import *
 from tasks.ifind.stock import *
@@ -38,6 +40,7 @@ ifind_daily_task = (
         import_future_daily_his.s() |
         import_index_daily_his.s() |
         import_index_daily_ds.s() |
+        import_future_min.s() |
         import_private_fund_daily.s() |
         import_pub_fund_daily.s() |
         import_stock_daily_his.s() |
@@ -64,6 +67,11 @@ ifind_import_once = (
         import_index_info.s() |
         import_trade_date.s()
 )
+
+ERROR_CODE_MSG_DIC = {
+    -4001: "数据为空",
+    -4210: "参数错误",
+}
 
 if __name__ == '__main__':
     print_indicator_param_dic(
