@@ -318,7 +318,7 @@ def import_future_daily_his(chain_param=None, ths_code_set: set = None, begin_ti
                 ON fi.ths_code = wfd.ths_code
             ) tt
             WHERE date_frm <= if(lasttrade_date<end_date, lasttrade_date, end_date) 
-            AND subdate(curdate(), 360) < if(lasttrade_date<end_date, lasttrade_date, end_date) 
+            -- AND subdate(curdate(), 360) < if(lasttrade_date<end_date, lasttrade_date, end_date) 
             ORDER BY ths_code""".format(table_name=table_name, info_table_name=info_table_name)
     else:
         sql_str = """SELECT ths_code, date_frm, if(lasttrade_date<end_date, lasttrade_date, end_date) date_to
