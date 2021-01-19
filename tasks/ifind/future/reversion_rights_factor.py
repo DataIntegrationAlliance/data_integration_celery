@@ -24,8 +24,8 @@ def get_all_instrument_type():
     sql_str = "select ths_code from ifind_future_daily group by ths_code"
     with with_db_session(engine_md) as session:
         instrument_list = [row[0] for row in session.execute(sql_str).fetchall()]
-        re_pattern_instrument_type = re.compile(r'\D+(?=\d{3})', re.IGNORECASE)
-        instrument_type_set = {re_pattern_instrument_type.search(name).group() for name in instrument_list}
+    re_pattern_instrument_type = re.compile(r'\D+(?=\d{3})', re.IGNORECASE)
+    instrument_type_set = {re_pattern_instrument_type.search(name).group() for name in instrument_list}
     return list(instrument_type_set)
 
 
@@ -85,8 +85,8 @@ def _test_generate_reversion_rights_factors():
 @app.task
 def task_save_adj_factor(chain_param=None):
     # instrument_types = ['rb', 'i', 'hc']
-    instrument_types = get_all_instrument_type()
-    # instrument_types = ['ru']
+    # instrument_types = get_all_instrument_type()
+    instrument_types = ['rb']
     save_adj_factor_all(
         instrument_types=instrument_types, db_table_name="ifind_future_adj_factor", multi_process=0,
         generate_reversion_rights_factors_func=generate_reversion_rights_factors,
