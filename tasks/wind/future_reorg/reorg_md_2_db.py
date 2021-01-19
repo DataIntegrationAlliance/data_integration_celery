@@ -95,29 +95,33 @@ def get_instrument_num(instrument_str, by_wind_code=True):
     return inst_num
 
 
-def is_earlier_instruments(inst_a, inst_b):
+def is_earlier_instruments(inst_a, inst_b, instrument_last_trade_date_dic=None):
     """
     比较两个合约交割日期 True
     :param inst_a: 
     :param inst_b: 
-    :param by_wind_code: 
+    :param instrument_last_trade_date_dic:
     :return: 
     """
-    instrument_last_trade_date_dic = get_instrument_last_trade_date_dic()
+    if instrument_last_trade_date_dic is None:
+        instrument_last_trade_date_dic = get_instrument_last_trade_date_dic()
+
     inst_num_a = instrument_last_trade_date_dic[inst_a]
     inst_num_b = instrument_last_trade_date_dic[inst_b]
     return inst_num_a < inst_num_b
 
 
-def is_later_instruments(inst_a, inst_b):
+def is_later_instruments(inst_a, inst_b, instrument_last_trade_date_dic):
     """
     比较两个合约交割日期 True
     :param inst_a:
     :param inst_b:
-    :param by_wind_code:
+    :param instrument_last_trade_date_dic:
     :return:
     """
-    instrument_last_trade_date_dic = get_instrument_last_trade_date_dic()
+    if instrument_last_trade_date_dic is None:
+        instrument_last_trade_date_dic = get_instrument_last_trade_date_dic()
+
     inst_num_a = instrument_last_trade_date_dic[inst_a]
     inst_num_b = instrument_last_trade_date_dic[inst_b]
     return inst_num_a > inst_num_b
