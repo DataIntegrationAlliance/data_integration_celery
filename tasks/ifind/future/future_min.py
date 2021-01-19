@@ -26,7 +26,7 @@ from tasks.ifind import invoker
 logger = logging.getLogger()
 RE_PATTERN_MFPRICE = re.compile(r'\d*\.*\d*')
 ONE_DAY = timedelta(days=1)
-THS_VNPY_EXCHANGE_DIC = {
+IFIND_VNPY_EXCHANGE_DIC = {
     'SHF': 'SHFE',
     'CZC': 'CZCE',
     'CFE': 'CFFEX',
