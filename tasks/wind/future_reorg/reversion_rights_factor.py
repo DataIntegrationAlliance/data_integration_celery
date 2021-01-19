@@ -10,6 +10,7 @@ import os
 from collections import defaultdict
 from enum import Enum
 from multiprocessing import Pool
+from typing import Callable
 
 import numpy as np
 import pandas as pd
@@ -76,11 +77,25 @@ def generate_reversion_rights_factors(instrument_type, switch_by_key='position',
     # 获取当前期货品种全部历史合约的日级别行情数据
     sql_str = r"""select wind_code, trade_date, open, close, """ + switch_by_key + """ 
       from wind_future_daily where wind_code regexp %s"""
-    data_df = pd.read_sql(sql_str, engine_md, params=[r'^%s[0-9]+\.[A-Z]+' % (instrument_type,)])
+    data_df = pd.read_sql(sql_str, engine_md, params=[r'^%s[0-9]+\.[A-Z]{3,4}' % (instrument_type,)])
     close_df = data_df.pivot(index="trade_date", columns="wind_code", values="close")
     switch_by_df = data_df.pivot(index="trade_date", columns="wind_code", values=switch_by_key).sort_index()
-    logger.info("查询 %s 包含 %d 条记录 %d 个合约", instrument_type, *switch_by_df.shape)
+    if switch_by_df.shape[0] == 0:
+        logger.warning("查询 %s 包含 %d 条记录 %d 个合约，跳过", instrument_type, *switch_by_df.shape)
+    else:
+        logger.info("查询 %s 包含 %d 条记录 %d 个合约", instrument_type, *switch_by_df.shape)
 
+    return generate_reversion_rights_factors_by_df(
+        instrument_type, switch_by_key, close_df, switch_by_df,
+        instrument_last_trade_date_dic,
+        method)
+
+
+def generate_reversion_rights_factors_by_df(
+        instrument_type, switch_by_key, close_df, switch_by_df,
+        instrument_last_trade_date_dic,
+        method: ReversionRightsMethod = ReversionRightsMethod.division
+):
     # 主力合约号，次主力合约号
     instrument_id_main, instrument_id_secondary = None, None
     # date_instrument_id_dic = {}
@@ -245,13 +260,17 @@ def update_df_2_db(instrument_type, table_name, data_df, dtype=None):
         primary_keys=['trade_date', 'instrument_type'], schema=config.DB_SCHEMA_MD)
 
 
-def save_adj_factor_all(instrument_types: list, to_db=True, to_csv=True, multi_process=0):
+def save_adj_factor_all(
+        instrument_types: list, db_table_name='wind_future_adj_factor', to_csv=True, multi_process=0,
+        generate_reversion_rights_factors_func=generate_reversion_rights_factors
+):
     """
 
     :param instrument_types: 合约类型
-    :param to_db: 是否保存到数据库
+    :param db_table_name: 保存到数据库名称，None 为不保存数据库
     :param to_csv: 是否保存到csv文件
     :param multi_process: 多进程运行 <=1 为单进程运行
+    :param generate_reversion_rights_factors_func: 生成复权因子的函数
     :return:
     """
     if to_csv:
@@ -269,25 +288,35 @@ def save_adj_factor_all(instrument_types: list, to_db=True, to_csv=True, multi_p
     for method in ReversionRightsMethod:
         for n, instrument_type in enumerate(instrument_types):
             if pool is None:
-                save_adj_factor(instrument_type, method, to_db, to_csv_dir_path)
+                save_adj_factor(
+                    instrument_type, method, db_table_name, to_csv_dir_path,
+                    generate_reversion_rights_factors_func)
             else:
-                pool.apply_async(save_adj_factor, args=(instrument_type, method, to_db, to_csv_dir_path))
+                pool.apply_async(
+                    save_adj_factor,
+                    args=(instrument_type, method, db_table_name, to_csv_dir_path,
+                          generate_reversion_rights_factors_func))
 
     if pool is not None:
         pool.join()
 
 
-def save_adj_factor(instrument_type: str, method: ReversionRightsMethod, to_db=True, to_csv_dir_path=None):
+def save_adj_factor(
+        instrument_type: str, method: ReversionRightsMethod,
+        db_table_name='wind_future_adj_factor', to_csv_dir_path=None,
+        generate_reversion_rights_factors_func: Callable = generate_reversion_rights_factors
+):
     """
 
     :param instrument_type: 合约类型
     :param method: 合约类型
-    :param to_db: 是否保存到数据库
+    :param db_table_name: 保存到数据库名称，None 为不保存数据库
     :param to_csv_dir_path: 是否保存到csv文件
+    :param generate_reversion_rights_factors_func: 生成复权因子的函数
     :return:
     """
     logger.info("生成 %s 复权因子", instrument_type)
-    adj_factor_df, trade_date_latest = generate_reversion_rights_factors(instrument_type, method=method)
+    adj_factor_df, trade_date_latest = generate_reversion_rights_factors_func(instrument_type, method=method)
     if adj_factor_df is None:
         return
 
@@ -298,8 +327,7 @@ def save_adj_factor(instrument_type: str, method: ReversionRightsMethod, to_db=T
         os.makedirs(folder_path, exist_ok=True)
         adj_factor_df.to_csv(csv_file_path, index=False)
 
-    if to_db:
-        table_name = 'wind_future_adj_factor'
+    if db_table_name is not None:
         dtype = {
             'trade_date': Date,
             'instrument_id_main': String(20),
@@ -310,7 +338,7 @@ def save_adj_factor(instrument_type: str, method: ReversionRightsMethod, to_db=T
             'method': String(20),
         }
         adj_factor_df['method'] = method.name
-        update_df_2_db(instrument_type, table_name, adj_factor_df, dtype)
+        update_df_2_db(instrument_type, db_table_name, adj_factor_df, dtype)
 
     logger.info("生成 %s 复权因子 %s 条记录[%s]",  # \n%s
                 instrument_type, adj_factor_df.shape[0], method.name
@@ -328,7 +356,10 @@ def task_save_adj_factor(chain_param=None):
     # instrument_types = ['rb', 'i', 'hc']
     instrument_types = get_all_instrument_type()
     # instrument_types = ['ru']
-    save_adj_factor_all(instrument_types=instrument_types, multi_process=0)
+    save_adj_factor_all(
+        instrument_types=instrument_types, multi_process=0,
+        generate_reversion_rights_factors_func=generate_reversion_rights_factors
+    )
 
 
 if __name__ == "__main__":
