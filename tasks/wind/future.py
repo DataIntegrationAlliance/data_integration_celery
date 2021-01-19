@@ -651,8 +651,8 @@ def get_wind_code_list_by_types(instrument_types: list, all_if_none=True,
         with with_db_session(engine_md) as session:
             if lasttrade_date_lager_than_n_days_before is not None:
                 date_from_str = date_2_str(date.today() - timedelta(days=lasttrade_date_lager_than_n_days_before))
-                sql_str += " where lasttrade_date > :lasttrade_date"
-                table = session.execute(sql_str, params={"lasttrade_date": date_from_str})
+                sql_str += " where lasttrade_date > :last_trade_date"
+                table = session.execute(sql_str, params={"last_trade_date": date_from_str})
             else:
                 table = session.execute(sql_str)
 
@@ -676,8 +676,8 @@ def get_wind_code_list_by_types(instrument_types: list, all_if_none=True,
             with with_db_session(engine_md) as session:
                 if lasttrade_date_lager_than_n_days_before is not None:
                     date_from_str = date_2_str(date.today() - timedelta(days=lasttrade_date_lager_than_n_days_before))
-                    sql_str += " and lasttrade_date > :lasttrade_date"
-                    table = session.execute(sql_str, params={"lasttrade_date": date_from_str})
+                    sql_str += " and lasttrade_date > :last_trade_date"
+                    table = session.execute(sql_str, params={"last_trade_date": date_from_str})
                 else:
                     table = session.execute(sql_str)
 
