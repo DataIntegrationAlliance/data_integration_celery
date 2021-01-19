@@ -71,6 +71,7 @@ ifind_import_once = (
 ERROR_CODE_MSG_DIC = {
     -4001: "数据为空",
     -4210: "参数错误",
+    -4302: "your usage of quote data has exceeded 150 million this week.",
 }
 
 if __name__ == '__main__':
