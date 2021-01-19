@@ -130,7 +130,7 @@ def generate_reversion_rights_factors_by_df(
         # 循环查找各个合约，寻找更合适的主力合约
         for instrument_id in switch_by_s.index:
             if instrument_id_main is not None \
-                    and is_earlier_instruments(instrument_id, instrument_id_main):
+                    and is_earlier_instruments(instrument_id, instrument_id_main, instrument_last_trade_date_dic):
                 # 如果 合约日期比 当前主力合约日期早，则直接跳过
                 continue
             # 判断主力合约
@@ -140,7 +140,8 @@ def generate_reversion_rights_factors_by_df(
                 instrument_id_main = instrument_id
                 if instrument_id_secondary is not None \
                         and (instrument_id_main == instrument_id_secondary
-                             or is_later_instruments(instrument_id_main, instrument_id_secondary)):
+                             or is_later_instruments(instrument_id_main, instrument_id_secondary,
+                                                     instrument_last_trade_date_dic)):
                     # 如果次主力合约不是晚于主力合约则至 None，重新寻找合适的次主力合约
                     instrument_id_secondary = None
             else:
@@ -150,7 +151,7 @@ def generate_reversion_rights_factors_by_df(
             if instrument_id_secondary is None:
                 if instrument_id_main != instrument_id:
                     instrument_id_secondary = instrument_id
-            elif is_earlier_instruments(instrument_id_secondary, instrument_id) \
+            elif is_earlier_instruments(instrument_id_secondary, instrument_id, instrument_last_trade_date_dic) \
                     and instrument_id_secondary in switch_by_s \
                     and switch_by_s[instrument_id_secondary] < switch_by_s[instrument_id]:
                 instrument_id_secondary = instrument_id
