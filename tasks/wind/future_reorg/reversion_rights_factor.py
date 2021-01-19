@@ -366,5 +366,5 @@ def task_save_adj_factor(chain_param=None):
 
 
 if __name__ == "__main__":
-    _test_generate_reversion_rights_factors()
-    # task_save_adj_factor()
+    # _test_generate_reversion_rights_factors()
+    task_save_adj_factor()
