@@ -175,8 +175,9 @@ def generate_reversion_rights_factors_by_df(
                 instrument_id_last=instrument_id_main_last,
                 method=method
             )
-            date_adj_factor_dic[trade_date_last]['adj_factor_main'] = adj_chg
-            date_adj_factor_dic[trade_date_last]['instrument_id_main'] = instrument_id_main_last
+            if not (np.isnan(adj_chg) or np.isinf(adj_chg)):
+                date_adj_factor_dic[trade_date_last]['adj_factor_main'] = adj_chg
+                date_adj_factor_dic[trade_date_last]['instrument_id_main'] = instrument_id_main_last
 
         # 如果次主力合约切换，则计算调整因子
         if instrument_id_secondary_last is not None \
@@ -189,8 +190,9 @@ def generate_reversion_rights_factors_by_df(
                 instrument_id_last=instrument_id_secondary_last,
                 method=method
             )
-            date_adj_factor_dic[trade_date_last]['adj_factor_secondary'] = adj_chg
-            date_adj_factor_dic[trade_date_last]['instrument_id_secondary'] = instrument_id_secondary_last
+            if not (np.isnan(adj_chg) or np.isinf(adj_chg)):
+                date_adj_factor_dic[trade_date_last]['adj_factor_secondary'] = adj_chg
+                date_adj_factor_dic[trade_date_last]['instrument_id_secondary'] = instrument_id_secondary_last
 
         # 记录有效日期
         trade_date_available_list.append(trade_date)
@@ -348,7 +350,7 @@ def save_adj_factor(
 
 
 def _test_generate_reversion_rights_factors():
-    adj_factor_df, trade_date_latest = generate_reversion_rights_factors(instrument_type='hc')
+    adj_factor_df, trade_date_latest = generate_reversion_rights_factors(instrument_type='MA')
     print(adj_factor_df)
 
 
@@ -364,5 +366,5 @@ def task_save_adj_factor(chain_param=None):
 
 
 if __name__ == "__main__":
-    # _test_generate_reversion_rights_factors()
-    task_save_adj_factor()
+    _test_generate_reversion_rights_factors()
+    # task_save_adj_factor()
