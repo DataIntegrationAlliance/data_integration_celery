@@ -27,7 +27,7 @@ from tasks.wind.future_reorg.reorg_md_2_db import is_earlier_instruments, is_lat
 logger = logging.getLogger()
 
 
-class Method(Enum):
+class ReversionRightsMethod(Enum):
     """
     方法枚举，value为对应的默认 adj_factor 因子值
     """
@@ -35,7 +35,8 @@ class Method(Enum):
     diff = 0
 
 
-def calc_adj_factor(close_df, trade_date, instrument_id_curr, instrument_id_last, method: Method = Method.division):
+def calc_adj_factor(close_df, trade_date, instrument_id_curr, instrument_id_last,
+                    method: ReversionRightsMethod = ReversionRightsMethod.division):
     """
     合约切换时计算两合约直接的价格调整因子
     该调整因子为前复权因子，使用方法
@@ -52,16 +53,17 @@ def calc_adj_factor(close_df, trade_date, instrument_id_curr, instrument_id_last
     """
     close_last = close_df[instrument_id_last][trade_date]
     close_curr = close_df[instrument_id_curr][trade_date]
-    if method == Method.division:
+    if method == ReversionRightsMethod.division:
         adj_factor = close_curr / close_last
-    elif method == Method.diff:
+    elif method == ReversionRightsMethod.diff:
         adj_factor = close_curr - close_last
     else:
         raise ValueError(f"method {method} 不被支持")
     return adj_factor
 
 
-def generate_reversion_rights_factors(instrument_type, switch_by_key='position', method: Method = Method.division):
+def generate_reversion_rights_factors(instrument_type, switch_by_key='position',
+                                      method: ReversionRightsMethod = ReversionRightsMethod.division):
     """
     给定期货品种，历史合约的生成前复权因子
     :param instrument_type: 合约品种，RB、I、HC 等
@@ -110,8 +112,6 @@ def generate_reversion_rights_factors(instrument_type, switch_by_key='position',
             logger.warning("%d) %s %s 没有 %s 数据", n, instrument_type, trade_date, switch_by_key)
             continue
         instrument_id_main_last, instrument_id_secondary_last = instrument_id_main, instrument_id_secondary
-        # 当日主力合约没有数据，或者主力合约已经过期
-        no_data_for_main_instrument = instrument_id_main not in switch_by_s.index
         # 循环查找各个合约，寻找更合适的主力合约
         for instrument_id in switch_by_s.index:
             if instrument_id_main is not None \
@@ -178,7 +178,7 @@ def generate_reversion_rights_factors(instrument_type, switch_by_key='position',
 
         # 记录有效日期
         trade_date_available_list.append(trade_date)
-        trade_date_last = trade_date
+        # trade_date_last = trade_date
 
     if trade_date is None or instrument_id_main is None or instrument_id_secondary is None:
         logger.warning("当前品种 %s 最后一个交易日期 %s 主力合约 %s 次主力合约 %s，历史数据错误",
@@ -206,10 +206,10 @@ def generate_reversion_rights_factors(instrument_type, switch_by_key='position',
         return None, None
 
     adj_factor_df = adj_factor_df[available_titles]
-    if method == Method.division:
+    if method == ReversionRightsMethod.division:
         adj_factor_df['adj_factor_main'] = adj_factor_df['adj_factor_main'].fillna(1).cumprod()
         adj_factor_df['adj_factor_secondary'] = adj_factor_df['adj_factor_secondary'].fillna(1).cumprod()
-    elif method == Method.diff:
+    elif method == ReversionRightsMethod.diff:
         adj_factor_df['adj_factor_main'] = adj_factor_df['adj_factor_main'].fillna(1).cumsum()
         adj_factor_df['adj_factor_secondary'] = adj_factor_df['adj_factor_secondary'].fillna(1).cumsum()
     else:
@@ -266,7 +266,7 @@ def save_adj_factor_all(instrument_types: list, to_db=True, to_csv=True, multi_p
     else:
         pool = None
 
-    for method in Method:
+    for method in ReversionRightsMethod:
         for n, instrument_type in enumerate(instrument_types):
             if pool is None:
                 save_adj_factor(instrument_type, method, to_db, to_csv_dir_path)
@@ -277,7 +277,7 @@ def save_adj_factor_all(instrument_types: list, to_db=True, to_csv=True, multi_p
         pool.join()
 
 
-def save_adj_factor(instrument_type: str, method: Method, to_db=True, to_csv_dir_path=None):
+def save_adj_factor(instrument_type: str, method: ReversionRightsMethod, to_db=True, to_csv_dir_path=None):
     """
 
     :param instrument_type: 合约类型
