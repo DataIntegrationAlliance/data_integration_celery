@@ -194,6 +194,7 @@ def import_future_min(chain_param=None, wind_code_set=None, begin_time=None, rec
                                      num, future_count, ths_code, error_code)
 
                 if error_code in (
+                        -206,  # 数据为空
                         -4210,  # 数据为空
                         -4001,  # 参数错误
                 ):
