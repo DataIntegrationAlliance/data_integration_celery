@@ -40,7 +40,7 @@ DEBUG = False
 
 
 @app.task
-def import_future_min(chain_param=None, wind_code_set=None, begin_time=None, recent_n_years=None):
+def import_future_min(chain_param=None, wind_code_set=None, begin_time=None, recent_n_years=2):
     """
     更新期货合约分钟级别行情信息
     请求语句类似于：
@@ -157,7 +157,7 @@ def import_future_min(chain_param=None, wind_code_set=None, begin_time=None, rec
             # 暂时只处理 RU 期货合约信息
             # if ths_code.find('RU') == -1:
             #     continue
-            if not(0 <= (date_to - date_frm).days < 800):
+            if not (0 <= (date_to - date_frm).days < 800):
                 continue
 
             if ignore_before is not None and pd.to_datetime(date_frm) < ignore_before:
@@ -187,8 +187,8 @@ def import_future_min(chain_param=None, wind_code_set=None, begin_time=None, rec
                 from tasks.ifind import ERROR_CODE_MSG_DIC
                 error_code = exp.ret_dic.setdefault('error_code', 0)
                 if error_code in ERROR_CODE_MSG_DIC:
-                    logger.error("%d/%d) %s 执行异常 error_code=%d, %s",
-                                 num, future_count, ths_code, error_code, ERROR_CODE_MSG_DIC[error_code])
+                    logger.warning("%d/%d) %s 执行异常 error_code=%d, %s",
+                                   num, future_count, ths_code, error_code, ERROR_CODE_MSG_DIC[error_code])
                 else:
                     logger.exception("%d/%d) %s 执行异常 error_code=%d",
                                      num, future_count, ths_code, error_code)
