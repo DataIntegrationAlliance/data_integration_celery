@@ -85,8 +85,8 @@ def _test_generate_reversion_rights_factors():
 @app.task
 def task_save_adj_factor(chain_param=None):
     # instrument_types = ['rb', 'i', 'hc']
-    # instrument_types = get_all_instrument_type()
-    instrument_types = ['rb']
+    instrument_types = get_all_instrument_type()
+    # instrument_types = ['rb']
     save_adj_factor_all(
         instrument_types=instrument_types, db_table_name="ifind_future_adj_factor", multi_process=0,
         generate_reversion_rights_factors_func=generate_reversion_rights_factors,
