@@ -260,7 +260,7 @@ def update_df_2_db(instrument_type, table_name, data_df, dtype=None):
     bunch_insert_on_duplicate_update(
         data_df, table_name, engine_md,
         dtype=dtype, myisam_if_create_table=True,
-        primary_keys=['trade_date', 'instrument_type'], schema=config.DB_SCHEMA_MD)
+        primary_keys=['trade_date', 'instrument_type', 'method'], schema=config.DB_SCHEMA_MD)
 
 
 def save_adj_factor_all(
@@ -318,7 +318,7 @@ def save_adj_factor(
     :param generate_reversion_rights_factors_func: 生成复权因子的函数
     :return:
     """
-    logger.info("生成 %s 复权因子", instrument_type)
+    logger.info("生成 %s 复权因子[%s]", instrument_type, method.name)
     adj_factor_df, trade_date_latest = generate_reversion_rights_factors_func(instrument_type, method=method)
     if adj_factor_df is None:
         return
@@ -343,7 +343,7 @@ def save_adj_factor(
         adj_factor_df['method'] = method.name
         update_df_2_db(instrument_type, db_table_name, adj_factor_df, dtype)
 
-    logger.info("生成 %s 复权因子 %s 条记录[%s]",  # \n%s
+    logger.info("生成 %s 复权因子 %d 条记录[%s]",  # \n%s
                 instrument_type, adj_factor_df.shape[0], method.name
                 # , adj_factor_df
                 )
