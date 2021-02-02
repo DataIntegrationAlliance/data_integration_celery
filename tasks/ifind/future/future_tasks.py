@@ -117,4 +117,5 @@ def run_mid_day_task():
 
 
 if __name__ == "__main__":
-    run_mid_day_task()
+    # run_mid_day_task()
+    run_daily_min_task()

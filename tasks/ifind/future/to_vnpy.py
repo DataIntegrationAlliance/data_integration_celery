@@ -79,7 +79,7 @@ def min_to_vnpy_increment(chain_param=None, instrument_types=None):
     from tasks.config import config
     from tasks.backend import engine_dic
     original_table_name = 'ifind_future_min'
-    table_name = 'dbbardata'  # dbbardata_test 测试库
+    table_name = 'dbbardata'  # dbbardata_test 测试库 dbbardata 正式库
     interval = '1m'
     engine_vnpy = engine_dic[config.DB_SCHEMA_VNPY]
     has_table = engine_vnpy.has_table(table_name)
