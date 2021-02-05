@@ -198,7 +198,7 @@ def import_future_info(chain_param=None):
                     break
             # if future_info_df is None or future_info_df.shape[0] == 0:
             #     break
-            if future_info_df is not None:
+            if future_info_df is not None and future_info_df.shape[0] > 0:
                 code_set |= set(future_info_df['THSCODE'])
 
             if date_since >= date_yestoday:
