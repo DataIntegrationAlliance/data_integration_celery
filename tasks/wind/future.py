@@ -25,6 +25,7 @@ from tasks.backend import engine_md
 from tasks.backend.orm import build_primary_key
 from tasks.merge.code_mapping import update_from_info_table
 from tasks.wind import invoker
+from tasks.wind.future_reorg.reversion_rights_factor import reversion_rights_factors_2_vnpy
 
 logger = logging.getLogger()
 RE_PATTERN_MFPRICE = re.compile(r'\d*\.*\d*')
@@ -994,6 +995,7 @@ def _run_task():
     _run_daily_to_vnpy()
     # 重新计算复权数据
     task_save_adj_factor()
+    reversion_rights_factors_2_vnpy()
     # 导入期货分钟级行情数据
     import_future_min(None, wind_code_set, recent_n_years=1)
     min_to_vnpy_increment(None)
