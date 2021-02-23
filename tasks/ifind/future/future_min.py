@@ -184,7 +184,7 @@ def import_future_min(chain_param=None, wind_code_set=None, begin_time=None, rec
                 data_df = invoker.THS_HighFrequenceSequence(
                     ths_code, ifind_indicator_str, 'Fill:Original', date_frm_str, date_to_str)
             except APIError as exp:
-                from tasks.ifind import ERROR_CODE_MSG_DIC
+                from tasks.ifind import ERROR_CODE_MSG_DIC, NO_BREAK_ERROR_CODE
                 error_code = exp.ret_dic.setdefault('error_code', 0)
                 if error_code in ERROR_CODE_MSG_DIC:
                     logger.warning("%d/%d) %s 执行异常 error_code=%d, %s",
@@ -193,11 +193,7 @@ def import_future_min(chain_param=None, wind_code_set=None, begin_time=None, rec
                     logger.exception("%d/%d) %s 执行异常 error_code=%d",
                                      num, future_count, ths_code, error_code)
 
-                if error_code in (
-                        -206,  # 数据为空
-                        -4210,  # 数据为空
-                        -4001,  # 参数错误
-                ):
+                if error_code in NO_BREAK_ERROR_CODE:
                     continue
                 else:
                     break

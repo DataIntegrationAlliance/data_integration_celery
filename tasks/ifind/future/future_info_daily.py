@@ -16,10 +16,10 @@ from ibats_utils.mess import unzip_join
 from sqlalchemy.dialects.mysql import DOUBLE
 from sqlalchemy.types import String, Date
 
-from tasks.config import config
 from tasks import app
 from tasks.backend import engine_md
 from tasks.backend.orm import build_primary_key
+from tasks.config import config
 from tasks.ifind import invoker
 
 DEBUG = False
@@ -191,7 +191,7 @@ def import_future_info(chain_param=None):
                 future_info_df = invoker.THS_DataPool('block', '%s;%s' % (date_since_str, sector_id),
                                                       'thscode:Y,security_name:Y')
             except APIError as exp:
-                if exp.ret_dic['error_code'] in (-4001, -4210, ):
+                if exp.ret_dic['error_code'] in (-4001, -4210,):
                     future_info_df = None
                 else:
                     logger.exception("THS_DataPool %s 获取失败, '%s;%s'", exchange_name, date_since_str, sector_id)
@@ -226,7 +226,7 @@ def import_future_info(chain_param=None):
                 for exchange_sectorid_dic in exchange_sectorid_dic_list:
                     future_info_df['exch_eng'][
                         future_info_df['ths_exchange_short_name_future'] == exchange_sectorid_dic['exchange_name']
-                    ] = exchange_sectorid_dic['exch_eng']
+                        ] = exchange_sectorid_dic['exch_eng']
 
                 data_count = bunch_insert_on_duplicate_update(
                     future_info_df, table_name, engine_md, dtype,
@@ -370,13 +370,25 @@ def import_future_daily_his(chain_param=None, ths_code_set: set = None, begin_ti
                     '',  # 'Interval:D,CPS:1,baseDate:1900-01-01,Currency:YSHB,fill:Previous',
                     begin_time, end_time)
             except APIError as exp:
-                if exp.ret_dic['error_code'] in (-4001, -4210, ):
-                    data_df = None
-                    logger.exception("THS_HistoryQuotes 获取失败 '%s', '%s', %s, %s 不影响后续任务",
-                                     ths_code, json_indicator, begin_time, end_time)
+                from tasks.ifind import ERROR_CODE_MSG_DIC, NO_BREAK_ERROR_CODE
+                error_code = exp.ret_dic.setdefault('error_code', 0)
+                break_msg = "不影响后续任务" if error_code in NO_BREAK_ERROR_CODE else ""
+                if error_code in ERROR_CODE_MSG_DIC:
+                    logger.error("%d/%d) THS_HistoryQuotes 获取失败 '%s', '%s', %s, %s error_code=%d, %s %s",
+                                 num, code_count, ths_code, json_indicator, begin_time, end_time,
+                                 error_code, ERROR_CODE_MSG_DIC[error_code],
+                                 break_msg
+                                 )
                 else:
-                    logger.exception("THS_HistoryQuotes 获取失败 '%s', '%s', %s, %s",
-                                     ths_code, json_indicator, begin_time, end_time)
+                    logger.exception("%d/%d) THS_HistoryQuotes 获取失败 '%s', '%s', %s, %s error_code=%d, %s %s",
+                                     num, code_count, ths_code, json_indicator, begin_time, end_time,
+                                     error_code, ERROR_CODE_MSG_DIC[error_code],
+                                     break_msg
+                                     )
+
+                if error_code in NO_BREAK_ERROR_CODE:
+                    continue
+                else:
                     break
 
             if data_df is not None and data_df.shape[0] > 0:

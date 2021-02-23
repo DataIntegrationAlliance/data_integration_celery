@@ -73,7 +73,15 @@ ERROR_CODE_MSG_DIC = {
     -4001: "数据为空",
     -4210: "参数错误",
     -4302: "your usage of quote data has exceeded 150 million this week.",
+    -4309: "sorry, trial account can get 1 year data for authority limited, "
+           "so as to acquire more data, please transfer it to formal account",
 }
+
+NO_BREAK_ERROR_CODE = (-206,  # 数据为空
+                       -4210,  # 数据为空
+                       -4001,  # 参数错误
+                       -4309,  # 获取数据超授权时间范围
+                       )
 
 if __name__ == '__main__':
     print_indicator_param_dic(
