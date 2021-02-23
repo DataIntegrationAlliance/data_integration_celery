@@ -20,7 +20,7 @@ from sqlalchemy.dialects.mysql import DOUBLE
 from sqlalchemy.types import String, Date
 
 from tasks import app
-from tasks.backend import engine_md
+from tasks.backend import engine_md, engine_dic
 from tasks.config import config
 from tasks.wind.future_reorg.reorg_md_2_db import is_earlier_instruments, is_later_instruments, \
     get_all_instrument_type, get_instrument_last_trade_date_dic
@@ -239,7 +239,7 @@ def generate_reversion_rights_factors_by_df(
     return adj_factor_df, trade_date_latest
 
 
-def update_df_2_db(instrument_type, table_name, data_df, dtype=None):
+def update_df_2_db(instrument_type, table_name, data_df, method: ReversionRightsMethod, dtype=None):
     """将 DataFrame 数据保存到 数据库对应的表中"""
     # 为了解决 AttributeError: 'numpy.float64' object has no attribute 'translate' 错误，需要将数据类型转换成 float
     data_df["adj_factor_main"] = data_df["adj_factor_main"].apply(str_2_float)
@@ -251,8 +251,8 @@ def update_df_2_db(instrument_type, table_name, data_df, dtype=None):
         # 复权数据表
         is_existed = session.execute(sql_str, params={"table_name": table_name}).fetchone()
         if is_existed is not None:
-            session.execute("delete from %s where instrument_type = :instrument_type" % table_name,
-                            params={"instrument_type": instrument_type})
+            session.execute("delete from %s where instrument_type = :instrument_type and method= :method" % table_name,
+                            params={"instrument_type": instrument_type, "method": method.name})
             logger.debug("删除 %s 中的 %s 历史数据，重新载入新的复权数据", table_name, instrument_type)
 
     # 插入数据库
@@ -341,7 +341,7 @@ def save_adj_factor(
             'method': String(20),
         }
         adj_factor_df['method'] = method.name
-        update_df_2_db(instrument_type, db_table_name, adj_factor_df, dtype)
+        update_df_2_db(instrument_type, db_table_name, adj_factor_df, method=method, dtype=dtype)
 
     logger.info("生成 %s 复权因子 %d 条记录[%s]",  # \n%s
                 instrument_type, adj_factor_df.shape[0], method.name
@@ -365,6 +365,29 @@ def task_save_adj_factor(chain_param=None):
     )
 
 
+def backup_to_db(table_name, new_engine, dtype):
+    sql_str = f"select * from {table_name}"
+    df = pd.read_sql(sql_str, engine_md)
+    df.to_sql(table_name, new_engine, dtype=dtype, if_exists='replace', index=False)
+    logger.info("%s 备份到 vnpy 数据库完成，%d 条数据", table_name, df.shape[0])
+
+
+def reversion_rights_factors_2_vnpy():
+    table_name = 'wind_future_adj_factor'
+    dtype = {
+        'trade_date': Date,
+        'instrument_id_main': String(20),
+        'adj_factor_main': DOUBLE,
+        'instrument_id_secondary': String(20),
+        'adj_factor_secondary': DOUBLE,
+        'instrument_type': String(20),
+        'method': String(20),
+    }
+    engine_vnpy = engine_dic[config.DB_SCHEMA_VNPY]
+    backup_to_db(table_name=table_name, new_engine=engine_vnpy, dtype=dtype)
+
+
 if __name__ == "__main__":
     # _test_generate_reversion_rights_factors()
     task_save_adj_factor()
+    reversion_rights_factors_2_vnpy()
