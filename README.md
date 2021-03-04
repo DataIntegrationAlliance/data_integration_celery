@@ -201,6 +201,7 @@ max_allowed_packet | 500M|配置MySQL允许的最大数据包大小，解决 Los
 wait_timeout| 172800|解决 MySQL server has gone away 的问题|
 interactive_timeout| 172800|解决 MySQL server has gone away 的问题|
 innodb_buffer_pool_size| 1024M|Innodb_buffer_pool_pages_data / Innodb_buffer_pool_pages_total * 100%， 建议使用物理内存的75%|
+sort_buffer_size| 4M|解决 Sort aborted: Out of sort memory, consider increasing server sort buffer size。默认只有 256K。On Linux, there are thresholds of 256KB and 2MB where larger values may significantly slow down memory allocation|
 
 参数调整方法:
 
