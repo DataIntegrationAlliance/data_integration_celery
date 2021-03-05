@@ -11,6 +11,7 @@ from ibats_utils.db import with_db_session
 
 from tasks.backend import engine_md
 from tasks.ifind import import_future_min, import_future_info, import_future_daily_his
+from tasks.ifind.future.reversion_rights_factor import task_save_adj_factor
 from tasks.ifind.future.to_model_server import daily_2_model_server
 from tasks.ifind.future.to_vnpy import min_to_vnpy_increment
 
@@ -55,7 +56,6 @@ def get_main_secondary_contract_by_instrument_types(instrument_types=None):
 
 def run_daily_min_task():
     """完整的日线、分钟线数据更新任务"""
-    from tasks.wind.future_reorg.reversion_rights_factor import task_save_adj_factor
     # DEBUG = True
     wind_code_set = None
     # import_future_info_hk(chain_param=None)
