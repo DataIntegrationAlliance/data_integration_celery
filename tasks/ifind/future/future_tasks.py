@@ -77,6 +77,7 @@ def run_daily_min_task():
     import_future_min(None, wind_code_set, recent_n_years=1)
     # 暂时不运行，这部分代码等wind接口停用后再启用
     # min_to_vnpy_increment(None)
+    logger.info("all task finished")
 
 
 def run_daily_only():
@@ -91,11 +92,13 @@ def run_daily_only():
         logger.exception("同步到 阿里云 RDS 服务器失败")
     # 根据商品类型将对应日线数据插入到 vnpy dbbardata 表中
     # _run_daily_to_vnpy()
+    logger.info("all task finished")
 
 
 def run_daily_to_model_server_db():
     """同步日线数据到 model server"""
     daily_2_model_server(instrument_types=['rb', 'hc', 'i', 'j', 'jm'])
+    logger.info("all task finished")
 
 
 def run_mid_day_task():
@@ -116,6 +119,7 @@ def run_mid_day_task():
     min_to_vnpy_increment(
         # instrument_types=['rb', 'i', 'hc']
     )
+    logger.info("all task finished")
 
 
 if __name__ == "__main__":

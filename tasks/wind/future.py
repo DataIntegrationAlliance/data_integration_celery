@@ -1006,6 +1006,7 @@ def _run_task():
     #     ('I', r"DCE"),
     #     ('HC', r"SHF"),
     # ])
+    logger.info("all task finished")
 
 
 def run_daily_only():

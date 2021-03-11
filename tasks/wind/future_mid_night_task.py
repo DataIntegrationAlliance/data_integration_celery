@@ -5,7 +5,11 @@
 @contact : mmmaaaggg@163.com
 @desc    : 用于
 """
-from tasks.wind.future import import_future_min, min_to_vnpy_increment, get_main_secondary_contract_by_instrument_types
+import logging
+
+from tasks.wind.future import import_future_min, min_to_vnpy_increment
+
+logger = logging.getLogger()
 
 
 def run_mid_day_task():
@@ -21,6 +25,7 @@ def run_mid_day_task():
     min_to_vnpy_increment(
         # instrument_types=['rb', 'i', 'hc']
     )
+    logger.info("all task finished")
 
 
 if __name__ == "__main__":
