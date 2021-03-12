@@ -831,7 +831,7 @@ def daily_to_model_server_db(chain_param=None, instrument_types=None):
 
 
 @app.task
-def min_to_vnpy_whole(chain_param=None, instrument_types=None, lasttrade_date_lager_than_n_days_before=3600):
+def min_to_vnpy_whole(chain_param=None, instrument_types=None, lasttrade_date_lager_than_n_days_before=1800):
     from tasks.config import config
     from tasks.backend import engine_dic
     table_name = 'dbbardata'
