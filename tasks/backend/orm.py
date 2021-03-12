@@ -72,7 +72,7 @@ def strat_heart_beat_thread():
                 else:
                     n -= 1
 
-            time.sleep(300)
+            time.sleep(1800)
             try:
                 with with_db_session(engine_md) as session:
                     update_dt = datetime.now()
