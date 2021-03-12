@@ -9,6 +9,7 @@ import logging
 import os
 import re
 from datetime import datetime, date, timedelta
+from typing import Optional
 
 import pandas as pd
 from direstinvoker import APIError
@@ -638,7 +639,7 @@ def update_future_info_hk(chain_param=None):
 
 
 def get_wind_code_list_by_types(instrument_types: list, all_if_none=True,
-                                lasttrade_date_lager_than_n_days_before=30) -> list:
+                                lasttrade_date_lager_than_n_days_before: Optional[int] = 30) -> list:
     """
     输入 instrument_type 列表，返回对应的所有合约列表
     :param instrument_types: 可以使 instrument_type 列表 也可以是 （instrument_type，exchange）列表
@@ -673,7 +674,7 @@ def get_wind_code_list_by_types(instrument_types: list, all_if_none=True,
             # 参考链接： https://blog.csdn.net/qq_22238021/article/details/80929518
 
             sql_str = f"select wind_code from wind_future_info where wind_code " \
-                      f"REGEXP 'rb[:digit:]+.{'[:alpha:]+' if exchange is None else exchange}'"
+                      f"REGEXP '^{instrument_type}[:digit:]+.{'[:alpha:]+' if exchange is None else exchange}'"
             with with_db_session(engine_md) as session:
                 if lasttrade_date_lager_than_n_days_before is not None:
                     date_from_str = date_2_str(date.today() - timedelta(days=lasttrade_date_lager_than_n_days_before))
@@ -830,7 +831,7 @@ def daily_to_model_server_db(chain_param=None, instrument_types=None):
 
 
 @app.task
-def min_to_vnpy_whole(chain_param=None, instrument_types=None):
+def min_to_vnpy_whole(chain_param=None, instrument_types=None, lasttrade_date_lager_than_n_days_before=3600):
     from tasks.config import config
     from tasks.backend import engine_dic
     table_name = 'dbbardata'
@@ -841,7 +842,9 @@ def min_to_vnpy_whole(chain_param=None, instrument_types=None):
         logger.error('当前数据库 %s 没有 %s 表，建议使用 vnpy先建立相应的数据库表后再进行导入操作', engine_vnpy, table_name)
         return
 
-    wind_code_list = get_wind_code_list_by_types(instrument_types)
+    wind_code_list = get_wind_code_list_by_types(
+        instrument_types,
+        lasttrade_date_lager_than_n_days_before=lasttrade_date_lager_than_n_days_before)
     wind_code_count = len(wind_code_list)
     for n, wind_code in enumerate(wind_code_list, start=1):
         symbol, exchange = wind_code.split('.')
@@ -910,9 +913,9 @@ def min_to_vnpy_increment(chain_param=None, instrument_types=None):
         else:
             logger.warning('%s exchange: %s 在交易所列表中不存在', wind_code, exchange)
             exchange_vnpy = exchange
-        sql_str = f"select max(`datetime`) from {table_name} where symbol=:symbol and `interval`='{interval}'"
+        sql_str = f"select max(`datetime`) from {table_name} where symbol=:symbol and `interval`=:interval"
         with with_db_session(engine_vnpy) as session:
-            datetime_exist = session.scalar(sql_str, params={'symbol': symbol})
+            datetime_exist = session.scalar(sql_str, params={'symbol': symbol, 'interval': interval})
         if datetime_exist is not None:
             # 读取日线数据
             df = pd.read_sql(sql_increment_str, engine_md, params=[wind_code, datetime_exist]).dropna()
