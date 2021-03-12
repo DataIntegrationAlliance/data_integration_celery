@@ -57,7 +57,7 @@ def get_code_list_by_types(instrument_types: list, all_if_none=True,
             # 参考链接： https://blog.csdn.net/qq_22238021/article/details/80929518
 
             sql_str = f"select ths_code from ifind_future_info where ths_code " \
-                      f"REGEXP 'rb[:digit:]+.{'[:alpha:]+' if exchange is None else exchange}'"
+                      f"REGEXP '^{instrument_type}[:digit:]+.{'[:alpha:]+' if exchange is None else exchange}'"
             with with_db_session(engine_md) as session:
                 if lasttrade_date_lager_than_n_days_before is not None:
                     date_from_str = date_2_str(date.today() - timedelta(days=lasttrade_date_lager_than_n_days_before))
