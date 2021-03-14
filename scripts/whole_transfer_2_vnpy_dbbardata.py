@@ -11,8 +11,8 @@ from tasks.wind.future import min_to_vnpy_whole
 
 
 def transfer():
+    min_to_vnpy_whole(lasttrade_date_lager_than_n_days_before=1000)
     min_to_vnpy()
-    min_to_vnpy_whole()
 
 
 if __name__ == "__main__":
