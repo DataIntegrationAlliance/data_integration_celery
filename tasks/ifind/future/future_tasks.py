@@ -63,12 +63,11 @@ def run_daily_min_task():
     import_future_info(chain_param=None)
     # 导入期货每日行情数据
     import_future_daily_his(None, wind_code_set)
-    # 暂时不运行，这部分代码等wind接口停用后再启用
-    # try:
-    #     # 同步到 阿里云 RDS 服务器
-    #     daily_2_model_server()
-    # except:
-    #     logger.exception("同步到 阿里云 RDS 服务器失败")
+    try:
+        # 同步到 阿里云 RDS 服务器
+        daily_2_model_server()
+    except:
+        logger.exception("同步到 阿里云 RDS 服务器失败")
     # 根据商品类型将对应日线数据插入到 vnpy dbbardata 表中
     # _run_daily_to_vnpy()
     # 重新计算复权数据
