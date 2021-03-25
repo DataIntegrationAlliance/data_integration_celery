@@ -243,6 +243,8 @@ def import_future_info(chain_param=None):
                     future_info_df, table_name, engine_md, dtype,
                     primary_keys=['ths_code'], schema=config.DB_SCHEMA_MD)
                 logger.info("更新 %s 结束 %d 条记录被更新", table_name, data_count)
+    else:
+        logger.info("没有基础数据需要被更新")
 
 
 def save_future_daily_df_list(data_df_list):
