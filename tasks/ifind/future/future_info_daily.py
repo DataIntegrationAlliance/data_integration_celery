@@ -212,11 +212,22 @@ def import_future_info(chain_param=None):
             break
 
     # 获取合约列表
-    code_list = [wc for wc in code_set if wc not in code_ipo_date_dic]
+    code_list = [code for code in code_set
+                 if code not in code_ipo_date_dic and
+                 not code.endswith('.CFE')  # 用不到股指数据，没有获取权限
+                 ]
     # 获取合约基本信息
     if len(code_list) > 0:
-        for code_list in split_chunk(code_list, 500):
-            future_info_df = invoker.THS_BasicData(code_list, json_indicator, json_param)
+        for code_list in split_chunk(code_list, 100):
+            try:
+                future_info_df = invoker.THS_BasicData(code_list, json_indicator, json_param)
+            except APIError as exp:
+                if exp.ret_dic['error_code'] in (-4001, -4210, -4102):
+                    continue
+                else:
+                    logger.exception("THS_BasicData %s 获取失败, '%s', '%s'", code_list, json_indicator, json_param)
+                    break
+
             if future_info_df is None or future_info_df.shape[0] == 0:
                 data_count = 0
                 logger.warning("更新 %s 结束 %d 条记录被更新", table_name, data_count)
